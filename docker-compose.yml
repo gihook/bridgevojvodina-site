@@ -19,11 +19,12 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: bridge_lokalno
+      MYSQL_DATABASE: bridgevo_db
     ports:
       - "3306:3306"
     volumes:
       - db_data:/var/lib/mysql
+      - ./init-db:/docker-entrypoint-initdb.d
     networks:
       - bridge-net
 
