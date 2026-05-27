@@ -1,0 +1,48 @@
+services:
+  web:
+    image: php:8.3-apache
+    container_name: bridge_web
+    ports:
+      - "8080:80"
+    volumes:
+      - ./html:/var/www/html
+    networks:
+      - bridge-net
+    depends_on:
+      - db
+    command: >
+      sh -c "docker-php-ext-install mysqli pdo pdo_mysql && apache2-foreground"
+
+  db:
+    image: mysql:8.0
+    container_name: bridge_db
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root_password
+      MYSQL_DATABASE: bridge_lokalno
+    ports:
+      - "3306:3306"
+    volumes:
+      - db_data:/var/lib/mysql
+    networks:
+      - bridge-net
+
+  phpmyadmin:
+    image: phpmyadmin:latest
+    container_name: bridge_pma
+    restart: always
+    environment:
+      PMA_HOST: db
+      PMA_USER: root
+      PMA_PASSWORD: root_password
+    ports:
+      - "8081:80"
+    networks:
+      - bridge-net
+
+volumes:
+  db_data:
+
+networks:
+  bridge-net:
+    driver: bridge

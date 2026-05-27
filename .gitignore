@@ -1,0 +1,16 @@
+.env
+docker-compose.override.yml
+
+.docker/
+
+/*/error_log
+error_log
+*.log
+
+.well-known/
+
+.DS_Store
+Thumbs.db
+
+# config.php
+# admin/connectdb.php
