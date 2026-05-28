@@ -77,7 +77,7 @@ include 'config.php';
 	</div>
 
 <footer class="container-fluid navbar-fixed-bottom text-center">
-	BSV
+	Bridge Savez Vojvodine
 </footer>
 
 </body>
