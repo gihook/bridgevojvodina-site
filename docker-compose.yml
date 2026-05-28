@@ -10,6 +10,11 @@ services:
       - bridge-net
     depends_on:
       - db
+    environment:
+      DB_HOST: ${DB_HOST}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_NAME: ${DB_NAME}
     command: >
       sh -c "docker-php-ext-install mysqli pdo pdo_mysql && apache2-foreground"
 
@@ -18,8 +23,8 @@ services:
     container_name: bridge_db
     restart: always
     environment:
-      MYSQL_ROOT_PASSWORD: root_password
-      MYSQL_DATABASE: bridgevo_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME}
     ports:
       - "3306:3306"
     volumes:
@@ -33,9 +38,9 @@ services:
     container_name: bridge_pma
     restart: always
     environment:
-      PMA_HOST: db
-      PMA_USER: root
-      PMA_PASSWORD: root_password
+      PMA_HOST: ${DB_HOST}
+      PMA_USER: ${DB_USER}
+      PMA_PASSWORD: ${DB_PASSWORD}
     ports:
       - "8081:80"
     networks:
