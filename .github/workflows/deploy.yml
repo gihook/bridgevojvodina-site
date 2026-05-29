@@ -22,12 +22,14 @@ jobs:
     - name: Install Composer Dependencies
       run: |
         cd bridgevojvodina-laravel
-        composer install --no-dev --optimize-autoloader
+        composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
         
     - name: Setup Node.js
       uses: actions/setup-node@v4
       with:
         node-version: '20'
+        cache: 'npm'
+        cache-dependency-path: bridgevojvodina-laravel/package-lock.json
         
     - name: Install NPM Dependencies and Build
       run: |
@@ -45,9 +47,19 @@ jobs:
         local-dir: ./bridgevojvodina-laravel/
         exclude: |
           **/.git*
+          **/.env*
           **/node_modules/**
           **/tests/**
           storage/framework/cache/*
           storage/framework/sessions/*
           storage/framework/views/*
           storage/logs/*
+          package.json
+          package-lock.json
+          phpunit.xml
+          tailwind.config.js
+          vite.config.js
+          postcss.config.js
+          README.md
+          .editorconfig
+          .gitattributes
