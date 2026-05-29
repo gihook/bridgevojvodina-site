@@ -2,7 +2,7 @@
 
 use App\Http\Controllers\ProfileController;
 use Illuminate\Support\Facades\Route;
-
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Session;
 
 use App\Http\Controllers\ClubController;
@@ -48,3 +48,13 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+Route::get('/run-migrations-v1-769a3d1f', function () {
+    try {
+        Artisan::call('migrate', ['--force' => true]);
+        return '<pre>' . Artisan::output() . '</pre>';
+    } catch (\Exception $e) {
+        return 'Error: ' . $e->getMessage();
+    }
+});
+
