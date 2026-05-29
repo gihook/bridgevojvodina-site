@@ -82,7 +82,14 @@ class UserController extends Controller
             'player_id' => ['nullable', 'exists:players,id'],
         ]);
 
-        $user->update($request->only('name', 'email', 'role', 'player_id'));
+        $data = $request->only('name', 'email', 'role', 'player_id');
+        
+        // Prevent users from changing their own role to avoid lockout
+        if ($user->id === auth()->id()) {
+            unset($data['role']);
+        }
+
+        $user->update($data);
 
         if ($request->filled('password')) {
             $request->validate([
