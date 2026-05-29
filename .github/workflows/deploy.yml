@@ -13,6 +13,28 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
+    - name: Setup PHP
+      uses: shivammathur/setup-php@v2
+      with:
+        php-version: '8.4'
+        extensions: mbstring, xml, ctype, iconv, mysql, gd
+        
+    - name: Install Composer Dependencies
+      run: |
+        cd bridgevojvodina-laravel
+        composer install --no-dev --optimize-autoloader
+        
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20'
+        
+    - name: Install NPM Dependencies and Build
+      run: |
+        cd bridgevojvodina-laravel
+        npm ci
+        npm run build
+        
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -20,4 +42,12 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: ${{ secrets.FTP_SERVER_DIR }}
-        local-dir: ./html/
+        local-dir: ./bridgevojvodina-laravel/
+        exclude: |
+          **/.git*
+          **/node_modules/**
+          **/tests/**
+          storage/framework/cache/*
+          storage/framework/sessions/*
+          storage/framework/views/*
+          storage/logs/*

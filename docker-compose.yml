@@ -1,11 +1,11 @@
 services:
   web:
-    image: php:8.3-apache
+    image: php:8.4-apache
     container_name: bridge_web
     ports:
-      - "8080:80"
+      - "8082:80"
     volumes:
-      - ./html:/var/www/html
+      - ./bridgevojvodina-laravel:/var/www/html
     networks:
       - bridge-net
     depends_on:
@@ -16,7 +16,7 @@ services:
       DB_PASSWORD: ${DB_PASSWORD}
       DB_NAME: ${DB_NAME}
     command: >
-      sh -c "docker-php-ext-install mysqli pdo pdo_mysql && apache2-foreground"
+      sh -c "apt-get update && apt-get install -y libpng-dev libjpeg-dev libfreetype6-dev && docker-php-ext-configure gd --with-freetype --with-jpeg && docker-php-ext-install mysqli pdo pdo_mysql gd && sed -i 's!/var/www/html!/var/www/html/public!g' /etc/apache2/sites-available/000-default.conf && a2enmod rewrite && apache2-foreground"
 
   db:
     image: mysql:8.0
