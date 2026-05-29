@@ -8,7 +8,7 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 text-gray-900">
-                @if(auth()->check())
+                @if(auth()->user()?->role === \App\Models\User::ROLE_ADMIN)
                     <div class="mb-4">
                         <a href="{{ route('players.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
                             {{ __('Add Player') }}
@@ -34,7 +34,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $player->club->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                         <a href="{{ route('players.show', $player) }}" class="text-blue-600 hover:text-blue-900 mr-2">{{ __('View') }}</a>
-                                        @if(auth()->check())
+                                        @if(auth()->user()?->role === \App\Models\User::ROLE_ADMIN)
                                             <a href="{{ route('players.edit', $player) }}" class="text-yellow-600 hover:text-yellow-900 mr-2">{{ __('Edit') }}</a>
                                             <form action="{{ route('players.destroy', $player) }}" method="POST" class="inline">
                                                 @csrf

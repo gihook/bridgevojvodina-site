@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 
 use App\Models\User;
+use App\Models\Player;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Validation\Rules;
 
@@ -15,7 +16,7 @@ class UserController extends Controller
      */
     public function index()
     {
-        $users = User::paginate(10);
+        $users = User::with('player')->paginate(10);
         return view('users.index', compact('users'));
     }
 
@@ -24,7 +25,8 @@ class UserController extends Controller
      */
     public function create()
     {
-        return view('users.create');
+        $players = Player::orderBy('last_name')->get();
+        return view('users.create', compact('players'));
     }
 
     /**
@@ -36,7 +38,8 @@ class UserController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
-            'role' => ['required', 'string', 'in:Admin,SuperAdmin'],
+            'role' => ['required', 'string', 'in:'.User::ROLE_ADMIN.','.User::ROLE_PLAYER],
+            'player_id' => ['nullable', 'exists:players,id'],
         ]);
 
         User::create([
@@ -44,6 +47,7 @@ class UserController extends Controller
             'email' => $request->email,
             'password' => Hash::make($request->password),
             'role' => $request->role,
+            'player_id' => $request->player_id,
         ]);
 
         return redirect()->route('users.index')->with('success', 'User created successfully.');
@@ -62,7 +66,8 @@ class UserController extends Controller
      */
     public function edit(User $user)
     {
-        return view('users.edit', compact('user'));
+        $players = Player::orderBy('last_name')->get();
+        return view('users.edit', compact('user', 'players'));
     }
 
     /**
@@ -73,10 +78,11 @@ class UserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:users,email,'.$user->id],
-            'role' => ['required', 'string', 'in:Admin,SuperAdmin'],
+            'role' => ['required', 'string', 'in:'.User::ROLE_ADMIN.','.User::ROLE_PLAYER],
+            'player_id' => ['nullable', 'exists:players,id'],
         ]);
 
-        $user->update($request->only('name', 'email', 'role'));
+        $user->update($request->only('name', 'email', 'role', 'player_id'));
 
         if ($request->filled('password')) {
             $request->validate([

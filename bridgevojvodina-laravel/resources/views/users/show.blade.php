@@ -11,6 +11,7 @@
                 <p><strong>{{ __('Name') }}:</strong> {{ $user->name }}</p>
                 <p><strong>{{ __('Email') }}:</strong> {{ $user->email }}</p>
                 <p><strong>{{ __('Role') }}:</strong> {{ $user->role }}</p>
+                <p><strong>{{ __('Associated Player') }}:</strong> {{ $user->player ? $user->player->last_name . ' ' . $user->player->first_name : __('None') }}</p>
             </div>
         </div>
     </div>

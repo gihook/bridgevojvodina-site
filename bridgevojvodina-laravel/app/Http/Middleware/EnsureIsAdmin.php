@@ -5,8 +5,9 @@ namespace App\Http\Middleware;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
+use App\Models\User;
 
-class EnsureIsSuperAdmin
+class EnsureIsAdmin
 {
     /**
      * Handle an incoming request.
@@ -15,7 +16,7 @@ class EnsureIsSuperAdmin
      */
     public function handle(Request $request, Closure $next): Response
     {
-        if ($request->user() && $request->user()->role !== 'SuperAdmin') {
+        if ($request->user() && $request->user()->role !== User::ROLE_ADMIN) {
             abort(403);
         }
 

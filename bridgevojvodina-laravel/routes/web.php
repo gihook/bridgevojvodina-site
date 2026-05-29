@@ -30,11 +30,8 @@ Route::resource('clubs', ClubController::class)->only(['index', 'show']);
 Route::resource('players', PlayerController::class)->only(['index', 'show']);
 Route::resource('events', EventController::class)->only(['index', 'show']);
 
-Route::middleware(['auth', 'superadmin'])->group(function () {
+Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
-});
-
-Route::middleware('auth')->group(function () {
     Route::resource('clubs', ClubController::class)->except(['index', 'show']);
     Route::resource('players', PlayerController::class)->except(['index', 'show']);
     Route::resource('events', EventController::class)->except(['index', 'show']);

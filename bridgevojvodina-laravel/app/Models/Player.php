@@ -12,4 +12,9 @@ class Player extends Model
     {
         return $this->belongsTo(Club::class);
     }
+
+    public function user()
+    {
+        return $this->hasOne(User::class);
+    }
 }
