@@ -31,7 +31,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->email }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $user->role }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('users.show', $user) }}" class="text-indigo-600 hover:text-indigo-900 mr-2">{{ __('View') }}</a>
+                                        <a href="{{ route('users.show', $user) }}" class="text-blue-600 hover:text-blue-900 mr-2">{{ __('View') }}</a>
                                         <a href="{{ route('users.edit', $user) }}" class="text-yellow-600 hover:text-yellow-900 mr-2">{{ __('Edit') }}</a>
                                         <form action="{{ route('users.destroy', $user) }}" method="POST" class="inline">
                                             @csrf

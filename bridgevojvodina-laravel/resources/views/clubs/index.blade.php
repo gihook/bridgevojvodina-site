@@ -33,7 +33,7 @@
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $club->city }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $club->status }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                        <a href="{{ route('clubs.show', $club) }}" class="text-indigo-600 hover:text-indigo-900 mr-2">{{ __('View') }}</a>
+                                        <a href="{{ route('clubs.show', $club) }}" class="text-blue-600 hover:text-blue-900 mr-2">{{ __('View') }}</a>
                                         @if(auth()->check())
                                             <a href="{{ route('clubs.edit', $club) }}" class="text-yellow-600 hover:text-yellow-900 mr-2">{{ __('Edit') }}</a>
                                             <form action="{{ route('clubs.destroy', $club) }}" method="POST" class="inline">

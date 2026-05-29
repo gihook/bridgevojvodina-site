@@ -29,7 +29,7 @@
 
                         <div>
                             <x-input-label for="club_id" :value="__('Club')" />
-                            <select id="club_id" name="club_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <select id="club_id" name="club_id" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                                 @foreach($clubs as $club)
                                     <option value="{{ $club->id }}" {{ old('club_id', $player->club_id ?? '') == $club->id ? 'selected' : '' }}>{{ $club->name }}</option>
                                 @endforeach

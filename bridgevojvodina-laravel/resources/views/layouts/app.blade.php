@@ -53,9 +53,23 @@
                 {{ $slot }}
             </main>
 
-            <footer class="bg-white border-t border-gray-100 py-6 text-center text-gray-500 text-sm">
+            <footer class="bg-white border-t border-gray-100 py-10 text-gray-500 text-sm">
                 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                    &copy; {{ date('Y') }} Bridge Savez Vojvodine
+                    <div class="flex flex-col md:flex-row justify-between items-center">
+                        <div class="mb-4 md:mb-0">
+                            <x-application-logo class="h-8 w-auto grayscale opacity-50 hover:grayscale-0 hover:opacity-100 transition duration-300" />
+                        </div>
+                        <div class="flex space-x-6 mb-4 md:mb-0 text-gray-600">
+                            <a href="{{ url('/') }}" class="hover:text-blue-600 transition">{{ __('Home') }}</a>
+                            <a href="{{ route('clubs.index') }}" class="hover:text-blue-600 transition">{{ __('Clubs') }}</a>
+                            <a href="{{ route('players.index') }}" class="hover:text-blue-600 transition">{{ __('Players') }}</a>
+                            <a href="{{ route('events.index') }}" class="hover:text-blue-600 transition">{{ __('Events') }}</a>
+                            <a href="{{ route('contact') }}" class="hover:text-blue-600 transition">{{ __('Contact') }}</a>
+                        </div>
+                        <div class="text-xs">
+                            &copy; {{ date('Y') }} Bridge Savez Vojvodine. {{ __('All rights reserved.') }}
+                        </div>
+                    </div>
                 </div>
             </footer>
         </div>

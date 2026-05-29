@@ -1,8 +1,15 @@
-<nav x-data="{ open: false }" class="bg-white border-b border-gray-100">
+<nav x-data="{ open: false }" class="bg-white border-b border-gray-100 shadow-sm sticky top-0 z-50">
     <!-- Primary Navigation Menu -->
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div class="flex justify-between h-16">
             <div class="flex">
+                <!-- Logo -->
+                <div class="shrink-0 flex items-center">
+                    <a href="{{ url('/') }}">
+                        <x-application-logo class="block h-8 w-auto fill-current text-gray-800" />
+                    </a>
+                </div>
+
                 <!-- Navigation Links -->
                 <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
                     <x-nav-link :href="url('/')" :active="request()->is('/')">
@@ -26,10 +33,13 @@
             <!-- Settings Dropdown -->
             <div class="hidden sm:flex sm:items-center sm:ms-6">
                 <!-- Language Switcher -->
-                <div class="mr-4">
-                    <a href="{{ route('lang.switch', 'en') }}" class="text-sm text-gray-700 underline @if(app()->getLocale() == 'en') font-bold @endif">EN</a>
-                    |
-                    <a href="{{ route('lang.switch', 'sr') }}" class="text-sm text-gray-700 underline @if(app()->getLocale() == 'sr') font-bold @endif">SR</a>
+                <div class="flex items-center space-x-1 mr-4">
+                    <a href="{{ route('lang.switch', 'en') }}" class="p-1.5 rounded-md transition-all duration-200 @if(app()->getLocale() == 'en') bg-blue-50 ring-2 ring-blue-500 @else opacity-50 hover:opacity-100 hover:bg-gray-50 @endif" title="English">
+                        <img src="{{ asset('images/enzastava.png') }}" alt="English" class="h-4 w-6 object-cover rounded-sm shadow-sm">
+                    </a>
+                    <a href="{{ route('lang.switch', 'sr') }}" class="p-1.5 rounded-md transition-all duration-200 @if(app()->getLocale() == 'sr') bg-blue-50 ring-2 ring-blue-500 @else opacity-50 hover:opacity-100 hover:bg-gray-50 @endif" title="Srpski">
+                        <img src="{{ asset('images/srzastava.png') }}" alt="Srpski" class="h-4 w-6 object-cover rounded-sm shadow-sm">
+                    </a>
                 </div>
 
                 @auth
@@ -64,10 +74,14 @@
                         </x-slot>
                     </x-dropdown>
                 @else
-                    <a href="{{ route('login') }}" class="text-sm text-gray-700 underline">{{ __('Login') }}</a>
-                    @if (Route::has('register'))
-                        <a href="{{ route('register') }}" class="ml-4 text-sm text-gray-700 underline">{{ __('Register') }}</a>
-                    @endif
+                    <div class="flex items-center space-x-4">
+                        <a href="{{ route('login') }}" class="text-sm font-medium text-gray-600 hover:text-blue-600 transition duration-150 ease-in-out">{{ __('Login') }}</a>
+                        @if (Route::has('register'))
+                            <a href="{{ route('register') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                {{ __('Register') }}
+                            </a>
+                        @endif
+                    </div>
                 @endauth
             </div>
 
@@ -142,10 +156,16 @@
 
             <!-- Language Switcher Responsive -->
             <div class="mt-3 space-y-1 border-t border-gray-200 pt-2 text-gray-900 px-4 py-2">
-                <span class="text-xs uppercase text-gray-500 tracking-wider">{{ __('Language') }}</span>
-                <div class="flex space-x-4 mt-1">
-                    <a href="{{ route('lang.switch', 'en') }}" class="text-sm text-gray-700 underline @if(app()->getLocale() == 'en') font-bold @endif">EN</a>
-                    <a href="{{ route('lang.switch', 'sr') }}" class="text-sm text-gray-700 underline @if(app()->getLocale() == 'sr') font-bold @endif">SR</a>
+                <span class="text-xs uppercase text-gray-500 tracking-wider font-semibold">{{ __('Language') }}</span>
+                <div class="grid grid-cols-2 gap-2 mt-2">
+                    <a href="{{ route('lang.switch', 'en') }}" class="flex items-center justify-center space-x-3 p-2 rounded-md transition-all duration-200 @if(app()->getLocale() == 'en') bg-blue-50 border-2 border-blue-500 text-blue-700 font-bold @else border-2 border-transparent text-gray-600 hover:bg-gray-50 @endif">
+                        <img src="{{ asset('images/enzastava.png') }}" alt="English" class="h-4 w-6 object-cover rounded shadow-sm">
+                        <span class="text-sm">English</span>
+                    </a>
+                    <a href="{{ route('lang.switch', 'sr') }}" class="flex items-center justify-center space-x-3 p-2 rounded-md transition-all duration-200 @if(app()->getLocale() == 'sr') bg-blue-50 border-2 border-blue-500 text-blue-700 font-bold @else border-2 border-transparent text-gray-600 hover:bg-gray-50 @endif">
+                        <img src="{{ asset('images/srzastava.png') }}" alt="Srpski" class="h-4 w-6 object-cover rounded shadow-sm">
+                        <span class="text-sm">Srpski</span>
+                    </a>
                 </div>
             </div>
         </div>

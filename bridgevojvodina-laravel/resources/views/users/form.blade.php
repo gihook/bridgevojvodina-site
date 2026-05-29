@@ -29,7 +29,7 @@
 
                         <div>
                             <x-input-label for="role" :value="__('Role')" />
-                            <select id="role" name="role" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                            <select id="role" name="role" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                                 <option value="Admin" {{ old('role', $user->role ?? '') == 'Admin' ? 'selected' : '' }}>Admin</option>
                                 <option value="SuperAdmin" {{ old('role', $user->role ?? '') == 'SuperAdmin' ? 'selected' : '' }}>SuperAdmin</option>
                             </select>
