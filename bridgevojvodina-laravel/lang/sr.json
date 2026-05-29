@@ -22,5 +22,13 @@
     "Delete": "Obriši",
     "Associated Player": "Povezani igrač",
     "None": "Nema",
-    "All rights reserved.": "Sva prava zadržana."
+    "All rights reserved.": "Sva prava zadržana.",
+    "President": "Predsednik",
+    "Secretary": "Sekretar",
+    "Send Message": "Pošalji poruku",
+    "Message sent successfully.": "Poruka je uspešno poslata.",
+    "Your Name": "Vaše ime",
+    "Your Email": "Vaš Email",
+    "Your Message": "Vaša poruka",
+    "Send": "Pošalji"
 }

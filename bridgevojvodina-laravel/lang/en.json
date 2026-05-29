@@ -22,5 +22,13 @@
     "Delete": "Delete",
     "Associated Player": "Associated Player",
     "None": "None",
-    "All rights reserved.": "All rights reserved."
+    "All rights reserved.": "All rights reserved.",
+    "President": "President",
+    "Secretary": "Secretary",
+    "Send Message": "Send Message",
+    "Message sent successfully.": "Message sent successfully.",
+    "Your Name": "Your Name",
+    "Your Email": "Your Email",
+    "Your Message": "Your Message",
+    "Send": "Send"
 }
