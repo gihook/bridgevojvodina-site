@@ -12,7 +12,7 @@ class EventController extends Controller
      */
     public function index()
     {
-        $events = Event::with('club')->paginate(10);
+        $events = Event::with('club')->paginate(100);
         return view('events.index', compact('events'));
     }
 

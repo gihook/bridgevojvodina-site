@@ -25,6 +25,16 @@ class User extends Authenticatable
         return $this->belongsTo(Player::class);
     }
 
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isPlayer(): bool
+    {
+        return $this->role === self::ROLE_PLAYER;
+    }
+
     /**
      * Get the attributes that should be cast.
      *

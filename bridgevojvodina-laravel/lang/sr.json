@@ -17,5 +17,9 @@
     "Manage your data": "Upravljajte svojim podacima",
     "Users": "Korisnici",
     "Add User": "Dodaj korisnika",
-    "Edit User": "Izmeni korisnika"
+    "Edit User": "Izmeni korisnika",
+    "Edit": "Izmeni",
+    "Delete": "Obriši",
+    "Associated Player": "Povezani igrač",
+    "None": "Nema"
 }

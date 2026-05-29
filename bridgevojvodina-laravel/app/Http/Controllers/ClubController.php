@@ -12,7 +12,7 @@ class ClubController extends Controller
      */
     public function index()
     {
-        $clubs = Club::paginate(10);
+        $clubs = Club::paginate(100);
         return view('clubs.index', compact('clubs'));
     }
 

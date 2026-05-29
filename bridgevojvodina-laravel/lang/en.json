@@ -17,5 +17,9 @@
     "Manage your data": "Manage your data",
     "Users": "Users",
     "Add User": "Add User",
-    "Edit User": "Edit User"
+    "Edit User": "Edit User",
+    "Edit": "Edit",
+    "Delete": "Delete",
+    "Associated Player": "Associated Player",
+    "None": "None"
 }
