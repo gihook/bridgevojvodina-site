@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+    <head>
+        <meta charset="utf-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="csrf-token" content="{{ csrf_token() }}">
+
+        <title>{{ config('app.name', 'Bridž savez Vojvodine') }}</title>
+
+        <link rel="icon" type="image/png" href="{{ asset('favicon.png') }}">
+
+        <!-- SEO Meta Tags -->
+        <meta name="description" content="Zvanična prezentacija Bridž saveza Vojvodine. Informacije o klubovima, igračima i predstojećim bridž događajima u Vojvodini.">
+        <meta name="keywords" content="bridž, savez, vojvodina, bridge, savez vojvodine, bridž klubovi, bridž igrači, turniri, novi sad">
+        <meta name="author" content="Bridž savez Vojvodine">
+        
+        <!-- Open Graph / Facebook -->
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="{{ url()->current() }}">
+        <meta property="og:title" content="{{ config('app.name', 'Bridž savez Vojvodine') }}">
+        <meta property="og:description" content="Zvanična prezentacija Bridž saveza Vojvodine. Informacije o klubovima, igračima i predstojećim bridž događajima u Vojvodini.">
+        <meta property="og:image" content="{{ asset('images/logo.png') }}">
+
+        <!-- Twitter -->
+        <meta property="twitter:card" content="summary_large_image">
+        <meta property="twitter:url" content="{{ url()->current() }}">
+        <meta property="twitter:title" content="{{ config('app.name', 'Bridž savez Vojvodine') }}">
+        <meta property="twitter:description" content="Zvanična prezentacija Bridž saveza Vojvodine. Informacije o klubovima, igračima i predstojećim bridž događajima u Vojvodini.">
+        <meta property="twitter:image" content="{{ asset('images/logo.png') }}">
+
+        <!-- Fonts -->
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+
+        <!-- Scripts -->
+        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    </head>
+    <body class="font-sans antialiased bg-gray-100">
+        <div class="min-h-screen flex flex-col">
+            @include('layouts.navigation')
+
+            <!-- Page Heading -->
+            @isset($header)
+                <header class="bg-white shadow">
+                    <div class="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+                        {{ $header }}
+                    </div>
+                </header>
+            @endisset
+
+            <!-- Page Content -->
+            <main class="flex-grow">
+                {{ $slot }}
+            </main>
+
+            <footer class="py-6 flex-none">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-gray-500 text-sm">
+                    &copy; {{ date('Y') }} Bridge Savez Vojvodine. {{ __('All rights reserved.') }}
+                </div>
+            </footer>
+        </div>
+    </body>
+</html>
