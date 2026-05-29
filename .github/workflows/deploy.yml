@@ -40,12 +40,14 @@ jobs:
     - name: Create Deployment Archive
       run: |
         cd bridgevojvodina-laravel
-        zip -r ../deploy.zip . -x "node_modules/*" "tests/*" ".git/*" ".env*" "storage/logs/*" "storage/framework/cache/*" "storage/framework/sessions/*" "storage/framework/views/*" "package.json" "package-lock.json" "phpunit.xml" "tailwind.config.js" "vite.config.js" "postcss.config.js" "README.md" ".editorconfig" ".gitattributes" "public/extract.php"
+        # Rename public to public_html for DirectAdmin compatibility
+        mv public public_html
+        zip -r ../deploy.zip . -x "node_modules/*" "tests/*" ".git/*" ".env*" "storage/logs/*" "storage/framework/cache/*" "storage/framework/sessions/*" "storage/framework/views/*" "package.json" "package-lock.json" "phpunit.xml" "tailwind.config.js" "vite.config.js" "postcss.config.js" "README.md" ".editorconfig" ".gitattributes" "public_html/extract.php"
         cd ..
         mkdir deploy_ready
         mv deploy.zip deploy_ready/
-        mkdir -p deploy_ready/public
-        cp bridgevojvodina-laravel/public/extract.php deploy_ready/public/
+        mkdir -p deploy_ready/public_html
+        cp bridgevojvodina-laravel/public_html/extract.php deploy_ready/public_html/
         
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
