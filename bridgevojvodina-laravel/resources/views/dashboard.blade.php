@@ -20,9 +20,11 @@
                         <a href="{{ route('events.index') }}" class="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-center">
                             {{ __('Manage Events') }}
                         </a>
-                        <a href="{{ route('users.index') }}" class="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-center">
-                            {{ __('Manage Users') }}
-                        </a>
+                        @if(auth()->user()->role === 'SuperAdmin')
+                            <a href="{{ route('users.index') }}" class="p-4 bg-gray-100 rounded-lg hover:bg-gray-200 transition text-center">
+                                {{ __('Manage Users') }}
+                            </a>
+                        @endif
                     </div>
                 </div>
             </div>

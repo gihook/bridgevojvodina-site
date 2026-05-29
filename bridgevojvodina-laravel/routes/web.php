@@ -11,9 +11,13 @@ use App\Http\Controllers\EventController;
 
 use App\Http\Controllers\UserController;
 
-Route::get('/', function () {
-    return view('welcome');
-});
+use App\Http\Controllers\ContactController;
+
+use App\Http\Controllers\HomeController;
+
+Route::get('/', [HomeController::class, 'index'])->name('home');
+
+Route::get('contact', [ContactController::class, 'index'])->name('contact');
 
 Route::get('lang/{locale}', function ($locale) {
     if (in_array($locale, ['en', 'sr'])) {
@@ -26,11 +30,14 @@ Route::resource('clubs', ClubController::class)->only(['index', 'show']);
 Route::resource('players', PlayerController::class)->only(['index', 'show']);
 Route::resource('events', EventController::class)->only(['index', 'show']);
 
+Route::middleware(['auth', 'superadmin'])->group(function () {
+    Route::resource('users', UserController::class);
+});
+
 Route::middleware('auth')->group(function () {
     Route::resource('clubs', ClubController::class)->except(['index', 'show']);
     Route::resource('players', PlayerController::class)->except(['index', 'show']);
     Route::resource('events', EventController::class)->except(['index', 'show']);
-    Route::resource('users', UserController::class);
 });
 
 Route::get('/dashboard', function () {
