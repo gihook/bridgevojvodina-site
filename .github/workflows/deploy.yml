@@ -37,6 +37,16 @@ jobs:
         npm ci
         npm run build
         
+    - name: Create Deployment Archive
+      run: |
+        cd bridgevojvodina-laravel
+        zip -r ../deploy.zip . -x "node_modules/*" "tests/*" ".git/*" ".env*" "storage/logs/*" "storage/framework/cache/*" "storage/framework/sessions/*" "storage/framework/views/*" "package.json" "package-lock.json" "phpunit.xml" "tailwind.config.js" "vite.config.js" "postcss.config.js" "README.md" ".editorconfig" ".gitattributes" "public/extract.php"
+        cd ..
+        mkdir deploy_ready
+        mv deploy.zip deploy_ready/
+        mkdir -p deploy_ready/public
+        cp bridgevojvodina-laravel/public/extract.php deploy_ready/public/
+        
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -44,22 +54,9 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: ${{ secrets.FTP_SERVER_DIR }}
-        local-dir: ./bridgevojvodina-laravel/
-        exclude: |
-          **/.git*
-          **/.env*
-          **/node_modules/**
-          **/tests/**
-          storage/framework/cache/*
-          storage/framework/sessions/*
-          storage/framework/views/*
-          storage/logs/*
-          package.json
-          package-lock.json
-          phpunit.xml
-          tailwind.config.js
-          vite.config.js
-          postcss.config.js
-          README.md
-          .editorconfig
-          .gitattributes
+        local-dir: ./deploy_ready/
+        state-name: .ftp-deploy-zip-state.json
+        
+    - name: Trigger Extraction
+      run: |
+        curl -f "https://bridgevojvodina.rs/extract.php?token=Bv2026_Deploy_Secret_99"
