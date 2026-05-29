@@ -2,6 +2,9 @@
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 text-center text-gray-900">
+                <div class="flex justify-center mb-6">
+                    <x-application-logo class="h-32 w-auto" />
+                </div>
                 <h1 class="text-3xl font-bold mb-4">{{ __('Welcome to Bridge Savez Vojvodine') }}</h1>
                 <p class="text-lg">{{ __('Explore our clubs, players and events.') }}</p>
                 
