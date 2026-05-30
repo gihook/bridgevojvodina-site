@@ -46,7 +46,9 @@ jobs:
         cd ..
         mkdir deploy_ready
         mv deploy.zip deploy_ready/
-        cp bridgevojvodina-laravel/public_html/extract.php deploy_ready/
+        # Ensure the extract script has the opening <?php tag
+        echo "<?php" > deploy_ready/extract.php
+        cat bridgevojvodina-laravel/public_html/extract.php >> deploy_ready/extract.php
         
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -60,4 +62,4 @@ jobs:
         
     - name: Trigger Extraction
       run: |
-        curl -f "https://bridgevojvodina.rs/extract.php?token=Bv2026_Deploy_Secret_99"
+        curl -f -v "https://bridgevojvodina.rs/extract.php?token=Bv2026_Deploy_Secret_99"
