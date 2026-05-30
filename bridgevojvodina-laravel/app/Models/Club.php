@@ -6,6 +6,9 @@ use Illuminate\Database\Eloquent\Model;
 
 class Club extends Model
 {
+    const STATUS_ACTIVE = 'Active';
+    const STATUS_INACTIVE = 'Inactive';
+
     protected $fillable = [
         'name', 'city', 'address', 'representative', 'email', 'phone', 'status', 'link'
     ];

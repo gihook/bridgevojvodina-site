@@ -53,7 +53,10 @@
 
                         <div>
                             <x-input-label for="status" :value="__('Status')" />
-                            <x-text-input id="status" name="status" type="text" class="mt-1 block w-full" :value="old('status', $club->status ?? '')" required />
+                            <select id="status" name="status" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm" required>
+                                <option value="Active" {{ old('status', $club->status ?? '') == 'Active' ? 'selected' : '' }}>{{ __('Active') }}</option>
+                                <option value="Inactive" {{ old('status', $club->status ?? '') == 'Inactive' ? 'selected' : '' }}>{{ __('Inactive') }}</option>
+                            </select>
                             <x-input-error class="mt-2" :messages="$errors->get('status')" />
                         </div>
 

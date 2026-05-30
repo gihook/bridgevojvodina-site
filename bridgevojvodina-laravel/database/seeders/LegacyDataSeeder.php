@@ -23,7 +23,7 @@ class LegacyDataSeeder extends Seeder
                 'representative' => $klub->Zastupnik,
                 'email' => $klub->Email,
                 'phone' => $klub->Telefon,
-                'status' => $klub->Status,
+                'status' => $klub->Status == 'Aktivan' ? 'Active' : 'Inactive',
                 'link' => $klub->Link,
                 'created_at' => now(),
                 'updated_at' => now(),

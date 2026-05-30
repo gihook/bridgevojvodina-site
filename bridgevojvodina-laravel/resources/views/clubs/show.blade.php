@@ -33,7 +33,7 @@
                     <div>
                         <p><strong>{{ __('Email') }}:</strong> {{ $club->email }}</p>
                         <p><strong>{{ __('Phone') }}:</strong> {{ $club->phone }}</p>
-                        <p><strong>{{ __('Status') }}:</strong> {{ $club->status }}</p>
+                        <p><strong>{{ __('Status') }}:</strong> {{ __($club->status) }}</p>
                         @if($club->link)
                             <p><strong>{{ __('Link') }}:</strong> <a href="{{ $club->link }}" target="_blank" class="text-blue-500 underline">{{ $club->link }}</a></p>
                         @endif

@@ -35,7 +35,7 @@ class ClubController extends Controller
             'representative' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:255',
-            'status' => 'required|string|max:255',
+            'status' => 'required|in:Active,Inactive',
             'link' => 'nullable|url|max:255',
         ]);
 
@@ -65,7 +65,7 @@ class ClubController extends Controller
             'representative' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:255',
-            'status' => 'required|string|max:255',
+            'status' => 'required|in:Active,Inactive',
             'link' => 'nullable|url|max:255',
         ]);
 
