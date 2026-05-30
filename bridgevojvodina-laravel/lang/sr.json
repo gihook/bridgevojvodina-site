@@ -61,5 +61,20 @@
     "View Events": "Pogledajte događaje",
     "View data": "Pregled podataka",
     "Active": "Aktivan",
-    "Inactive": "Neaktivan"
+    "Inactive": "Neaktivan",
+    "Name": "Ime",
+    "Email": "Email",
+    "Role": "Uloga",
+    "Player": "Igrač",
+    "First Name": "Ime",
+    "Last Name": "Prezime",
+    "Club": "Klub",
+    "City": "Grad",
+    "Status": "Status",
+    "Date": "Datum",
+    "Admin": "Administrator",
+    "Director": "Direktor",
+    "Password": "Lozinka",
+    "Confirm Password": "Potvrdite lozinku",
+    "Save": "Sačuvaj"
 }

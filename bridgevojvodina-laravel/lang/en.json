@@ -30,5 +30,20 @@
     "Your Name": "Your Name",
     "Your Email": "Your Email",
     "Your Message": "Your Message",
-    "Send": "Send"
+    "Send": "Send",
+    "Name": "Name",
+    "Email": "Email",
+    "Role": "Role",
+    "Player": "Player",
+    "First Name": "First Name",
+    "Last Name": "Last Name",
+    "Club": "Club",
+    "City": "City",
+    "Status": "Status",
+    "Date": "Date",
+    "Admin": "Admin",
+    "Director": "Director",
+    "Password": "Password",
+    "Confirm Password": "Confirm Password",
+    "Save": "Save"
 }
