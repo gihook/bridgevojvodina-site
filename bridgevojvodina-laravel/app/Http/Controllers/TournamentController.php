@@ -38,12 +38,14 @@ class TournamentController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string|max:255',
             'details' => 'required|string',
+            'is_completed' => 'boolean',
         ]);
 
         Tournament::create([
             'title' => $request->title,
             'description' => $request->description,
             'details' => $request->details,
+            'is_completed' => $request->boolean('is_completed'),
             'user_id' => auth()->id(),
         ]);
 
@@ -78,9 +80,15 @@ class TournamentController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'required|string|max:255',
             'details' => 'required|string',
+            'is_completed' => 'boolean',
         ]);
 
-        $tournament->update($request->only('title', 'description', 'details'));
+        $tournament->update([
+            'title' => $request->title,
+            'description' => $request->description,
+            'details' => $request->details,
+            'is_completed' => $request->boolean('is_completed'),
+        ]);
 
         return redirect()->route('tournaments.index')->with('success', 'Tournament updated successfully.');
     }

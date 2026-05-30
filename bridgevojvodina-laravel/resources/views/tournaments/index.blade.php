@@ -25,6 +25,15 @@
                                             <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
+                                            @if($tournament->is_completed)
+                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                    {{ __('Completed') }}
+                                                </span>
+                                            @else
+                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                                                    {{ __('In Progress') }}
+                                                </span>
+                                            @endif
                                         </h3>
                                         <p class="text-gray-600">{{ $tournament->description }}</p>
                                     </div>

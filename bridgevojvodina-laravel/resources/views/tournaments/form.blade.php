@@ -11,6 +11,14 @@
         <x-input-error class="mt-2" :messages="$errors->get('description')" />
     </div>
 
+    <div class="block">
+        <label for="is_completed" class="inline-flex items-center">
+            <input id="is_completed" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="is_completed" value="1" {{ old('is_completed', $tournament->is_completed ?? false) ? 'checked' : '' }}>
+            <span class="ms-2 text-sm text-gray-600">{{ __('Mark as Completed') }}</span>
+        </label>
+        <x-input-error class="mt-2" :messages="$errors->get('is_completed')" />
+    </div>
+
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
             <x-input-label for="details" :value="__('Details (Markdown)')" />

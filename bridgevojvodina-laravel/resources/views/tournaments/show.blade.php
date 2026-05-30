@@ -3,6 +3,15 @@
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ $tournament->title }}
+                @if($tournament->is_completed)
+                    <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                        {{ __('Completed') }}
+                    </span>
+                @else
+                    <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+                        {{ __('In Progress') }}
+                    </span>
+                @endif
             </h2>
             <div class="flex space-x-2">
                 @can('update', $tournament)
