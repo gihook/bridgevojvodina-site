@@ -11,7 +11,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        // Set the public path to public_html if it exists, for DirectAdmin deployments.
+        if (is_dir(base_path('public_html'))) {
+            $this->app->usePublicPath(base_path('public_html'));
+        }
     }
 
     /**
