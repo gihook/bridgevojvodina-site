@@ -1,106 +1,32 @@
 <?php
+
 namespace App\Http\Controllers;
 
 use App\Models\Tournament;
+use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
-use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
+use Illuminate\View\View;
 
 class TournamentController extends Controller
 {
-    use AuthorizesRequests;
+    public function __construct(
+        protected TournamentHydrationService $hydrationService
+    ) {}
 
-    /**
-     * Display a listing of the resource.
-     */
-    public function index()
+    public function index(): View
     {
         $tournaments = Tournament::latest()->paginate(10);
         return view('tournaments.index', compact('tournaments'));
     }
 
-    /**
-     * Show the form for creating a new resource.
-     */
-    public function create()
+    public function show(string $id): View
     {
-        $this->authorize('create', Tournament::class);
-        return view('tournaments.create');
-    }
+        $tournament = Tournament::findOrFail($id);
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
-    {
-        $this->authorize('create', Tournament::class);
+        if ($tournament->team_results) {
+            $this->hydrationService->hydratePlayers($tournament->team_results);
+        }
 
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'details' => 'required|string',
-            'is_completed' => 'boolean',
-        ]);
-
-        Tournament::create([
-            'title' => $request->title,
-            'description' => $request->description,
-            'details' => $request->details,
-            'is_completed' => $request->boolean('is_completed'),
-            'user_id' => auth()->id(),
-        ]);
-
-        return redirect()->route('tournaments.index')->with('success', 'Tournament created successfully.');
-    }
-
-    /**
-     * Display the specified resource.
-     */
-    public function show(Tournament $tournament)
-    {
         return view('tournaments.show', compact('tournament'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Tournament $tournament)
-    {
-        $this->authorize('update', $tournament);
-        return view('tournaments.edit', compact('tournament'));
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, Tournament $tournament)
-    {
-        $this->authorize('update', $tournament);
-
-        $request->validate([
-            'title' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'details' => 'required|string',
-            'is_completed' => 'boolean',
-        ]);
-
-        $tournament->update([
-            'title' => $request->title,
-            'description' => $request->description,
-            'details' => $request->details,
-            'is_completed' => $request->boolean('is_completed'),
-        ]);
-
-        return redirect()->route('tournaments.index')->with('success', 'Tournament updated successfully.');
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Tournament $tournament)
-    {
-        $this->authorize('delete', $tournament);
-        $tournament->delete();
-
-        return redirect()->route('tournaments.index')->with('success', 'Tournament deleted successfully.');
     }
 }
