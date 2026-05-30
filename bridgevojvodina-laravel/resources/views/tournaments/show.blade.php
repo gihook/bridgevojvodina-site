@@ -2,6 +2,8 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                <a href="{{ route('tournaments.index') }}" class="text-blue-500 hover:text-blue-700">{{ __('Tournaments') }}</a>
+                <span class="mx-2 text-gray-500">/</span>
                 {{ $tournament->title }}
                 @if($tournament->is_completed)
                     <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
@@ -19,9 +21,6 @@
                         {{ __('Edit') }}
                     </a>
                 @endcan
-                <a href="{{ route('tournaments.index') }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
-                    {{ __('Back to List') }}
-                </a>
             </div>
         </div>
     </x-slot>

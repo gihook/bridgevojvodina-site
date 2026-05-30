@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <a href="{{ route('events.index') }}" class="text-blue-500 hover:text-blue-700">{{ __('Events') }}</a>
+            <span class="mx-2 text-gray-500">/</span>
             {{ $event->title }}
         </h2>
     </x-slot>
