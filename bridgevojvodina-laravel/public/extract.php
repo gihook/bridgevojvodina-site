@@ -1,10 +1,7 @@
-<?php
 /**
  * Automated extraction script for GitHub Actions deployment.
  */
 
-// Basic security: Check for a token to prevent unauthorized extraction
-// You should add DEPLOY_TOKEN to your GitHub Repository Secrets.
 $token = 'Bv2026_Deploy_Secret_99'; 
 
 if (!isset($_GET['token']) || $_GET['token'] !== $token) {
@@ -14,26 +11,34 @@ if (!isset($_GET['token']) || $_GET['token'] !== $token) {
 
 if (!class_exists('ZipArchive')) {
     header('HTTP/1.0 500 Internal Server Error');
-    die('Error: ZipArchive class not found. Please enable the zip extension on your server.');
+    die('Error: ZipArchive class not found.');
 }
 
-$zipFile = '../deploy.zip'; // ZIP is uploaded one level above public_html/
+// Smart path detection
+$currentDir = __DIR__;
+$parentDir = dirname($currentDir);
+$zipName = 'deploy.zip';
 
-if (file_exists($zipFile)) {
-    $zip = new ZipArchive;
-    if ($zip->open($zipFile) === TRUE) {
-        $zip->extractTo('../');
-        $zip->close();
-        unlink($zipFile); // Delete ZIP after extraction
-        echo "Extraction successful!";
-        
-        // Optionally delete this script itself
-        unlink(__FILE__);
-    } else {
-        header('HTTP/1.0 500 Internal Server Error');
-        echo "Failed to open ZIP file.";
-    }
+// Look for ZIP in current dir or parent dir
+if (file_exists($currentDir . '/' . $zipName)) {
+    $zipPath = $currentDir . '/' . $zipName;
+    $extractPath = (basename($currentDir) === 'public_html') ? $parentDir : $currentDir;
+} elseif (file_exists($parentDir . '/' . $zipName)) {
+    $zipPath = $parentDir . '/' . $zipName;
+    $extractPath = $parentDir;
 } else {
     header('HTTP/1.0 404 Not Found');
-    echo "ZIP file not found.";
+    die("Error: $zipName not found in " . $currentDir . " or " . $parentDir);
+}
+
+$zip = new ZipArchive;
+if ($zip->open($zipPath) === TRUE) {
+    $zip->extractTo($extractPath);
+    $zip->close();
+    unlink($zipPath);
+    echo "Extraction successful to: " . realpath($extractPath);
+    unlink(__FILE__);
+} else {
+    header('HTTP/1.0 500 Internal Server Error');
+    echo "Failed to open ZIP file.";
 }

@@ -46,8 +46,7 @@ jobs:
         cd ..
         mkdir deploy_ready
         mv deploy.zip deploy_ready/
-        mkdir -p deploy_ready/public_html
-        cp bridgevojvodina-laravel/public_html/extract.php deploy_ready/public_html/
+        cp bridgevojvodina-laravel/public_html/extract.php deploy_ready/
         
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
