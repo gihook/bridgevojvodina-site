@@ -3,10 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Event;
+use App\Models\Club;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class EventController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of the resource.
      */
@@ -18,12 +22,14 @@ class EventController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Event::class);
         $clubs = Club::all();
         return view('events.create', compact('clubs'));
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', Event::class);
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -43,12 +49,14 @@ class EventController extends Controller
 
     public function edit(Event $event)
     {
+        $this->authorize('update', $event);
         $clubs = Club::all();
         return view('events.edit', compact('event', 'clubs'));
     }
 
     public function update(Request $request, Event $event)
     {
+        $this->authorize('update', $event);
         $validated = $request->validate([
             'title' => 'required|string|max:255',
             'description' => 'nullable|string',
@@ -63,6 +71,7 @@ class EventController extends Controller
 
     public function destroy(Event $event)
     {
+        $this->authorize('delete', $event);
         $event->delete();
 
         return redirect()->route('events.index')->with('success', 'Event deleted successfully.');

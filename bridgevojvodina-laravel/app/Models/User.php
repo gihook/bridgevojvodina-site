@@ -18,6 +18,7 @@ class User extends Authenticatable
     use HasFactory, Notifiable;
 
     const ROLE_ADMIN = 'Admin';
+    const ROLE_DIRECTOR = 'Director';
     const ROLE_PLAYER = 'Player';
 
     public function player()
@@ -28,6 +29,11 @@ class User extends Authenticatable
     public function isAdmin(): bool
     {
         return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isDirector(): bool
+    {
+        return $this->role === self::ROLE_DIRECTOR;
     }
 
     public function isPlayer(): bool

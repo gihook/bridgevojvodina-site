@@ -31,6 +31,7 @@
                             <x-input-label for="role" :value="__('Role')" />
                             <select id="role" name="role" class="mt-1 block w-full border-gray-300 focus:border-blue-500 focus:ring-blue-500 rounded-md shadow-sm">
                                <option value="{{ \App\Models\User::ROLE_ADMIN }}" {{ old('role', $user->role ?? '') == \App\Models\User::ROLE_ADMIN ? 'selected' : '' }}>Admin</option>
+                               <option value="{{ \App\Models\User::ROLE_DIRECTOR }}" {{ old('role', $user->role ?? '') == \App\Models\User::ROLE_DIRECTOR ? 'selected' : '' }}>Director</option>
                                <option value="{{ \App\Models\User::ROLE_PLAYER }}" {{ old('role', $user->role ?? '') == \App\Models\User::ROLE_PLAYER ? 'selected' : '' }}>Player</option>
                             </select>
                             <x-input-error class="mt-2" :messages="$errors->get('role')" />

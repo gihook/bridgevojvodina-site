@@ -12,8 +12,8 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\UserController;
 
 use App\Http\Controllers\ContactController;
-
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\TournamentController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -26,15 +26,13 @@ Route::get('lang/{locale}', function ($locale) {
     return redirect()->back();
 })->name('lang.switch');
 
-Route::resource('clubs', ClubController::class)->only(['index', 'show']);
-Route::resource('players', PlayerController::class)->only(['index', 'show']);
-Route::resource('events', EventController::class)->only(['index', 'show']);
+Route::resource('clubs', ClubController::class);
+Route::resource('players', PlayerController::class);
+Route::resource('events', EventController::class);
+Route::resource('tournaments', TournamentController::class);
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
-    Route::resource('clubs', ClubController::class)->except(['index', 'show']);
-    Route::resource('players', PlayerController::class)->except(['index', 'show']);
-    Route::resource('events', EventController::class)->except(['index', 'show']);
 });
 
 Route::get('/dashboard', function () {
