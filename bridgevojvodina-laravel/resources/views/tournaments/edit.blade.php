@@ -58,7 +58,7 @@
                             <div class="flex justify-between items-center mb-4">
                                 <h3 class="text-lg font-bold">{{ __('Rounds & Board Sets') }}</h3>
                                 
-                                <form method="POST" action="{{ route('tournaments.rounds.generate', $tournament) }}" onsubmit="return confirm('{{ __('Generating rounds will overwrite all existing rounds and matches. Are you sure?') }}')">
+                                <form method="POST" action="{{ route('tournaments.rounds.generate', $tournament) }}" onsubmit="return confirm('{{ __('New rounds will be appended to the current schedule. Are you sure?') }}')">
                                     @csrf
                                     <div class="flex gap-2 items-center">
                                         <select name="format" class="text-xs border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
@@ -67,7 +67,7 @@
                                             <option value="double_round_robin">{{ __('Double Round Robin') }}</option>
                                         </select>
                                         <x-secondary-button type="submit" class="!py-1 !text-[10px]">
-                                            {{ count($tournament->team_results->rounds) > 0 ? __('Regenerate Rounds') : __('Generate Rounds') }}
+                                            {{ count($tournament->team_results->rounds) > 0 ? __('Add More Rounds') : __('Generate Rounds') }}
                                         </x-secondary-button>
                                     </div>
                                 </form>
@@ -81,6 +81,7 @@
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Round') }}</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
                                                 <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Board Set') }}</th>
+                                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Actions') }}</th>
                                             </tr>
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
@@ -138,6 +139,17 @@
                                                             @endif
                                                         @else
                                                             <span class="text-gray-400 italic text-xs">{{ __('None') }}</span>
+                                                        @endif
+                                                    </td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        @if(($round->status ?? 'idle') === 'idle')
+                                                            <form method="POST" action="{{ route('tournaments.rounds.destroy', [$tournament, $round->id]) }}" onsubmit="return confirm('{{ __('Are you sure?') }}')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="text-red-600 hover:text-red-900 text-xs uppercase font-bold tracking-wider">
+                                                                    {{ __('Delete Round') }}
+                                                                </button>
+                                                            </form>
                                                         @endif
                                                     </td>
                                                 </tr>

@@ -496,6 +496,7 @@ class TournamentController extends Controller
 
         $rounds = [];
         $numRounds = $n - 1;
+        $existingRoundCount = count($results->rounds);
 
         for ($r = 1; $r <= $numRounds; $r++) {
             $matches = [];
@@ -535,7 +536,7 @@ class TournamentController extends Controller
 
             $rounds[] = new RoundDTO(
                 id: Str::uuid()->toString(),
-                name: __('Round') . ' ' . $r,
+                name: __('Round') . ' ' . ($existingRoundCount + $r),
                 status: 'idle',
                 matches: $matches
             );
@@ -554,7 +555,7 @@ class TournamentController extends Controller
                 }
                 $secondHalf[] = new RoundDTO(
                     id: Str::uuid()->toString(),
-                    name: __('Round') . ' ' . (count($rounds) + count($secondHalf) + 1),
+                    name: __('Round') . ' ' . ($existingRoundCount + count($rounds) + count($secondHalf) + 1),
                     status: 'idle',
                     matches: $newMatches
                 );
@@ -562,11 +563,38 @@ class TournamentController extends Controller
             $rounds = array_merge($rounds, $secondHalf);
         }
 
-        $results->rounds = $rounds;
+        $results->rounds = array_merge($results->rounds, $rounds);
         $tournament->team_results = $results;
         $tournament->save();
 
         return back()->with('success', __('Rounds generated successfully.'));
+    }
+
+    public function destroyRound(Tournament $tournament, string $roundId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        if ($results->rounds[$roundIndex]->status !== 'idle') {
+            return back()->withErrors(['error' => __('Only idle rounds can be deleted.')]);
+        }
+
+        $newRounds = array_values(array_filter($results->rounds, fn($r) => $r->id !== $roundId));
+        $results->rounds = $newRounds;
+        
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Round deleted successfully.'));
     }
 
     public function destroy(Tournament $tournament): RedirectResponse

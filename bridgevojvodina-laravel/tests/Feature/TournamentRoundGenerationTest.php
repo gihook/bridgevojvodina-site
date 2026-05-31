@@ -94,4 +94,77 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertEquals('t1', $results->rounds[1]->matches[0]->home_team_id);
         $this->assertEquals('t2', $results->rounds[1]->matches[0]->away_team_id);
     }
+
+    public function test_director_can_append_rounds()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        
+        $teamResults = [
+            'teams' => [
+                ['id' => 't1', 'name' => 'Team 1', 'number' => 1, 'captain_id' => 0, 'player_ids' => []],
+                ['id' => 't2', 'name' => 'Team 2', 'number' => 2, 'captain_id' => 0, 'player_ids' => []],
+            ],
+            'rounds' => [
+                ['id' => 'existing', 'name' => 'Round 1', 'status' => 'complete', 'matches' => [], 'board_set_id' => null]
+            ]
+        ];
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => $teamResults,
+        ]);
+
+        $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
+            'format' => 'single_round_robin',
+        ]);
+
+        $tournament->refresh();
+        // 1 existing + 1 new = 2 rounds
+        $this->assertCount(2, $tournament->team_results->rounds);
+        $this->assertEquals('Round 1', $tournament->team_results->rounds[0]->name);
+        $this->assertEquals('Round 2', $tournament->team_results->rounds[1]->name);
+    }
+
+    public function test_director_can_delete_idle_round()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'rounds' => [
+                    ['id' => 'r1', 'name' => 'R1', 'status' => 'idle']
+                ],
+                'teams' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->delete(route('tournaments.rounds.destroy', [$tournament, 'r1']));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertCount(0, $tournament->team_results->rounds);
+    }
+
+    public function test_director_cannot_delete_active_round()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'rounds' => [
+                    ['id' => 'r1', 'name' => 'R1', 'status' => 'inProgress']
+                ],
+                'teams' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->delete(route('tournaments.rounds.destroy', [$tournament, 'r1']));
+
+        $response->assertSessionHasErrors();
+        
+        $tournament->refresh();
+        $this->assertCount(1, $tournament->team_results->rounds);
+    }
 }
