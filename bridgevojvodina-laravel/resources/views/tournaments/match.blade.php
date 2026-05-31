@@ -18,11 +18,21 @@
                         <div class="flex-1 text-center font-bold text-2xl">
                             {{ collect($results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye') }}
                         </div>
-                        <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
-                            <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
-                            <span class="text-sm mt-1">
-                                ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
-                            </span>
+                        <div class="flex flex-col items-center gap-4">
+                            <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
+                                <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                <span class="text-sm mt-1">
+                                    ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
+                                </span>
+                            </div>
+                            
+                            @can('update', $tournament)
+                                @if($round->status === 'inProgress' && $match->home_team_id && $match->away_team_id)
+                                    <a href="{{ route('tournaments.match.edit', [$tournament, $round->id, $match->home_team_id]) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:border-indigo-900 focus:ring ring-indigo-300 disabled:opacity-25 transition ease-in-out duration-150">
+                                        {{ __('Enter Results') }}
+                                    </a>
+                                @endif
+                            @endcan
                         </div>
                         <div class="flex-1 text-center font-bold text-2xl">
                             {{ collect($results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye') }}

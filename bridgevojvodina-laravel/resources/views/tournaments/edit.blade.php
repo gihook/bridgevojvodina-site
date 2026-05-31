@@ -5,7 +5,13 @@
         </h2>
     </x-slot>
 
-    <div class="py-12" x-data="{ uploadModalOpen: false, uploadRoundId: '', uploadRoundName: '' }">
+    <div class="py-12" x-data="{ 
+        uploadModalOpen: false, 
+        uploadRoundId: '', 
+        uploadRoundName: '',
+        generateRoundsModalOpen: false,
+        uploadCsvModalOpen: false
+    }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
@@ -23,21 +29,30 @@
                     @if($tournament->team_results)
                         <div class="mt-12 pt-8 border-t border-gray-200">
                             <h3 class="text-lg font-bold mb-4">{{ __('Tournament Settings') }}</h3>
-                            <form method="POST" action="{{ route('tournaments.bye-vp.update', $tournament) }}">
+                            <form method="POST" action="{{ route('tournaments.settings.update', $tournament) }}">
                                 @csrf
                                 @method('PATCH')
-                                <div class="flex gap-4 items-end">
-                                    <div class="w-48">
-                                        <x-input-label for="bye_vp" :value="__('Bye VP')" />
-                                        <x-text-input id="bye_vp" name="bye_vp" type="number" step="0.5" class="mt-1 block w-full" :value="old('bye_vp', $tournament->team_results->bye_vp ?? 12.0)" required />
-                                        <x-input-error class="mt-2" :messages="$errors->get('bye_vp')" />
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
+                                    <div class="flex gap-4">
+                                        <div class="flex-1">
+                                            <x-input-label for="bye_vp" :value="__('Bye VP')" />
+                                            <x-text-input id="bye_vp" name="bye_vp" type="number" step="0.5" class="mt-1 block w-full" :value="old('bye_vp', $tournament->team_results->bye_vp ?? 12.0)" required />
+                                            <x-input-error class="mt-2" :messages="$errors->get('bye_vp')" />
+                                        </div>
+                                        <div class="flex-1">
+                                            <x-input-label for="boards_per_round" :value="__('Boards per Round')" />
+                                            <x-text-input id="boards_per_round" name="boards_per_round" type="number" class="mt-1 block w-full" :value="old('boards_per_round', $tournament->team_results->boards_per_round ?? 16)" required />
+                                            <x-input-error class="mt-2" :messages="$errors->get('boards_per_round')" />
+                                        </div>
                                     </div>
-                                    <x-secondary-button type="submit">
-                                        {{ __('Update Settings') }}
-                                    </x-secondary-button>
+                                    <div class="flex justify-end">
+                                        <x-secondary-button type="submit">
+                                            {{ __('Update Settings') }}
+                                        </x-secondary-button>
+                                    </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-500">
-                                    {{ __('Victory Points awarded to a team when they have a "bye" round.') }}
+                                    {{ __('Victory Points awarded for a "bye" round, and default number of boards per round.') }}
                                 </p>
                             </form>
                         </div>
@@ -59,32 +74,14 @@
                                     @endif
                                 </div>
                                 
-                                <div class="flex flex-col gap-4">
-                                    <form method="POST" action="{{ route('tournaments.rounds.generate', $tournament) }}" onsubmit="return confirm('{{ __('New rounds will be appended to the current schedule. Are you sure?') }}')">
-                                        @csrf
-                                        <div class="flex gap-2 items-center">
-                                            <select name="format" class="text-xs border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                                <option value="">{{ __('Select Format') }}</option>
-                                                <option value="single_round_robin">{{ __('Single Round Robin') }}</option>
-                                                <option value="double_round_robin">{{ __('Double Round Robin') }}</option>
-                                            </select>
-                                            <x-secondary-button type="submit" class="!py-1 !text-[10px]">
-                                                {{ count($tournament->team_results->rounds) > 0 ? __('Add More Rounds') : __('Generate Rounds') }}
-                                            </x-secondary-button>
-                                        </div>
-                                    </form>
-
-                                    <form method="POST" action="{{ route('tournaments.rounds.upload-csv', $tournament) }}" enctype="multipart/form-data" onsubmit="return confirm('{{ __('New rounds will be appended from the CSV. Are you sure?') }}')">
-                                        @csrf
-                                        <div class="flex gap-2 items-center">
-                                            <div class="flex-1">
-                                                <input type="file" name="csv_file" accept=".csv" class="block w-full text-[10px] text-gray-500 file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-[10px] file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100" required>
-                                            </div>
-                                            <x-secondary-button type="submit" class="!py-1 !text-[10px]">
-                                                {{ __('Upload CSV') }}
-                                            </x-secondary-button>
-                                        </div>
-                                    </form>
+                                <div class="flex items-center gap-3">
+                                    <x-secondary-button type="button" @click="generateRoundsModalOpen = true" class="!py-1 !text-[10px]">
+                                        {{ count($tournament->team_results->rounds) > 0 ? __('Add More Rounds') : __('Generate Rounds') }}
+                                    </x-secondary-button>
+                                    
+                                    <x-secondary-button type="button" @click="uploadCsvModalOpen = true" class="!py-1 !text-[10px]">
+                                        {{ __('Upload CSV') }}
+                                    </x-secondary-button>
                                 </div>
                             </div>
                             
@@ -249,64 +246,95 @@
         </div>
 
         <!-- Upload Board Set Modal -->
-        <div 
-            x-show="uploadModalOpen" 
-            class="fixed inset-0 z-50 overflow-y-auto" 
-            x-cloak
-            @keydown.escape.window="uploadModalOpen = false"
-        >
+        <div x-show="uploadModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
             <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
-                <div 
-                    x-show="uploadModalOpen" 
-                    x-transition:enter="ease-out duration-300" 
-                    x-transition:enter-start="opacity-0" 
-                    x-transition:enter-end="opacity-100" 
-                    x-transition:leave="ease-in duration-200" 
-                    x-transition:leave-start="opacity-100" 
-                    x-transition:leave-end="opacity-0" 
-                    class="fixed inset-0 transition-opacity" 
-                    aria-hidden="true"
-                    @click="uploadModalOpen = false"
-                >
+                <div x-show="uploadModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" @click="uploadModalOpen = false">
                     <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
                 </div>
-
-                <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-
-                <div 
-                    x-show="uploadModalOpen" 
-                    x-transition:enter="ease-out duration-300" 
-                    x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                    x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" 
-                    x-transition:leave="ease-in duration-200" 
-                    x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" 
-                    x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" 
-                    class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full"
-                >
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                <div x-show="uploadModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg leading-6 font-medium text-gray-900 mb-4">
-                            {{ __('Upload Board Set for') }} <span x-text="uploadRoundName"></span>
-                        </h3>
-                        
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Upload Board Set for') }} <span x-text="uploadRoundName"></span></h3>
                         <form method="POST" action="{{ route('tournaments.board-sets.upload', $tournament) }}" enctype="multipart/form-data">
                             @csrf
                             <input type="hidden" name="round_id" :value="uploadRoundId">
-                            
                             <div class="space-y-4">
                                 <div>
                                     <x-input-label for="board_set_file_modal" :value="__('Board Set PBN File')" />
-                                    <input type="file" id="board_set_file_modal" name="board_set_file" accept=".pbn" class="mt-1 block w-full border border-gray-300 rounded-md p-2 focus:ring-indigo-500 focus:border-indigo-500" required>
-                                    <x-input-error class="mt-2" :messages="$errors->get('board_set_file')" />
+                                    <input type="file" id="board_set_file_modal" name="board_set_file" accept=".pbn" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required>
                                 </div>
                             </div>
-
                             <div class="mt-6 flex justify-end gap-3">
-                                <x-secondary-button type="button" @click="uploadModalOpen = false">
-                                    {{ __('Cancel') }}
-                                </x-secondary-button>
-                                <x-primary-button type="submit">
-                                    {{ __('Upload') }}
-                                </x-primary-button>
+                                <x-secondary-button type="button" @click="uploadModalOpen = false">{{ __('Cancel') }}</x-secondary-button>
+                                <x-primary-button type="submit">{{ __('Upload') }}</x-primary-button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Generate Rounds Modal -->
+        <div x-show="generateRoundsModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="generateRoundsModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" @click="generateRoundsModalOpen = false">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                <div x-show="generateRoundsModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Generate Rounds') }}</h3>
+                        <form method="POST" action="{{ route('tournaments.rounds.generate', $tournament) }}" onsubmit="return confirm('{{ __('New rounds will be appended to the current schedule. Are you sure?') }}')">
+                            @csrf
+                            <div class="space-y-4">
+                                <div>
+                                    <x-input-label for="format_modal" :value="__('Select Format')" />
+                                    <select id="format_modal" name="format" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                        <option value="">{{ __('Select Format') }}</option>
+                                        <option value="single_round_robin">{{ __('Single Round Robin') }}</option>
+                                        <option value="double_round_robin">{{ __('Double Round Robin') }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <x-input-label for="boards_per_round_modal" :value="__('Boards per Round')" />
+                                    <x-text-input id="boards_per_round_modal" name="boards_per_round" type="number" class="mt-1 block w-full" :value="old('boards_per_round', $tournament->team_results->boards_per_round ?? 16)" required />
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end gap-3">
+                                <x-secondary-button type="button" @click="generateRoundsModalOpen = false">{{ __('Cancel') }}</x-secondary-button>
+                                <x-primary-button type="submit">{{ __('Generate') }}</x-primary-button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Upload CSV Modal -->
+        <div x-show="uploadCsvModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="uploadCsvModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" @click="uploadCsvModalOpen = false">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                <div x-show="uploadCsvModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Upload Rounds CSV') }}</h3>
+                        <form method="POST" action="{{ route('tournaments.rounds.upload-csv', $tournament) }}" enctype="multipart/form-data" onsubmit="return confirm('{{ __('New rounds will be appended from the CSV. Are you sure?') }}')">
+                            @csrf
+                            <div class="space-y-4">
+                                <div>
+                                    <x-input-label for="csv_file_modal" :value="__('CSV File')" />
+                                    <input type="file" id="csv_file_modal" name="csv_file" accept=".csv" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required>
+                                </div>
+                                <div>
+                                    <x-input-label for="boards_per_round_csv_modal" :value="__('Boards per Round')" />
+                                    <x-text-input id="boards_per_round_csv_modal" name="boards_per_round" type="number" class="mt-1 block w-full" :value="old('boards_per_round', $tournament->team_results->boards_per_round ?? 16)" required />
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end gap-3">
+                                <x-secondary-button type="button" @click="uploadCsvModalOpen = false">{{ __('Cancel') }}</x-secondary-button>
+                                <x-primary-button type="submit">{{ __('Upload') }}</x-primary-button>
                             </div>
                         </form>
                     </div>

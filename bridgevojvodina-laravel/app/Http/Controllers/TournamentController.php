@@ -562,28 +562,30 @@ class TournamentController extends Controller
         return back()->with('success', __('Round reordered successfully.'));
     }
 
-    public function updateByeVP(Request $request, Tournament $tournament): RedirectResponse
+    public function updateSettings(Request $request, Tournament $tournament): RedirectResponse
     {
         Gate::authorize('update', $tournament);
 
         $request->validate([
             'bye_vp' => 'required|numeric|min:0|max:20',
+            'boards_per_round' => 'required|integer|min:1|max:64',
         ]);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
 
         $results->bye_vp = (float) $request->bye_vp;
+        $results->boards_per_round = (int) $request->boards_per_round;
         
         $this->recalculateStandings($results);
         
         $tournament->team_results = $results;
         $tournament->save();
 
-        return back()->with('success', __('Bye VP updated and standings recalculated.'));
+        return back()->with('success', __('Settings updated and standings recalculated.'));
     }
 
-    protected function recalculateStandings(TournamentResultsDTO $results): void
+    protected function recalculateStandings(\App\DTOs\Tournament\TournamentResultsDTO $results): void
     {
         // Reset all team VPs
         foreach ($results->teams as $team) {
@@ -623,6 +625,7 @@ class TournamentController extends Controller
 
         $request->validate([
             'format' => 'required|string|in:single_round_robin,double_round_robin',
+            'boards_per_round' => 'required|integer|min:1|max:64',
         ]);
 
         $results = $tournament->team_results;
@@ -692,7 +695,8 @@ class TournamentController extends Controller
                 id: Str::uuid()->toString(),
                 name: __('Round') . ' ' . ($existingRoundCount + $r),
                 status: 'idle',
-                matches: $matches
+                matches: $matches,
+                boards_per_round: (int) $request->boards_per_round
             );
         }
 
@@ -711,7 +715,8 @@ class TournamentController extends Controller
                     id: Str::uuid()->toString(),
                     name: __('Round') . ' ' . ($existingRoundCount + count($rounds) + count($secondHalf) + 1),
                     status: 'idle',
-                    matches: $newMatches
+                    matches: $newMatches,
+                    boards_per_round: (int) $request->boards_per_round
                 );
             }
             $rounds = array_merge($rounds, $secondHalf);
@@ -731,6 +736,7 @@ class TournamentController extends Controller
 
         $request->validate([
             'csv_file' => 'required|file',
+            'boards_per_round' => 'required|integer|min:1|max:64',
         ]);
 
         $results = $tournament->team_results;
@@ -787,7 +793,8 @@ class TournamentController extends Controller
                 id: Str::uuid()->toString(),
                 name: $name,
                 status: 'idle',
-                matches: $matches
+                matches: $matches,
+                boards_per_round: (int) $request->boards_per_round
             );
         }
 
@@ -797,6 +804,83 @@ class TournamentController extends Controller
         $tournament->save();
 
         return back()->with('success', __('Rounds uploaded successfully.'));
+    }
+
+    public function editMatch(Tournament $tournament, string $roundId, string $homeTeamId): View
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $round = collect($results->rounds)->firstWhere('id', $roundId);
+        if (!$round) abort(404);
+
+        if ($round->status !== 'inProgress') {
+            return abort(403, __('Results can only be entered for rounds in progress.'));
+        }
+
+        $match = collect($round->matches)->firstWhere('home_team_id', $homeTeamId);
+        if (!$match) abort(404);
+
+        $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
+        $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
+
+        if (!$homeTeam || !$awayTeam) {
+            abort(404, __('Cannot enter results for a bye match.'));
+        }
+
+        $homePlayers = Player::whereIn('id', $homeTeam->player_ids)->get();
+        $awayPlayers = Player::whereIn('id', $awayTeam->player_ids)->get();
+
+        return view('tournaments.matches.edit', compact('tournament', 'round', 'match', 'homeTeam', 'awayTeam', 'homePlayers', 'awayPlayers'));
+    }
+
+    public function updateMatch(Request $request, Tournament $tournament, string $roundId, string $homeTeamId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+
+        if ($results->rounds[$roundIndex]->status !== 'inProgress') {
+            return back()->withErrors(['error' => __('Results can only be entered for rounds in progress.')]);
+        }
+
+        $matchIndex = collect($results->rounds[$roundIndex]->matches)->search(fn($m) => $m->home_team_id === $homeTeamId);
+        if ($matchIndex === false) abort(404);
+
+        $request->validate([
+            'home_imp' => 'required|integer',
+            'away_imp' => 'required|integer',
+            'home_vp' => 'required|numeric|min:0|max:20',
+            'away_vp' => 'required|numeric|min:0|max:20',
+            'open_ns_ids' => 'nullable|array|max:2',
+            'open_ew_ids' => 'nullable|array|max:2',
+            'closed_ns_ids' => 'nullable|array|max:2',
+            'closed_ew_ids' => 'nullable|array|max:2',
+        ]);
+
+        $match = $results->rounds[$roundIndex]->matches[$matchIndex];
+        $match->home_imp = (int) $request->home_imp;
+        $match->away_imp = (int) $request->away_imp;
+        $match->home_vp = (float) $request->home_vp;
+        $match->away_vp = (float) $request->away_vp;
+        
+        $match->open_ns_ids = array_map('intval', $request->input('open_ns_ids', []));
+        $match->open_ew_ids = array_map('intval', $request->input('open_ew_ids', []));
+        $match->closed_ns_ids = array_map('intval', $request->input('closed_ns_ids', []));
+        $match->closed_ew_ids = array_map('intval', $request->input('closed_ew_ids', []));
+
+        $this->recalculateStandings($results);
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return redirect()->route('tournaments.match', [$tournament, $roundId, $homeTeamId])
+            ->with('success', __('Match updated successfully.'));
     }
 
     public function destroyRound(Tournament $tournament, string $roundId): RedirectResponse

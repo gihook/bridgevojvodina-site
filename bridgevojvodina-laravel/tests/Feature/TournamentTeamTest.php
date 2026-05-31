@@ -204,8 +204,8 @@ class TournamentTeamTest extends TestCase
 
         $response = $this->actingAs($director)->patch(route('tournaments.teams.numbers.update', $tournament), [
             'numbers' => [
-                't1' => 5,
-                't2' => 2,
+                't1' => 2,
+                't2' => 1,
             ]
         ]);
 
@@ -213,8 +213,8 @@ class TournamentTeamTest extends TestCase
         $response->assertSessionHas('success');
 
         $tournament->refresh();
-        $this->assertEquals(5, $tournament->team_results->teams[0]->number);
-        $this->assertEquals(2, $tournament->team_results->teams[1]->number);
+        $this->assertEquals(2, $tournament->team_results->teams[0]->number);
+        $this->assertEquals(1, $tournament->team_results->teams[1]->number);
     }
 
     public function test_team_numbers_must_be_unique()

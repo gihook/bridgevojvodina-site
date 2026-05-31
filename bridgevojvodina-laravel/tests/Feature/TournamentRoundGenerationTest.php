@@ -33,6 +33,7 @@ class TournamentRoundGenerationTest extends TestCase
 
         $response = $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
             'format' => 'single_round_robin',
+            'boards_per_round' => 16,
         ]);
 
         $response->assertRedirect();
@@ -78,6 +79,7 @@ class TournamentRoundGenerationTest extends TestCase
 
         $response = $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
             'format' => 'double_round_robin',
+            'boards_per_round' => 16,
         ]);
 
         $tournament->refresh();
@@ -116,6 +118,7 @@ class TournamentRoundGenerationTest extends TestCase
 
         $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
             'format' => 'single_round_robin',
+            'boards_per_round' => 16,
         ]);
 
         $tournament->refresh();
@@ -239,6 +242,7 @@ class TournamentRoundGenerationTest extends TestCase
 
         $this->actingAs($director)->post(route('tournaments.rounds.upload-csv', $tournament), [
             'csv_file' => $file,
+            'boards_per_round' => 16,
         ]);
 
         $tournament->refresh();
@@ -272,8 +276,9 @@ class TournamentRoundGenerationTest extends TestCase
             'team_results' => $teamResults,
         ]);
 
-        $response = $this->actingAs($director)->patch(route('tournaments.bye-vp.update', $tournament), [
+        $response = $this->actingAs($director)->patch(route('tournaments.settings.update', $tournament), [
             'bye_vp' => 15.5,
+            'boards_per_round' => 12,
         ]);
 
         $response->assertRedirect();
@@ -281,7 +286,57 @@ class TournamentRoundGenerationTest extends TestCase
 
         $tournament->refresh();
         $this->assertEquals(15.5, $tournament->team_results->bye_vp);
+        $this->assertEquals(12, $tournament->team_results->boards_per_round);
         $this->assertEquals(15.5, $tournament->team_results->rounds[0]->matches[0]->home_vp);
         $this->assertEquals(15.5, $tournament->team_results->teams[0]->total_vp);
+    }
+
+    public function test_director_can_enter_match_results_for_inprogress_round()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $club = \App\Models\Club::create(['name' => 'C1', 'city' => 'C', 'address' => 'A', 'representative' => 'R', 'email' => 'e@e.com', 'phone' => '1', 'status' => 'Active']);
+        $p1 = \App\Models\Player::create(['first_name' => 'P1', 'last_name' => 'L1', 'club_id' => $club->id]);
+        $p2 = \App\Models\Player::create(['first_name' => 'P2', 'last_name' => 'L2', 'club_id' => $club->id]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'T1', 'number' => 1, 'player_ids' => [$p1->id], 'captain_id' => $p1->id, 'total_vp' => 0],
+                    ['id' => 't2', 'name' => 'T2', 'number' => 2, 'player_ids' => [$p2->id], 'captain_id' => $p2->id, 'total_vp' => 0],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1', 'name' => 'R1', 'status' => 'inProgress',
+                        'matches' => [
+                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_vp' => 0, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'boards' => [], 'open_ns_ids' => [], 'open_ew_ids' => [], 'closed_ns_ids' => [], 'closed_ew_ids' => []]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->patch(route('tournaments.match.update', [$tournament, 'r1', 't1']), [
+            'home_imp' => 50,
+            'away_imp' => 20,
+            'home_vp' => 17.5,
+            'away_vp' => 2.5,
+            'open_ns_ids' => [$p1->id],
+            'closed_ew_ids' => [$p1->id],
+            'open_ew_ids' => [$p2->id],
+            'closed_ns_ids' => [$p2->id],
+        ]);
+
+        $response->assertRedirect();
+        
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+        $this->assertEquals(50, $match->home_imp);
+        $this->assertEquals(17.5, $match->home_vp);
+        $this->assertEquals([$p1->id], $match->open_ns_ids);
+        
+        // Standings updated
+        $this->assertEquals(17.5, $tournament->team_results->teams[0]->total_vp);
+        $this->assertEquals(2.5, $tournament->team_results->teams[1]->total_vp);
     }
 }

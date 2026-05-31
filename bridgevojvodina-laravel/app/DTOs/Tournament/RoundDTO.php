@@ -12,7 +12,8 @@ class RoundDTO
         public string $name,
         public ?int $board_set_id = null,
         public array $matches = [],
-        public string $status = 'idle'
+        public string $status = 'idle',
+        public ?int $boards_per_round = null
     ) {}
 
     public static function fromArray(array $data): self
@@ -23,6 +24,7 @@ class RoundDTO
             board_set_id: $data['board_set_id'] ?? null,
             matches: array_map(fn($m) => MatchDTO::fromArray($m), $data['matches'] ?? []),
             status: $data['status'] ?? 'idle',
+            boards_per_round: isset($data['boards_per_round']) ? (int) $data['boards_per_round'] : null,
         );
     }
 
@@ -34,6 +36,7 @@ class RoundDTO
             'board_set_id' => $this->board_set_id,
             'matches' => array_map(fn($m) => $m->toArray(), $this->matches),
             'status' => $this->status,
+            'boards_per_round' => $this->boards_per_round,
         ];
     }
 }

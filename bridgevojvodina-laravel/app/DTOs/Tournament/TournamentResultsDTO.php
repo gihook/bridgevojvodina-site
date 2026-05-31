@@ -11,7 +11,8 @@ class TournamentResultsDTO
     public function __construct(
         public array $teams = [],
         public array $rounds = [],
-        public float $bye_vp = 12.0
+        public float $bye_vp = 12.0,
+        public int $boards_per_round = 16
     ) {}
 
     public static function fromArray(array $data): self
@@ -20,6 +21,7 @@ class TournamentResultsDTO
             teams: array_map(fn($t) => TeamDTO::fromArray($t), $data['teams'] ?? []),
             rounds: array_map(fn($r) => RoundDTO::fromArray($r), $data['rounds'] ?? []),
             bye_vp: (float) ($data['bye_vp'] ?? 12.0),
+            boards_per_round: (int) ($data['boards_per_round'] ?? 16),
         );
     }
 
@@ -29,6 +31,7 @@ class TournamentResultsDTO
             'teams' => array_map(fn($t) => $t->toArray(), $this->teams),
             'rounds' => array_map(fn($r) => $r->toArray(), $this->rounds),
             'bye_vp' => $this->bye_vp,
+            'boards_per_round' => $this->boards_per_round,
         ];
     }
 }

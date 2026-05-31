@@ -33,10 +33,18 @@
                                 </div>
                             </div>
                             @if ($match->home_team_id && $match->away_team_id)
-                                <div class="text-center mt-3">
+                                <div class="flex flex-col items-center gap-2 mt-3">
                                     <a href="{{ route('tournaments.match', [$tournament, $round->id, $match->home_team_id]) }}" class="text-sm text-blue-600 font-semibold uppercase tracking-wider hover:text-blue-800 transition-colors">
                                         {{ __('View Details') }}
                                     </a>
+                                    
+                                    @can('update', $tournament)
+                                        @if($round->status === 'inProgress')
+                                            <a href="{{ route('tournaments.match.edit', [$tournament, $round->id, $match->home_team_id]) }}" class="text-xs text-indigo-600 font-bold uppercase tracking-widest hover:text-indigo-900 transition-colors border-t pt-2 w-24 text-center">
+                                                {{ __('Enter Results') }}
+                                            </a>
+                                        @endif
+                                    @endcan
                                 </div>
                             @endif
                         </div>

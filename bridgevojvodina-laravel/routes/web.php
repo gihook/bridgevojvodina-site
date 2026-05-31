@@ -38,7 +38,7 @@ Route::patch('tournaments/{tournament}/teams/numbers', [TournamentController::cl
 Route::get('tournaments/{tournament}/teams/{teamId}/edit', [TournamentController::class, 'editTeam'])->name('tournaments.teams.edit');
 Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
 Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
-Route::patch('tournaments/{tournament}/bye-vp', [TournamentController::class, 'updateByeVP'])->name('tournaments.bye-vp.update');
+Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
 Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
 Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
 Route::patch('tournaments/{tournament}/rounds/{roundId}/reorder', [TournamentController::class, 'reorderRound'])->name('tournaments.rounds.reorder');
@@ -48,6 +48,8 @@ Route::post('tournaments/{tournament}/teams/{teamId}/players', [TournamentContro
 Route::delete('tournaments/{tournament}/teams/{teamId}/players/{playerId}', [TournamentController::class, 'removePlayerFromTeam'])->name('tournaments.teams.players.remove');
 Route::post('tournaments/{tournament}/teams/{teamId}/captain/{playerId}', [TournamentController::class, 'setTeamCaptain'])->name('tournaments.teams.captain.set');
 Route::get('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'match'])->name('tournaments.match');
+Route::get('tournaments/{tournament}/round/{round}/match/{home_team}/edit', [TournamentController::class, 'editMatch'])->name('tournaments.match.edit');
+Route::patch('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'updateMatch'])->name('tournaments.match.update');
 Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 
 Route::middleware(['auth', 'admin'])->group(function () {
