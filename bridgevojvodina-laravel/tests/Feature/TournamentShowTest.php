@@ -78,6 +78,36 @@ class TournamentShowTest extends TestCase
         $response->assertDontSee('Slobodan Guzvica');
     }
 
+    public function test_tournament_show_page_displays_board_count_for_rounds()
+    {
+        $tournament = $this->createTournamentWithResults();
+        
+        $boardSet = \App\Models\BoardSet::create([
+            'tournament_id' => $tournament->id,
+            'name' => 'Round 1 Boards'
+        ]);
+        
+        \App\Models\Board::create([
+            'board_set_id' => $boardSet->id,
+            'board_number' => 1,
+            'vulnerability' => 'None',
+            'cards_north' => ['S' => 'AKQJ', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_south' => ['S' => '32', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_east' => ['S' => '54', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_west' => ['S' => '76', 'H' => '', 'D' => '', 'C' => ''],
+        ]);
+
+        $results = $tournament->team_results;
+        $results->rounds[0]->board_set_id = $boardSet->id;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $response = $this->get("/tournaments/{$tournament->id}");
+
+        $response->assertStatus(200);
+        $response->assertSee('1 Boards');
+    }
+
     public function test_tournament_match_page_displays_detailed_boards()
     {
         $tournament = $this->createTournamentWithResults();

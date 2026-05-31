@@ -1,7 +1,19 @@
 @foreach ($results->rounds as $round)
     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
         <div class="p-6 text-gray-900">
-            <h3 class="text-lg font-bold mb-4">{{ $round->name }}</h3>
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-bold">{{ $round->name }}</h3>
+                @if ($round->board_set_id)
+                    @php
+                        $boardSet = $tournament->boardSets->firstWhere('id', $round->board_set_id);
+                    @endphp
+                    @if ($boardSet)
+                        <span class="text-sm text-gray-500 bg-gray-100 px-3 py-1 rounded-full font-semibold">
+                            {{ $boardSet->boards_count }} {{ __('Boards') }}
+                        </span>
+                    @endif
+                @endif
+            </div>
             <div class="space-y-4">
                 @foreach ($round->matches as $match)
                     <div class="border rounded-lg bg-gray-50 overflow-hidden">

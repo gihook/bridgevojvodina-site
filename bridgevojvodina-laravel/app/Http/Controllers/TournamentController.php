@@ -52,6 +52,9 @@ class TournamentController extends Controller
 
     public function show(Tournament $tournament): View
     {
+        $tournament->load(['boardSets' => function($q) {
+            $q->withCount('boards');
+        }]);
         return view('tournaments.show', compact('tournament'));
     }
 
@@ -133,10 +136,55 @@ class TournamentController extends Controller
         return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard'));
     }
 
-    public function edit(Tournament $tournament): View
+    public function edit(Request $request, Tournament $tournament): View
     {
         Gate::authorize('update', $tournament);
-        return view('tournaments.edit', compact('tournament'));
+        
+        $boardSets = $tournament->boardSets()->get();
+
+        return view('tournaments.edit', compact('tournament', 'boardSets'));
+    }
+
+    public function showBoardSet(Tournament $tournament, BoardSet $boardSet): View
+    {
+        Gate::authorize('update', $tournament);
+        
+        if ($boardSet->tournament_id !== $tournament->id) {
+            abort(404);
+        }
+
+        $boardSet->load('boards');
+        $boards = $boardSet->boards->sortBy('board_number');
+
+        return view('tournaments.board-sets.show', compact('tournament', 'boardSet', 'boards'));
+    }
+
+    public function destroyBoardSet(Tournament $tournament, BoardSet $boardSet): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        if ($boardSet->tournament_id !== $tournament->id) {
+            abort(404);
+        }
+
+        DB::transaction(function () use ($tournament, $boardSet) {
+            // Unlink from rounds
+            $results = $tournament->team_results;
+            if ($results) {
+                foreach ($results->rounds as $round) {
+                    if ($round->board_set_id == $boardSet->id) {
+                        $round->board_set_id = null;
+                    }
+                }
+                $tournament->team_results = $results;
+                $tournament->save();
+            }
+
+            $boardSet->delete();
+        });
+
+        return redirect()->route('tournaments.edit', $tournament)
+            ->with('success', __('Board set deleted successfully.'));
     }
 
     public function update(Request $request, Tournament $tournament): RedirectResponse
@@ -164,7 +212,7 @@ class TournamentController extends Controller
 
         $request->validate([
             'round_id' => 'required|string',
-            'board_set_json' => 'required|file',
+            'board_set_file' => 'required|file',
         ]);
 
         $results = $tournament->team_results;
@@ -177,55 +225,79 @@ class TournamentController extends Controller
             return back()->withErrors(['round_id' => __('Invalid round selected.')]);
         }
 
-        $file = $request->file('board_set_json');
+        $file = $request->file('board_set_file');
         $content = file_get_contents($file->getRealPath());
-        $data = json_decode($content, true);
 
-        if (!$data || !isset($data['Name']) || !isset($data['Boards'])) {
-            return back()->withErrors(['board_set_json' => __('Invalid JSON format.')]);
+        $boardsData = [];
+        $eventName = 'Imported Board Set';
+        $currentBoard = null;
+
+        $lines = explode("\n", $content);
+        foreach ($lines as $line) {
+            $line = trim($line);
+            if (empty($line)) continue;
+
+            if (preg_match('/^\[Event "(.+)"\]$/', $line, $matches)) {
+                if ($eventName === 'Imported Board Set' && !empty($matches[1])) {
+                    $eventName = $matches[1];
+                }
+            } elseif (preg_match('/^\[Board "(.+)"\]$/', $line, $matches)) {
+                if ($currentBoard !== null && isset($currentBoard['deal'])) {
+                    $boardsData[] = $currentBoard;
+                }
+                $currentBoard = ['board_number' => $matches[1]];
+            } elseif (preg_match('/^\[Deal "(.+):(.+)"\]$/', $line, $matches)) {
+                if ($currentBoard === null) $currentBoard = [];
+                $currentBoard['dealer'] = $matches[1];
+                $currentBoard['deal'] = $matches[2];
+            }
+        }
+        if ($currentBoard !== null && isset($currentBoard['deal'])) {
+            $boardsData[] = $currentBoard;
         }
 
-        DB::transaction(function () use ($data, $tournament, $results, $roundIndex) {
+        if (empty($boardsData)) {
+            return back()->withErrors(['board_set_file' => __('Invalid PBN format or no boards found.')]);
+        }
+
+        $boardSetId = null;
+
+        DB::transaction(function () use ($boardsData, $eventName, $tournament, $results, $roundIndex, &$boardSetId) {
             $boardSet = BoardSet::create([
                 'tournament_id' => $tournament->id,
-                'name' => $data['Name'],
+                'name' => $eventName,
             ]);
+            $boardSetId = $boardSet->id;
 
-            $suitMap = ['Spades' => 'S', 'Hearts' => 'H', 'Diamonds' => 'D', 'Clubs' => 'C'];
-            $rankMap = [
-                'Ace' => 'A', 'King' => 'K', 'Queen' => 'Q', 'Jack' => 'J', 'Ten' => 'T',
-                'Nine' => '9', 'Eight' => '8', 'Seven' => '7', 'Six' => '6', 'Five' => '5',
-                'Four' => '4', 'Three' => '3', 'Two' => '2'
-            ];
+            $seatOrder = ['N', 'E', 'S', 'W'];
+            $fullSeats = ['N' => 'North', 'S' => 'South', 'E' => 'East', 'W' => 'West'];
 
-            foreach ($data['Boards'] as $boardData) {
-                $hands = ['North' => [], 'South' => [], 'East' => [], 'West' => []];
+            foreach ($boardsData as $bData) {
+                $handsStr = explode(' ', $bData['deal']);
+                $startIndex = array_search($bData['dealer'], $seatOrder);
                 
-                foreach ($boardData['Hands'] as $handData) {
-                    $seat = $handData['Seat'];
-                    $handArray = ['S' => '', 'H' => '', 'D' => '', 'C' => ''];
-                    
-                    foreach ($handData['Cards'] as $card) {
-                        $suit = $suitMap[$card['Suit']] ?? null;
-                        $rank = $rankMap[$card['Rank']] ?? null;
-                        if ($suit && $rank) {
-                            $handArray[$suit] .= $rank;
-                        }
-                    }
-                    
-                    if (isset($hands[$seat])) {
-                        $hands[$seat] = $handArray;
-                    }
+                $mappedHands = ['North' => [], 'South' => [], 'East' => [], 'West' => []];
+                
+                foreach ($handsStr as $i => $hStr) {
+                    if ($hStr === '-') continue;
+                    $seat = $seatOrder[($startIndex + $i) % 4];
+                    $suits = explode('.', $hStr);
+                    $mappedHands[$fullSeats[$seat]] = [
+                        'S' => $suits[0] ?? '',
+                        'H' => $suits[1] ?? '',
+                        'D' => $suits[2] ?? '',
+                        'C' => $suits[3] ?? '',
+                    ];
                 }
 
                 Board::create([
                     'board_set_id' => $boardSet->id,
-                    'board_number' => $boardData['BoardNumber'],
-                    'vulnerability' => $this->hydrationService->calculateVulnerability($boardData['BoardNumber']),
-                    'cards_north' => $hands['North'],
-                    'cards_south' => $hands['South'],
-                    'cards_east' => $hands['East'],
-                    'cards_west' => $hands['West'],
+                    'board_number' => (int) $bData['board_number'],
+                    'vulnerability' => $this->hydrationService->calculateVulnerability((int) $bData['board_number']),
+                    'cards_north' => $mappedHands['North'],
+                    'cards_south' => $mappedHands['South'],
+                    'cards_east' => $mappedHands['East'],
+                    'cards_west' => $mappedHands['West'],
                 ]);
             }
 

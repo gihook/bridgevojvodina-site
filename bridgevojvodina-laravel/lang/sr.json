@@ -82,6 +82,7 @@
     "Show Details": "Prikaži detalje",
     "Hide Details": "Sakrij detalje",
     "Board": "Bord",
+    "Boards": "Bordova",
     "IMPs": "IMP",
     "Contr.": "Kontr.",
     "Decl.": "Izvođač",
@@ -114,6 +115,11 @@
     "EW Team": "EW Tim",
     "Upload Board Set": "Otpremanje seta bordova",
     "Select Round": "Izaberi kolo",
-    "Board Set JSON File": "JSON fajl sa setom bordova",
-    "Board set uploaded successfully.": "Set bordova je uspešno otpremljen."
+    "Board Set PBN File": "PBN fajl sa setom bordova",
+    "Board set uploaded successfully.": "Set bordova je uspešno otpremljen.",
+    "Board set deleted successfully.": "Set bordova je uspešno obrisan.",
+    "Board Set": "Set bordova",
+    "Preview Deals": "Pregled bordova",
+    "Previous": "Prethodni",
+    "Next": "Sledeći"
 }

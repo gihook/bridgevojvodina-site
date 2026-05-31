@@ -51,6 +51,7 @@
     "Show Details": "Show Details",
     "Hide Details": "Hide Details",
     "Board": "Board",
+    "Boards": "Boards",
     "IMPs": "IMPs",
     "Contr.": "Contr.",
     "Decl.": "Decl.",
@@ -80,5 +81,14 @@
     "All": "All",
     "Card data not available for this board.": "Card data not available for this board.",
     "NS Team": "NS Team",
-    "EW Team": "EW Team"
+    "EW Team": "EW Team",
+    "Upload Board Set": "Upload Board Set",
+    "Select Round": "Select Round",
+    "Board Set PBN File": "Board Set PBN File",
+    "Board set uploaded successfully.": "Board set uploaded successfully.",
+    "Board set deleted successfully.": "Board set deleted successfully.",
+    "Board Set": "Board Set",
+    "Preview Deals": "Preview Deals",
+    "Previous": "Previous",
+    "Next": "Next"
 }

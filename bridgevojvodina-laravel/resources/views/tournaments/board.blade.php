@@ -41,7 +41,26 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
                 <div class="p-6 text-gray-900">
                     <div class="flex flex-col items-center justify-center gap-12 mb-12">
-                        <!-- Top Row: North -->
+                        <!-- Board Info Center -->
+                        <div class="w-32 h-32 shrink-0 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border-2 border-gray-100 p-2">
+                            <div class="text-[10px] uppercase font-bold text-gray-400">{{ __('Board') }}</div>
+                            <div class="text-3xl font-black text-blue-900 mb-2 leading-none">{{ $boardNumber }}</div>
+                            
+                            <div class="w-full border-t pt-2 space-y-1">
+                                <div class="flex justify-between items-center text-[10px]">
+                                    <span class="font-bold text-gray-400 uppercase">{{ __('Dealer') }}</span>
+                                    <span class="font-black text-blue-700">{{ $boardData['dealer'] }}</span>
+                                </div>
+                                <div class="flex justify-between items-center text-[10px]">
+                                    <span class="font-bold text-gray-400 uppercase">{{ __('Vuln') }}</span>
+                                    <span class="font-black @if($boardData['vulnerability'] == 'All') text-red-600 @elseif($boardData['vulnerability'] == 'NS') text-green-700 @elseif($boardData['vulnerability'] == 'EW') text-orange-600 @else text-gray-600 @endif">
+                                        {{ __($boardData['vulnerability']) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Hands Layout -->
                         @if ($boardData['physical_board'])
                             <div class="flex flex-col items-center gap-6">
                                 <!-- North Hand -->
@@ -50,30 +69,11 @@
                                     <x-bridge-hand :hand="$boardData['physical_board']->cards_north" />
                                 </div>
 
-                                <!-- Middle Row: West - Square - East -->
-                                <div class="flex items-center gap-8 md:gap-16">
+                                <!-- Middle Row: West & East -->
+                                <div class="flex items-center gap-8 md:gap-32 lg:gap-48">
                                     <div class="p-3 bg-red-50 rounded-lg border border-red-100 shadow-sm">
                                         <div class="text-[10px] uppercase font-bold text-red-400 mb-1 text-center">{{ __('West') }}</div>
                                         <x-bridge-hand :hand="$boardData['physical_board']->cards_west" />
-                                    </div>
-                                    
-                                    <!-- Board Info Center -->
-                                    <div class="w-32 h-32 shrink-0 flex flex-col items-center justify-center bg-white rounded-lg shadow-sm border-2 border-gray-100 p-2">
-                                        <div class="text-[10px] uppercase font-bold text-gray-400">{{ __('Board') }}</div>
-                                        <div class="text-3xl font-black text-blue-900 mb-2 leading-none">{{ $boardNumber }}</div>
-                                        
-                                        <div class="w-full border-t pt-2 space-y-1">
-                                            <div class="flex justify-between items-center text-[10px]">
-                                                <span class="font-bold text-gray-400 uppercase">{{ __('Dealer') }}</span>
-                                                <span class="font-black text-blue-700">{{ $boardData['dealer'] }}</span>
-                                            </div>
-                                            <div class="flex justify-between items-center text-[10px]">
-                                                <span class="font-bold text-gray-400 uppercase">{{ __('Vuln') }}</span>
-                                                <span class="font-black @if($boardData['vulnerability'] == 'All') text-red-600 @elseif($boardData['vulnerability'] == 'NS') text-green-700 @elseif($boardData['vulnerability'] == 'EW') text-orange-600 @else text-gray-600 @endif">
-                                                    {{ __($boardData['vulnerability']) }}
-                                                </span>
-                                            </div>
-                                        </div>
                                     </div>
 
                                     <div class="p-3 bg-red-50 rounded-lg border border-red-100 shadow-sm">
@@ -89,7 +89,7 @@
                                 </div>
                             </div>
                         @else
-                            <div class="text-gray-400 italic bg-gray-50 p-12 rounded-lg border-2 border-dashed border-gray-200">
+                            <div class="text-gray-400 italic bg-gray-50 p-6 rounded-lg border-2 border-dashed border-gray-200">
                                 {{ __('Card data not available for this board.') }}
                             </div>
                         @endif
