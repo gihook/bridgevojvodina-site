@@ -6,6 +6,8 @@ use App\Models\Tournament;
 use App\Models\BoardSet;
 use App\Models\Board;
 use App\Models\Player;
+use App\DTOs\Tournament\RoundDTO;
+use App\DTOs\Tournament\MatchDTO;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -13,6 +15,7 @@ use Illuminate\View\View;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Support\Str;
 
 class TournamentController extends Controller
 {
@@ -445,6 +448,7 @@ class TournamentController extends Controller
 
         $request->validate([
             'name' => 'required|string|max:255',
+            'number' => 'nullable|integer|min:1',
         ]);
 
         $results = $tournament->team_results;
@@ -458,11 +462,111 @@ class TournamentController extends Controller
         }
 
         $results->teams[$teamIndex]->name = $request->name;
+        $results->teams[$teamIndex]->number = $request->filled('number') ? (int) $request->number : null;
 
         $tournament->team_results = $results;
         $tournament->save();
 
-        return back()->with('success', __('Team name updated successfully.'));
+        return back()->with('success', __('Team updated successfully.'));
+    }
+
+    public function generateRounds(Request $request, Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'format' => 'required|string|in:single_round_robin,double_round_robin',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results || count($results->teams) < 2) {
+            return back()->withErrors(['format' => __('At least 2 teams are required to generate rounds.')]);
+        }
+
+        // Sort teams by number, fallback to index
+        $teams = collect($results->teams)->sortBy(fn($t) => $t->number ?? 999999)->values()->toArray();
+        $n = count($teams);
+        $isOdd = $n % 2 !== 0;
+        
+        if ($isOdd) {
+            $n++;
+            // Dummy "bye" team with id null
+            $teams[] = (object) ['id' => null, 'name' => __('bye')];
+        }
+
+        $rounds = [];
+        $numRounds = $n - 1;
+
+        for ($r = 1; $r <= $numRounds; $r++) {
+            $matches = [];
+            
+            // Fixed team is at index n-1
+            $fixedTeam = $teams[$n - 1];
+            $rotatingTeamIdx = ($r - 1) % ($n - 1);
+            $opponent = $teams[$rotatingTeamIdx];
+
+            if ($fixedTeam->id && $opponent->id) {
+                // Alternating home/away for the fixed team
+                // Fixed team is Home in odd rounds, Away in even rounds
+                $isFixedHome = ($r % 2 !== 0);
+                $matches[] = new MatchDTO(
+                    home_team_id: $isFixedHome ? $fixedTeam->id : $opponent->id,
+                    away_team_id: $isFixedHome ? $opponent->id : $fixedTeam->id,
+                    home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
+                );
+            }
+
+            // Other pairings
+            for ($k = 1; $k < $n / 2; $k++) {
+                $idx1 = ($r - 1 - $k + ($n - 1)) % ($n - 1);
+                $idx2 = ($r - 1 + $k) % ($n - 1);
+                
+                $t1 = $teams[$idx1];
+                $t2 = $teams[$idx2];
+
+                if ($t1->id && $t2->id) {
+                    $matches[] = new MatchDTO(
+                        home_team_id: $t1->id,
+                        away_team_id: $t2->id,
+                        home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
+                    );
+                }
+            }
+
+            $rounds[] = new RoundDTO(
+                id: Str::uuid()->toString(),
+                name: __('Round') . ' ' . $r,
+                status: 'idle',
+                matches: $matches
+            );
+        }
+
+        if ($request->format === 'double_round_robin') {
+            $secondHalf = [];
+            foreach ($rounds as $round) {
+                $newMatches = [];
+                foreach ($round->matches as $match) {
+                    $newMatches[] = new MatchDTO(
+                        home_team_id: $match->away_team_id,
+                        away_team_id: $match->home_team_id,
+                        home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
+                    );
+                }
+                $secondHalf[] = new RoundDTO(
+                    id: Str::uuid()->toString(),
+                    name: __('Round') . ' ' . (count($rounds) + count($secondHalf) + 1),
+                    status: 'idle',
+                    matches: $newMatches
+                );
+            }
+            $rounds = array_merge($rounds, $secondHalf);
+        }
+
+        $results->rounds = $rounds;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Rounds generated successfully.'));
     }
 
     public function destroy(Tournament $tournament): RedirectResponse
