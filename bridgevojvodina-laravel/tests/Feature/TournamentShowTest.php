@@ -51,6 +51,6 @@ class TournamentShowTest extends TestCase
         $response->assertSee('Team A');
         $response->assertSee('20.50');
         $response->assertSee('Match 1');
-        $response->assertSee('Slobodan Guzvica');
+        $response->assertSee('bye');
     }
 }
