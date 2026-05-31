@@ -37,7 +37,7 @@
                                             <div class="flex flex-col items-center gap-1 w-full max-w-[280px] border-2 border-gray-200 p-2 bg-gray-50 rounded-lg shadow-sm">
                                                 <!-- Row 1 -->
                                                 <div class="w-1/3 border bg-blue-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                    <span class="font-black text-blue-600 mr-1 text-[10px]">N</span>
+                                                    <span class="font-black text-blue-600 mr-2 text-[10px]">N</span>
                                                     <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->open_ns[0] ?? null)->first_name }} {{ optional($match->open_ns[0] ?? null)->last_name }}">
                                                         {{ optional($match->open_ns[0] ?? null)->last_name }}
                                                     </span>
@@ -46,16 +46,14 @@
                                                 <!-- Row 2 -->
                                                 <div class="flex flex-row justify-between items-stretch w-full gap-1">
                                                     <div class="flex-1 border bg-red-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                        <span class="font-black text-red-600 mr-1 text-[10px]">W</span>
+                                                        <span class="font-black text-red-600 mr-2 text-[10px]">W</span>
                                                         <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->open_ew[1] ?? null)->first_name }} {{ optional($match->open_ew[1] ?? null)->last_name }}">
                                                             {{ optional($match->open_ew[1] ?? null)->last_name }}
                                                         </span>
                                                     </div>
-                                                    <div class="w-10 h-10 shrink-0 bg-white border-2 border-gray-300 flex items-center justify-center font-black text-xl rounded-full shadow-inner text-gray-400 self-center">
-                                                        O
-                                                    </div>
+                                                    <div class="w-10 h-10 shrink-0 self-center"></div>
                                                     <div class="flex-1 border bg-red-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                        <span class="font-black text-red-600 mr-1 text-[10px]">E</span>
+                                                        <span class="font-black text-red-600 mr-2 text-[10px]">E</span>
                                                         <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->open_ew[0] ?? null)->first_name }} {{ optional($match->open_ew[0] ?? null)->last_name }}">
                                                             {{ optional($match->open_ew[0] ?? null)->last_name }}
                                                         </span>
@@ -64,7 +62,7 @@
 
                                                 <!-- Row 3 -->
                                                 <div class="w-1/3 border bg-blue-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                    <span class="font-black text-blue-600 mr-1 text-[10px]">S</span>
+                                                    <span class="font-black text-blue-600 mr-2 text-[10px]">S</span>
                                                     <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->open_ns[1] ?? null)->first_name }} {{ optional($match->open_ns[1] ?? null)->last_name }}">
                                                         {{ optional($match->open_ns[1] ?? null)->last_name }}
                                                     </span>
@@ -78,7 +76,7 @@
                                             <div class="flex flex-col items-center gap-1 w-full max-w-[280px] border-2 border-gray-200 p-2 bg-gray-50 rounded-lg shadow-sm">
                                                 <!-- Row 1 -->
                                                 <div class="w-1/3 border bg-red-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                    <span class="font-black text-red-600 mr-1 text-[10px]">N</span>
+                                                    <span class="font-black text-red-600 mr-2 text-[10px]">N</span>
                                                     <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->closed_ns[0] ?? null)->first_name }} {{ optional($match->closed_ns[0] ?? null)->last_name }}">
                                                         {{ optional($match->closed_ns[0] ?? null)->last_name }}
                                                     </span>
@@ -87,16 +85,14 @@
                                                 <!-- Row 2 -->
                                                 <div class="flex flex-row justify-between items-stretch w-full gap-1">
                                                     <div class="flex-1 border bg-blue-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                        <span class="font-black text-blue-600 mr-1 text-[10px]">W</span>
+                                                        <span class="font-black text-blue-600 mr-2 text-[10px]">W</span>
                                                         <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->closed_ew[1] ?? null)->first_name }} {{ optional($match->closed_ew[1] ?? null)->last_name }}">
                                                             {{ optional($match->closed_ew[1] ?? null)->last_name }}
                                                         </span>
                                                     </div>
-                                                    <div class="w-10 h-10 shrink-0 bg-white border-2 border-gray-300 flex items-center justify-center font-black text-xl rounded-full shadow-inner text-gray-400 self-center">
-                                                        C
-                                                    </div>
+                                                    <div class="w-10 h-10 shrink-0 self-center"></div>
                                                     <div class="flex-1 border bg-blue-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                        <span class="font-black text-blue-600 mr-1 text-[10px]">E</span>
+                                                        <span class="font-black text-blue-600 mr-2 text-[10px]">E</span>
                                                         <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->closed_ew[0] ?? null)->first_name }} {{ optional($match->closed_ew[0] ?? null)->last_name }}">
                                                             {{ optional($match->closed_ew[0] ?? null)->last_name }}
                                                         </span>
@@ -105,7 +101,7 @@
 
                                                 <!-- Row 3 -->
                                                 <div class="w-1/3 border bg-red-50 text-center rounded flex items-center justify-center p-1 leading-tight overflow-hidden">
-                                                    <span class="font-black text-red-600 mr-1 text-[10px]">S</span>
+                                                    <span class="font-black text-red-600 mr-2 text-[10px]">S</span>
                                                     <span class="font-bold text-[9px] sm:text-xs truncate" title="{{ optional($match->closed_ns[1] ?? null)->first_name }} {{ optional($match->closed_ns[1] ?? null)->last_name }}">
                                                         {{ optional($match->closed_ns[1] ?? null)->last_name }}
                                                     </span>
