@@ -70,5 +70,15 @@
     "No board results available for this match.": "No board results available for this match.",
     "Tournament details": "Tournament details",
     "NS": "NS",
-    "EW": "EW"
+    "EW": "EW",
+    "Dealer": "Dealer",
+    "Vuln": "Vuln",
+    "North": "North",
+    "South": "South",
+    "East": "East",
+    "West": "West",
+    "All": "All",
+    "Card data not available for this board.": "Card data not available for this board.",
+    "NS Team": "NS Team",
+    "EW Team": "EW Team"
 }

@@ -101,5 +101,15 @@
     "No board results available for this match.": "Nema dostupnih rezultata po bordovima za ovaj meč.",
     "Tournament details": "Detalji turnira",
     "NS": "NS",
-    "EW": "EW"
+    "EW": "EW",
+    "Dealer": "Delilac",
+    "Vuln": "Ranljivost",
+    "North": "Sever",
+    "South": "Jug",
+    "East": "Istok",
+    "West": "Zapad",
+    "All": "Obe",
+    "Card data not available for this board.": "Podaci o kartama nisu dostupni za ovaj bord.",
+    "NS Team": "NS Tim",
+    "EW Team": "EW Tim"
 }

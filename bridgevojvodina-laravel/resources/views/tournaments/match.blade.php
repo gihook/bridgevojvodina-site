@@ -137,7 +137,11 @@
                                 <tbody>
                                     @foreach ($match->boards as $board)
                                         <tr class="hover:bg-gray-50 transition-colors">
-                                            <td class="py-3 border font-bold bg-gray-50">{{ $board->board_number }}</td>
+                                            <td class="py-3 border font-bold bg-gray-50">
+                                                <a href="{{ route('tournaments.board', [$tournament, $round->id, $board->board_number]) }}" class="text-blue-600 hover:underline">
+                                                    {{ $board->board_number }}
+                                                </a>
+                                            </td>
                                             <td class="py-3 border"><x-bridge-contract :contract="$board->home_contract" /></td>
                                             <td class="py-3 border">{{ $board->home_declarer }}</td>
                                             <td class="py-3 border"><x-bridge-contract :contract="$board->home_lead" /></td>

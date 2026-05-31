@@ -74,6 +74,62 @@ class TournamentController extends Controller
         return view('tournaments.match', compact('tournament', 'round', 'match', 'results'));
     }
 
+    public function board(Tournament $tournament, string $roundId, int $boardNumber): View
+    {
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $round = collect($results->rounds)->firstWhere('id', $roundId);
+        if (!$round) {
+            abort(404);
+        }
+
+        $boardResults = [];
+        foreach ($round->matches as $match) {
+            $matchBoard = collect($match->boards)->firstWhere('board_number', $boardNumber);
+            if ($matchBoard) {
+                $boardResults[] = [
+                    'match' => $match,
+                    'board' => $matchBoard,
+                    'home_team' => collect($results->teams)->firstWhere('id', $match->home_team_id),
+                    'away_team' => collect($results->teams)->firstWhere('id', $match->away_team_id),
+                ];
+            }
+        }
+
+        $boardData = $this->hydrationService->getBoardData($round, $boardNumber);
+
+        // Calculate all available board numbers in this round
+        $allBoardNumbers = collect($round->matches)
+            ->flatMap(fn($m) => collect($m->boards)->pluck('board_number'))
+            ->unique()
+            ->sort()
+            ->values();
+
+        $currentIndex = $allBoardNumbers->search($boardNumber);
+        $prevBoard = $currentIndex > 0 ? $allBoardNumbers[$currentIndex - 1] : null;
+        $nextBoard = $currentIndex !== false && $currentIndex < $allBoardNumbers->count() - 1 
+            ? $allBoardNumbers[$currentIndex + 1] 
+            : null;
+
+        // Calculate Datum
+        $nsScores = [];
+        foreach ($boardResults as $res) {
+            if ($res['board']->home_score !== null) $nsScores[] = $res['board']->home_score;
+            if ($res['board']->away_score !== null) $nsScores[] = $res['board']->away_score;
+        }
+        
+        $datum = null;
+        if (count($nsScores) > 0) {
+            // Simple average for now. In professional setups, extremes are often trimmed.
+            $datum = array_sum($nsScores) / count($nsScores);
+        }
+
+        return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard'));
+    }
+
     public function edit(Tournament $tournament): View
     {
         Gate::authorize('update', $tournament);

@@ -185,7 +185,7 @@ class TournamentDemoSeeder extends Seeder
             ]
         ];
 
-        Tournament::create([
+        $tournament = Tournament::create([
             'id' => Str::uuid(),
             'title' => 'Timsko prvenstvo Novog Sada',
             'description' => 'Zvanično timsko prvenstvo Novog Sada za sezonu 2026.',
@@ -197,5 +197,119 @@ class TournamentDemoSeeder extends Seeder
             ],
             'is_completed' => false
         ]);
+
+        // Create BoardSet and Boards
+        $boardSet = \App\Models\BoardSet::create([
+            'tournament_id' => $tournament->id,
+            'name' => 'Bordovi za Timsko prvenstvo NS',
+        ]);
+
+        // Link BoardSet to rounds in JSON
+        $results = $tournament->team_results;
+        foreach ($results->rounds as $round) {
+            $round->board_set_id = $boardSet->id;
+        }
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        // Seed some boards
+        $boardData = [
+            1 => [
+                'vul' => 'None',
+                'n' => ['S' => 'AKJ', 'H' => 'Q9', 'D' => 'J109', 'C' => 'KT98'],
+                's' => ['S' => '76', 'H' => 'AK', 'D' => 'AK876', 'C' => 'J765'],
+                'e' => ['S' => 'QT9', 'H' => 'T876', 'D' => '543', 'C' => 'Q32'],
+                'w' => ['S' => '85432', 'H' => 'J5432', 'D' => 'Q2', 'C' => 'A'],
+            ],
+            2 => [
+                'vul' => 'NS',
+                'n' => ['S' => '7', 'H' => 'AKJT9', 'D' => 'Q876', 'C' => 'A32'],
+                's' => ['S' => 'KJT98', 'H' => 'Q2', 'D' => '543', 'C' => '876'],
+                'e' => ['S' => 'A6543', 'H' => '876', 'D' => 'KJT', 'C' => 'QJ'],
+                'w' => ['S' => 'Q2', 'H' => '543', 'D' => 'A92', 'C' => 'KT954'],
+            ],
+            3 => [
+                'vul' => 'EW',
+                'n' => ['S' => 'A65', 'H' => 'AK6', 'D' => 'QT9', 'C' => 'JT98'],
+                's' => ['S' => 'KJT', 'H' => 'Q754', 'D' => '876', 'C' => 'K76'],
+                'e' => ['S' => 'Q9432', 'H' => 'J32', 'D' => '543', 'C' => 'A2'],
+                'w' => ['S' => '87', 'H' => 'T98', 'D' => 'AKJ2', 'C' => 'Q543'],
+            ],
+            4 => [
+                'vul' => 'All',
+                'n' => ['S' => 'AKQ', 'H' => 'JT9', 'D' => '876', 'C' => '5432'],
+                's' => ['S' => 'JT9', 'H' => 'A', 'D' => 'AKQJT', 'C' => 'AKQJ'],
+                'e' => ['S' => '8765', 'H' => 'KQ7', 'D' => '543', 'C' => 'T98'],
+                'w' => ['S' => '432', 'H' => '865432', 'D' => '92', 'C' => '76'],
+            ],
+            5 => [
+                'vul' => 'NS',
+                'n' => ['S' => 'J98', 'H' => 'A5', 'D' => 'QT98', 'C' => 'KT98'],
+                's' => ['S' => 'A5', 'H' => 'KJ87', 'D' => '6543', 'C' => 'Q42'],
+                'e' => ['S' => 'KQT', 'H' => 'T9432', 'D' => 'AJ', 'C' => 'J53'],
+                'w' => ['S' => '76432', 'H' => 'Q6', 'D' => 'K72', 'C' => 'A76'],
+            ],
+            6 => [
+                'vul' => 'EW',
+                'n' => ['S' => 'A65', 'H' => 'QJT', 'D' => 'A765', 'C' => '987'],
+                's' => ['S' => 'QJ', 'H' => 'A987', 'D' => 'KJ8', 'C' => 'KJ65'],
+                'e' => ['S' => 'KT987', 'H' => 'K54', 'D' => 'QT9', 'C' => 'T2'],
+                'w' => ['S' => '432', 'H' => '632', 'D' => '432', 'C' => 'AQ43'],
+            ],
+            7 => [
+                'vul' => 'All',
+                'n' => ['S' => 'AKJT9', 'H' => '2', 'D' => 'AKQ', 'C' => 'KJ65'],
+                's' => ['S' => 'Q', 'H' => 'AKQT9', 'D' => 'JT9', 'C' => 'AQT9'],
+                'e' => ['S' => '876', 'H' => '876', 'D' => '876', 'C' => '8765'],
+                'w' => ['S' => '5432', 'H' => 'J543', 'D' => '5432', 'C' => '4'],
+            ],
+            8 => [
+                'vul' => 'None',
+                'n' => ['S' => 'A', 'H' => 'AKQJT', 'D' => 'AKQJT', 'C' => 'AK'],
+                's' => ['S' => 'JT987', 'H' => '987', 'D' => '987', 'C' => '98'],
+                'e' => ['S' => '65432', 'H' => '65432', 'D' => '654', 'C' => '7'],
+                'w' => ['S' => 'KQ', 'H' => '-', 'D' => '32', 'C' => 'QTJ65432'],
+            ],
+            9 => [
+                'vul' => 'EW',
+                'n' => ['S' => 'KQT9', 'H' => 'A54', 'D' => 'J987', 'C' => '42'],
+                's' => ['S' => 'A543', 'H' => 'T98', 'D' => 'Q', 'C' => 'AKJT9'],
+                'e' => ['S' => 'J2', 'H' => 'K76', 'D' => 'AK654', 'C' => '876'],
+                'w' => ['S' => '876', 'H' => 'QJ32', 'D' => 'T32', 'C' => 'Q53'],
+            ],
+            10 => [
+                'vul' => 'All',
+                'n' => ['S' => '9876', 'H' => '9876', 'D' => '987', 'C' => '98'],
+                's' => ['S' => 'AKQ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQJ'],
+                'e' => ['S' => 'JT543', 'H' => 'JT543', 'D' => 'JT', 'C' => 'T'],
+                'w' => ['S' => '2', 'H' => '2', 'D' => '65432', 'C' => '765432'],
+            ],
+            11 => [
+                'vul' => 'None',
+                'n' => ['S' => 'A65', 'H' => 'QJT', 'D' => 'A765', 'C' => '987'],
+                's' => ['S' => 'QJ', 'H' => 'A987', 'D' => 'KJ8', 'C' => 'KJ65'],
+                'e' => ['S' => 'KT987', 'H' => 'K54', 'D' => 'QT9', 'C' => 'T2'],
+                'w' => ['S' => '432', 'H' => '632', 'D' => '432', 'C' => 'AQ43'],
+            ],
+            12 => [
+                'vul' => 'NS',
+                'n' => ['S' => '7', 'H' => 'AKJT9', 'D' => 'Q876', 'C' => 'A32'],
+                's' => ['S' => 'KJT98', 'H' => 'Q2', 'D' => '543', 'C' => '876'],
+                'e' => ['S' => 'A6543', 'H' => '876', 'D' => 'KJT', 'C' => 'QJ'],
+                'w' => ['S' => 'Q2', 'H' => '543', 'D' => 'A92', 'C' => 'KT954'],
+            ],
+        ];
+
+        foreach ($boardData as $num => $data) {
+            \App\Models\Board::create([
+                'board_set_id' => $boardSet->id,
+                'board_number' => $num,
+                'vulnerability' => $data['vul'],
+                'cards_north' => $data['n'],
+                'cards_south' => $data['s'],
+                'cards_east' => $data['e'],
+                'cards_west' => $data['w'],
+            ]);
+        }
     }
 }

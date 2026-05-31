@@ -95,4 +95,23 @@ class TournamentShowTest extends TestCase
         $response->assertSee('430');
         $response->assertSee('Slobodan Guzvica');
     }
+
+    public function test_tournament_board_page_displays_aggregated_results()
+    {
+        $tournament = $this->createTournamentWithResults();
+
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/board/1");
+
+        $response->assertStatus(200);
+        $response->assertSee('Board 1');
+        $response->assertSee('Dealer');
+        $response->assertSee('N'); // Board 1 dealer
+        $response->assertSee('Vuln');
+        $response->assertSee('None'); // Board 1 vuln
+        $response->assertSee('Team A');
+        $response->assertSee('Team B');
+        $response->assertSee('4');
+        $response->assertSee('&spades;', false);
+        $response->assertSee('3NT');
+    }
 }
