@@ -68,7 +68,31 @@ class TournamentDemoSeeder extends Seeder
                         ],
                         'away_lineup' => [
                             ['player_id' => 83], ['player_id' => 81], ['player_id' => 80], ['player_id' => 84], ['player_id' => 19]
-                        ]
+                        ],
+                        'boards' => [
+                            [
+                                'board_number' => 1,
+                                'home_contract' => '3NT', 'home_declarer' => 'S', 'home_tricks' => 9, 'home_score' => 400,
+                                'away_contract' => '3NT', 'away_declarer' => 'N', 'away_tricks' => 10, 'away_score' => 430,
+                                'home_imp' => 0, 'away_imp' => 1
+                            ],
+                            [
+                                'board_number' => 2,
+                                'home_contract' => '4S', 'home_declarer' => 'W', 'home_tricks' => 10, 'home_score' => -420,
+                                'away_contract' => '4S', 'away_declarer' => 'E', 'away_tricks' => 9, 'away_score' => 50,
+                                'home_imp' => 10, 'away_imp' => 0
+                            ],
+                            [
+                                'board_number' => 3,
+                                'home_contract' => '2H', 'home_declarer' => 'N', 'home_tricks' => 8, 'home_score' => 110,
+                                'away_contract' => '2H', 'away_declarer' => 'S', 'away_tricks' => 8, 'away_score' => 110,
+                                'home_imp' => 0, 'away_imp' => 0
+                            ],
+                        ],
+                        'open_ns_ids' => [6, 85],
+                        'open_ew_ids' => [83, 81],
+                        'closed_ns_ids' => [80, 84],
+                        'closed_ew_ids' => [73, 55],
                     ],
                     [
                         'home_team_id' => 'team_ns1',

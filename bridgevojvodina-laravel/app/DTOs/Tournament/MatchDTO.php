@@ -7,6 +7,7 @@ class MatchDTO
     /**
      * @param LineupPlayerDTO[] $home_lineup
      * @param LineupPlayerDTO[] $away_lineup
+     * @param MatchBoardDTO[] $boards
      */
     public function __construct(
         public string $home_team_id,
@@ -16,7 +17,16 @@ class MatchDTO
         public float $home_vp,
         public float $away_vp,
         public array $home_lineup = [],
-        public array $away_lineup = []
+        public array $away_lineup = [],
+        public array $boards = [],
+        public array $open_ns_ids = [],
+        public array $open_ew_ids = [],
+        public array $closed_ns_ids = [],
+        public array $closed_ew_ids = [],
+        public array $open_ns = [],
+        public array $open_ew = [],
+        public array $closed_ns = [],
+        public array $closed_ew = []
     ) {}
 
     public static function fromArray(array $data): self
@@ -30,6 +40,11 @@ class MatchDTO
             away_vp: (float) ($data['away_vp'] ?? 0),
             home_lineup: array_map(fn($l) => LineupPlayerDTO::fromArray($l), $data['home_lineup'] ?? []),
             away_lineup: array_map(fn($l) => LineupPlayerDTO::fromArray($l), $data['away_lineup'] ?? []),
+            boards: array_map(fn($b) => MatchBoardDTO::fromArray($b), $data['boards'] ?? []),
+            open_ns_ids: $data['open_ns_ids'] ?? [],
+            open_ew_ids: $data['open_ew_ids'] ?? [],
+            closed_ns_ids: $data['closed_ns_ids'] ?? [],
+            closed_ew_ids: $data['closed_ew_ids'] ?? [],
         );
     }
 
@@ -44,6 +59,11 @@ class MatchDTO
             'away_vp' => $this->away_vp,
             'home_lineup' => array_map(fn($l) => $l->toArray(), $this->home_lineup),
             'away_lineup' => array_map(fn($l) => $l->toArray(), $this->away_lineup),
+            'boards' => array_map(fn($b) => $b->toArray(), $this->boards),
+            'open_ns_ids' => $this->open_ns_ids,
+            'open_ew_ids' => $this->open_ew_ids,
+            'closed_ns_ids' => $this->closed_ns_ids,
+            'closed_ew_ids' => $this->closed_ew_ids,
         ];
     }
 }

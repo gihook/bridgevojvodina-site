@@ -26,6 +26,7 @@ class TournamentHydrationService
                 foreach ($match->away_lineup as $lineupPlayer) {
                     $playerIds[] = $lineupPlayer->player_id;
                 }
+                $playerIds = array_merge($playerIds, $match->open_ns_ids, $match->open_ew_ids, $match->closed_ns_ids, $match->closed_ew_ids);
             }
         }
 
@@ -48,6 +49,11 @@ class TournamentHydrationService
                 foreach ($match->away_lineup as $lineupPlayer) {
                     $lineupPlayer->player = $players->get($lineupPlayer->player_id);
                 }
+
+                $match->open_ns = array_map(fn($id) => $players->get($id), $match->open_ns_ids);
+                $match->open_ew = array_map(fn($id) => $players->get($id), $match->open_ew_ids);
+                $match->closed_ns = array_map(fn($id) => $players->get($id), $match->closed_ns_ids);
+                $match->closed_ew = array_map(fn($id) => $players->get($id), $match->closed_ew_ids);
             }
         }
     }

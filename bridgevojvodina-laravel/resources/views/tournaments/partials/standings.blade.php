@@ -1,12 +1,12 @@
 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
     <div class="p-6 text-gray-900">
-        <h3 class="text-lg font-bold mb-4">{{ __('Tabela') }}</h3>
+        <h3 class="text-lg font-bold mb-4">{{ __('Table') }}</h3>
         <table class="min-w-full divide-y divide-gray-200">
             <thead>
                 <tr>
                     <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">#</th>
-                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tim</th>
-                    <th class="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">VP</th>
+                    <th class="px-6 py-3 bg-gray-50 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Team') }}</th>
+                    <th class="px-6 py-3 bg-gray-50 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('VP') }}</th>
                 </tr>
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">

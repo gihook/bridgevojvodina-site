@@ -14,14 +14,14 @@
             @else
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">
-                        <p>{{ __('Nema dostupnih rezultata za ovaj turnir.') }}</p>
+                        <p>{{ __('No results available for this tournament.') }}</p>
                     </div>
                 </div>
             @endif
 
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mt-6">
                 <div class="p-6 text-gray-900">
-                    <h3 class="text-lg font-bold mb-4">{{ __('Detalji turnira') }}</h3>
+                    <h3 class="text-lg font-bold mb-4">{{ __('Tournament details') }}</h3>
                     <div class="prose max-w-none">
                         {{ $tournament->description }}
                     </div>
