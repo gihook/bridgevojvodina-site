@@ -135,7 +135,7 @@ class TournamentHydrationService
         return $dealers[($boardNumber - 1) % 4];
     }
 
-    protected function calculateVulnerability(int $boardNumber): string
+    public function calculateVulnerability(int $boardNumber): string
     {
         $vulns = [
             'None', 'NS', 'EW', 'All',

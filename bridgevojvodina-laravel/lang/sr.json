@@ -111,5 +111,9 @@
     "All": "Obe",
     "Card data not available for this board.": "Podaci o kartama nisu dostupni za ovaj bord.",
     "NS Team": "NS Tim",
-    "EW Team": "EW Tim"
+    "EW Team": "EW Tim",
+    "Upload Board Set": "Otpremanje seta bordova",
+    "Select Round": "Izaberi kolo",
+    "Board Set JSON File": "JSON fajl sa setom bordova",
+    "Board set uploaded successfully.": "Set bordova je uspešno otpremljen."
 }

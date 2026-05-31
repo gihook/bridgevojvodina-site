@@ -30,6 +30,7 @@ Route::resource('clubs', ClubController::class);
 Route::resource('players', PlayerController::class);
 Route::resource('events', EventController::class);
 Route::resource('tournaments', TournamentController::class);
+Route::post('tournaments/{tournament}/board-sets', [TournamentController::class, 'uploadBoardSet'])->name('tournaments.board-sets.upload');
 Route::get('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'match'])->name('tournaments.match');
 Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 

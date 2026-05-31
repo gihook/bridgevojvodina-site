@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tournament;
+use App\Models\BoardSet;
+use App\Models\Board;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\RedirectResponse;
 
 class TournamentController extends Controller
@@ -153,6 +156,87 @@ class TournamentController extends Controller
 
         return redirect()->route('tournaments.index')
             ->with('success', __('Tournament updated successfully.'));
+    }
+
+    public function uploadBoardSet(Request $request, Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'round_id' => 'required|string',
+            'board_set_json' => 'required|file',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            return back()->withErrors(['round_id' => __('No results found for this tournament.')]);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $request->round_id);
+        if ($roundIndex === false) {
+            return back()->withErrors(['round_id' => __('Invalid round selected.')]);
+        }
+
+        $file = $request->file('board_set_json');
+        $content = file_get_contents($file->getRealPath());
+        $data = json_decode($content, true);
+
+        if (!$data || !isset($data['Name']) || !isset($data['Boards'])) {
+            return back()->withErrors(['board_set_json' => __('Invalid JSON format.')]);
+        }
+
+        DB::transaction(function () use ($data, $tournament, $results, $roundIndex) {
+            $boardSet = BoardSet::create([
+                'tournament_id' => $tournament->id,
+                'name' => $data['Name'],
+            ]);
+
+            $suitMap = ['Spades' => 'S', 'Hearts' => 'H', 'Diamonds' => 'D', 'Clubs' => 'C'];
+            $rankMap = [
+                'Ace' => 'A', 'King' => 'K', 'Queen' => 'Q', 'Jack' => 'J', 'Ten' => 'T',
+                'Nine' => '9', 'Eight' => '8', 'Seven' => '7', 'Six' => '6', 'Five' => '5',
+                'Four' => '4', 'Three' => '3', 'Two' => '2'
+            ];
+
+            foreach ($data['Boards'] as $boardData) {
+                $hands = ['North' => [], 'South' => [], 'East' => [], 'West' => []];
+                
+                foreach ($boardData['Hands'] as $handData) {
+                    $seat = $handData['Seat'];
+                    $handArray = ['S' => '', 'H' => '', 'D' => '', 'C' => ''];
+                    
+                    foreach ($handData['Cards'] as $card) {
+                        $suit = $suitMap[$card['Suit']] ?? null;
+                        $rank = $rankMap[$card['Rank']] ?? null;
+                        if ($suit && $rank) {
+                            $handArray[$suit] .= $rank;
+                        }
+                    }
+                    
+                    if (isset($hands[$seat])) {
+                        $hands[$seat] = $handArray;
+                    }
+                }
+
+                Board::create([
+                    'board_set_id' => $boardSet->id,
+                    'board_number' => $boardData['BoardNumber'],
+                    'vulnerability' => $this->hydrationService->calculateVulnerability($boardData['BoardNumber']),
+                    'cards_north' => $hands['North'],
+                    'cards_south' => $hands['South'],
+                    'cards_east' => $hands['East'],
+                    'cards_west' => $hands['West'],
+                ]);
+            }
+
+            // Update round
+            $results->rounds[$roundIndex]->board_set_id = $boardSet->id;
+            $tournament->team_results = $results;
+            $tournament->save();
+        });
+
+        return redirect()->route('tournaments.edit', $tournament)
+            ->with('success', __('Board set uploaded successfully.'));
     }
 
     public function destroy(Tournament $tournament): RedirectResponse
