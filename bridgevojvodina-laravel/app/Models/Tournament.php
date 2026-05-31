@@ -20,6 +20,7 @@ class Tournament extends Model
         'details',
         'team_results',
         'user_id',
+        'is_completed',
     ];
 
     protected $casts = [

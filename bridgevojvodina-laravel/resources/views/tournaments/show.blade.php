@@ -23,7 +23,7 @@
                 <div class="p-6 text-gray-900">
                     <h3 class="text-lg font-bold mb-4">{{ __('Tournament details') }}</h3>
                     <div class="prose max-w-none">
-                        {{ $tournament->description }}
+                        {!! \Illuminate\Support\Str::markdown($tournament->details ?? '') !!}
                     </div>
                 </div>
             </div>

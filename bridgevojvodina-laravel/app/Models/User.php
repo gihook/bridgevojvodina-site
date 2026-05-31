@@ -41,6 +41,11 @@ class User extends Authenticatable
         return $this->role === self::ROLE_PLAYER;
     }
 
+    public function tournaments()
+    {
+        return $this->hasMany(Tournament::class);
+    }
+
     /**
      * Get the attributes that should be cast.
      *
