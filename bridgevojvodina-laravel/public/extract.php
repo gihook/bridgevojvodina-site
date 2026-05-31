@@ -2,7 +2,7 @@
  * Automated extraction script for GitHub Actions deployment.
  */
 
-$token = 'Bv2026_Deploy_Secret_99'; 
+$token = 'DEPLOY_TOKEN_PLACEHOLDER'; 
 
 if (!isset($_GET['token']) || $_GET['token'] !== $token) {
     header('HTTP/1.0 403 Forbidden');
@@ -36,7 +36,31 @@ if ($zip->open($zipPath) === TRUE) {
     $zip->extractTo($extractPath);
     $zip->close();
     unlink($zipPath);
-    echo "Extraction successful to: " . realpath($extractPath);
+    echo "Extraction successful to: " . realpath($extractPath) . "\n";
+    
+    // Run migrations and optimize
+    $artisanPath = $extractPath . '/artisan';
+    if (file_exists($artisanPath)) {
+        try {
+            // Bootstrap Laravel
+            require $extractPath . '/vendor/autoload.php';
+            $app = require_once $extractPath . '/bootstrap/app.php';
+            $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
+            
+            echo "\n--- Running migrations ---\n";
+            $kernel->call('migrate', ['--force' => true]);
+            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+            
+            echo "\n--- Optimizing ---\n";
+            $kernel->call('optimize');
+            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+        } catch (\Exception $e) {
+            echo "\nError during Laravel tasks: " . $e->getMessage() . "\n";
+        }
+    } else {
+        echo "Artisan not found at $artisanPath\n";
+    }
+
     unlink(__FILE__);
 } else {
     header('HTTP/1.0 500 Internal Server Error');

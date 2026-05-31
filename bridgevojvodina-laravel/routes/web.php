@@ -69,12 +69,3 @@ Route::middleware('auth')->group(function () {
 
 require __DIR__.'/auth.php';
 
-Route::get('/run-migrations-v1-769a3d1f', function () {
-    try {
-        Artisan::call('migrate', ['--force' => true]);
-        return '<pre>' . Artisan::output() . '</pre>';
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
-
