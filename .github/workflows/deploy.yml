@@ -38,6 +38,8 @@ jobs:
         npm run build
         
     - name: Create Deployment Archive
+      env:
+        DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
       run: |
         cd bridgevojvodina-laravel
         # Rename public to public_html for DirectAdmin compatibility
@@ -49,7 +51,7 @@ jobs:
         # Ensure the extract script has the opening <?php tag and inject secret
         echo "<?php" > deploy_ready/extract.php
         cat bridgevojvodina-laravel/public_html/extract.php >> deploy_ready/extract.php
-        sed -i "s/DEPLOY_TOKEN_PLACEHOLDER/${{ secrets.DEPLOY_TOKEN }}/g" deploy_ready/extract.php
+        php -r '$t=getenv("DEPLOY_TOKEN"); $c=file_get_contents("deploy_ready/extract.php"); file_put_contents("deploy_ready/extract.php", str_replace(chr(39)."DEPLOY_TOKEN_PLACEHOLDER".chr(39), var_export($t, true), $c));'
         
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -63,4 +65,4 @@ jobs:
         
     - name: Trigger Extraction
       run: |
-        curl -f -v "https://bridgevojvodina.rs/extract.php?token=${{ secrets.DEPLOY_TOKEN }}"
+        curl -f -v --get --data-urlencode "token=${{ secrets.DEPLOY_TOKEN }}" "https://bridgevojvodina.rs/extract.php"
