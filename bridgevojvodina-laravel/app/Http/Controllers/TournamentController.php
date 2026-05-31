@@ -824,7 +824,7 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds uploaded successfully.'));
     }
 
-    public function editMatch(Tournament $tournament, string $roundId, string $matchId): View
+    public function editMatchRoom(Tournament $tournament, string $roundId, string $matchId, string $room): View
     {
         Gate::authorize('update', $tournament);
 
@@ -859,13 +859,62 @@ class TournamentController extends Controller
             $match->boards = $boards;
         }
 
-        $homePlayers = Player::whereIn('id', $homeTeam->player_ids)->get();
-        $awayPlayers = Player::whereIn('id', $awayTeam->player_ids)->get();
+        // Determine which teams are NS and EW for this room
+        // Open Room: NS = Home, EW = Away
+        // Closed Room: NS = Away, EW = Home
+        $nsTeam = $room === 'open' ? $homeTeam : $awayTeam;
+        $ewTeam = $room === 'open' ? $awayTeam : $homeTeam;
 
-        return view('tournaments.matches.edit', compact('tournament', 'round', 'match', 'homeTeam', 'awayTeam', 'homePlayers', 'awayPlayers', 'results'));
+        $nsPlayers = Player::whereIn('id', $nsTeam->player_ids)->get();
+        $ewPlayers = Player::whereIn('id', $ewTeam->player_ids)->get();
+
+        return view('tournaments.matches.room_edit', compact(
+            'tournament', 'round', 'match', 'room',
+            'homeTeam', 'awayTeam', 'nsTeam', 'ewTeam',
+            'nsPlayers', 'ewPlayers', 'results'
+        ));
     }
 
-    public function updateMatch(Request $request, Tournament $tournament, string $roundId, string $matchId): RedirectResponse
+    public function updateMatchLineup(Request $request, Tournament $tournament, string $roundId, string $matchId, string $room): RedirectResponse|array
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        
+        $matchIndex = collect($results->rounds[$roundIndex]->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+
+        $request->validate([
+            'n_id' => 'nullable|integer|exists:players,id',
+            's_id' => 'nullable|integer|exists:players,id',
+            'e_id' => 'nullable|integer|exists:players,id',
+            'w_id' => 'nullable|integer|exists:players,id',
+        ]);
+
+        $match = $results->rounds[$roundIndex]->matches[$matchIndex];
+        
+        if ($room === 'open') {
+            $match->open_ns_ids = array_map('intval', array_values(array_filter([$request->n_id, $request->s_id])));
+            $match->open_ew_ids = array_map('intval', array_values(array_filter([$request->e_id, $request->w_id])));
+        } else {
+            $match->closed_ns_ids = array_map('intval', array_values(array_filter([$request->n_id, $request->s_id])));
+            $match->closed_ew_ids = array_map('intval', array_values(array_filter([$request->e_id, $request->w_id])));
+        }
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        if ($request->wantsJson()) {
+            return ['success' => true];
+        }
+        return back()->with('success', __('Lineup updated.'));
+    }
+
+    public function updateMatchBoard(Request $request, Tournament $tournament, string $roundId, string $matchId, string $room, int $boardNumber): RedirectResponse|array
     {
         Gate::authorize('update', $tournament);
 
@@ -875,133 +924,104 @@ class TournamentController extends Controller
         $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
         if ($roundIndex === false) abort(404);
         $round = $results->rounds[$roundIndex];
-
-        if ($round->status !== 'inProgress') {
-            return back()->withErrors(['error' => __('Results can only be entered for rounds in progress.')]);
-        }
-
+        
         $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
         if ($matchIndex === false) abort(404);
 
-        $request->validate([
-            'home_imp' => 'required|integer',
-            'away_imp' => 'required|integer',
-            'home_vp' => 'required|numeric|min:0|max:20',
-            'away_vp' => 'required|numeric|min:0|max:20',
-            'open_n_id' => 'nullable|integer|exists:players,id',
-            'open_s_id' => 'nullable|integer|exists:players,id',
-            'open_e_id' => 'nullable|integer|exists:players,id',
-            'open_w_id' => 'nullable|integer|exists:players,id',
-            'closed_n_id' => 'nullable|integer|exists:players,id',
-            'closed_s_id' => 'nullable|integer|exists:players,id',
-            'closed_e_id' => 'nullable|integer|exists:players,id',
-            'closed_w_id' => 'nullable|integer|exists:players,id',
-            'boards_json' => 'nullable|string',
-        ]);
-
         $match = $round->matches[$matchIndex];
-        
-        if ($request->filled('boards_json')) {
-            $boardsData = json_decode($request->boards_json, true);
-            $newBoards = [];
-            $totalHomeImp = 0;
-            $totalAwayImp = 0;
 
-            foreach ($boardsData as $bData) {
-                // If contract components are provided, recalculate the score
-                if (isset($bData['home_contract_level'])) {
-                    $isVul = $this->hydrationService->calculateVulnerability($bData['board_number']);
-                    
-                    // Home (Open Room) Score
-                    $bData['home_score'] = $this->calculateBoardScore($bData, 'home', $isVul);
-                    // Away (Closed Room) Score
-                    $bData['away_score'] = $this->calculateBoardScore($bData, 'away', $isVul);
-                    
-                    // Re-assemble contract strings
-                    $bData['home_contract'] = $this->assembleContract($bData, 'home');
-                    $bData['away_contract'] = $this->assembleContract($bData, 'away');
-                }
-
-                $board = MatchBoardDTO::fromArray($bData);
-                
-                // Server-side calculation of board IMPs
-                if ($board->home_score !== null && $board->away_score !== null) {
-                    $diff = $board->home_score - $board->away_score;
-                    $imp = $this->hydrationService->scoreToImp($diff);
-                    $board->home_imp = $imp > 0 ? $imp : 0;
-                    $board->away_imp = $imp < 0 ? abs($imp) : 0;
-                } else {
-                    $board->home_imp = 0;
-                    $board->away_imp = 0;
-                }
-                
-                $totalHomeImp += $board->home_imp;
-                $totalAwayImp += $board->away_imp;
-                
-                $newBoards[] = $board;
+        // Ensure boards are initialized
+        if (empty($match->boards)) {
+            $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+            $boards = [];
+            for ($i = 1; $i <= $numBoards; $i++) {
+                $boards[] = new MatchBoardDTO(board_number: $i);
             }
-            $match->boards = $newBoards;
-            $match->home_imp = $totalHomeImp;
-            $match->away_imp = $totalAwayImp;
-            
-            // Recalculate match VPs
-            $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
-            list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
-            $match->home_vp = $hVp;
-            $match->away_vp = $aVp;
-        } else {
-            $match->home_imp = (int) $request->home_imp;
-            $match->away_imp = (int) $request->away_imp;
-            $match->home_vp = (float) $request->home_vp;
-            $match->away_vp = (float) $request->away_vp;
+            $match->boards = $boards;
         }
+
+        $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNumber);
+        if ($boardIndex === false) abort(404);
+
+        $data = $request->all();
+        $isVul = $this->hydrationService->calculateVulnerability($boardNumber);
         
-        $match->open_ns_ids = array_map('intval', array_values(array_filter([$request->open_n_id, $request->open_s_id])));
-        $match->open_ew_ids = array_map('intval', array_values(array_filter([$request->open_e_id, $request->open_w_id])));
-        $match->closed_ns_ids = array_map('intval', array_values(array_filter([$request->closed_n_id, $request->closed_s_id])));
-        $match->closed_ew_ids = array_map('intval', array_values(array_filter([$request->closed_e_id, $request->closed_w_id])));
+        // Contract Components
+        $level = (int) ($data['contract_level'] ?? 0);
+        if ($level === 0) {
+            $score = 0;
+            $contract = 'Pass';
+            $decl = null;
+            $tricks = null;
+        } else {
+            $suit = $data['contract_suit'];
+            $risk = (int) $data['contract_risk'];
+            $tricks = (int) $data['tricks'];
+            $decl = $data['declarer'];
+
+            $isRoomVul = ($isVul === 'All' || $isVul === ($decl === 'N' || $decl === 'S' ? 'NS' : 'EW'));
+            $absScore = $this->scoringService->calculateScore($level, $suit, $risk, $tricks, $isRoomVul);
+            $score = ($decl === 'N' || $decl === 'S') ? $absScore : -$absScore;
+            
+            $suffix = $risk === 2 ? 'X' : ($risk === 4 ? 'XX' : '');
+            $contract = $level . $suit . $suffix;
+        }
+
+        $board = $match->boards[$boardIndex];
+        if ($room === 'open') {
+            $board->home_score = $score;
+            $board->home_contract = $contract;
+            $board->home_declarer = $decl;
+            $board->home_tricks = $tricks;
+        } else {
+            $board->away_score = $score;
+            $board->away_contract = $contract;
+            $board->away_declarer = $decl;
+            $board->away_tricks = $tricks;
+        }
+
+        // Recalculate board IMPs
+        if ($board->home_score !== null && $board->away_score !== null) {
+            $diff = $board->home_score - $board->away_score;
+            $imp = $this->hydrationService->scoreToImp($diff);
+            $board->home_imp = $imp > 0 ? $imp : 0;
+            $board->away_imp = $imp < 0 ? abs($imp) : 0;
+        } else {
+            $board->home_imp = 0;
+            $board->away_imp = 0;
+        }
+
+        // Recalculate match totals
+        $totalHomeImp = 0;
+        $totalAwayImp = 0;
+        foreach ($match->boards as $b) {
+            $totalHomeImp += $b->home_imp;
+            $totalAwayImp += $b->away_imp;
+        }
+        $match->home_imp = $totalHomeImp;
+        $match->away_imp = $totalAwayImp;
+
+        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
+        $match->home_vp = $hVp;
+        $match->away_vp = $aVp;
 
         $this->recalculateStandings($results);
         $tournament->team_results = $results;
         $tournament->save();
 
-        return redirect()->route('tournaments.edit', $tournament)
-            ->with('success', __('Match updated successfully.'));
-    }
+        if ($request->wantsJson()) {
+            return [
+                'success' => true,
+                'board' => $board->toArray(),
+                'match_home_imp' => $match->home_imp,
+                'match_away_imp' => $match->away_imp,
+                'match_home_vp' => $match->home_vp,
+                'match_away_vp' => $match->away_vp
+            ];
+        }
 
-    private function calculateBoardScore(array $bData, string $prefix, string $vuln): ?int
-    {
-        $level = $bData[$prefix . '_contract_level'] ?? null;
-        if ($level === null) return $bData[$prefix . '_score'] ?? null;
-        if ($level == 0) return 0; // Pass
-
-        $suit = $bData[$prefix . '_contract_suit'];
-        $risk = (int) $bData[$prefix . '_contract_risk'];
-        $tricks = (int) $bData[$prefix . '_tricks'];
-        $decl = $bData[$prefix . '_declarer'];
-
-        if (!$suit || !$decl || $tricks === null) return $bData[$prefix . '_score'] ?? null;
-
-        $isVul = ($vuln === 'All' || $vuln === ($decl === 'N' || $decl === 'S' ? 'NS' : 'EW'));
-        
-        $absScore = $this->scoringService->calculateScore($level, $suit, $risk, $tricks, $isVul);
-        
-        // Convert to "Score for NS"
-        return ($decl === 'N' || $decl === 'S') ? $absScore : -$absScore;
-    }
-
-    private function assembleContract(array $bData, string $prefix): string
-    {
-        $level = $bData[$prefix . '_contract_level'] ?? null;
-        if ($level === null) return $bData[$prefix . '_contract'] ?? '';
-        if ($level == 0) return 'Pass';
-        
-        $risk = (int) $bData[$prefix . '_contract_risk'];
-        $suffix = '';
-        if ($risk === 2) $suffix = 'X';
-        if ($risk === 4) $suffix = 'XX';
-        
-        return $level . $bData[$prefix . '_contract_suit'] . $suffix;
+        return back()->with('success', __('Board updated.'));
     }
 
     public function destroyRound(Tournament $tournament, string $roundId): RedirectResponse

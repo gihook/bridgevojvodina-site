@@ -307,7 +307,7 @@ class TournamentRoundGenerationTest extends TestCase
                 ],
                 'rounds' => [
                     [
-                        'id' => 'r1', 'name' => 'R1', 'status' => 'inProgress',
+                        'id' => 'r1', 'name' => 'R1', 'status' => 'inProgress', 'boards_per_round' => 16,
                         'matches' => [
                             ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_vp' => 0, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'boards' => [], 'open_ns_ids' => [], 'open_ew_ids' => [], 'closed_ns_ids' => [], 'closed_ew_ids' => []]
                         ]
@@ -316,32 +316,82 @@ class TournamentRoundGenerationTest extends TestCase
             ]
         ]);
 
-        $response = $this->actingAs($director)->patch(route('tournaments.match.update', [$tournament, 'r1', 'm1']), [
-            'home_imp' => 50,
-            'away_imp' => 20,
-            'home_vp' => 17.5, // This should be ignored/overwritten by auto-calc
-            'away_vp' => 2.5,  // This should be ignored/overwritten by auto-calc
-            'open_n_id' => $p1->id,
-            'open_s_id' => null,
-            'open_e_id' => $p2->id,
-            'open_w_id' => null,
-            'closed_e_id' => $p1->id,
-            'closed_w_id' => null,
-            'closed_n_id' => $p2->id,
-            'closed_s_id' => null,
+        // Enter Open Room results for 2 boards
+        $boards = [
+            [
+                'board_number' => 1,
+                'current_room_contract_level' => 4,
+                'current_room_contract_suit' => 'S',
+                'current_room_contract_risk' => 1,
+                'current_room_declarer' => 'N',
+                'current_room_tricks' => 10,
+                // Resulting score for NS should be +420
+            ],
+            [
+                'board_number' => 2,
+                'current_room_contract_level' => 3,
+                'current_room_contract_suit' => 'NT',
+                'current_room_contract_risk' => 1,
+                'current_room_declarer' => 'S',
+                'current_room_tricks' => 9,
+                // Resulting score for NS should be +400 (if non-vul)
+            ]
+        ];
+
+        // Enter Open Room lineup
+        $this->actingAs($director)->patch(route('tournaments.match.room.lineup.update', [$tournament, 'r1', 'm1', 'open']), [
+            'n_id' => $p1->id,
+            's_id' => $p1->id,
+            'e_id' => $p2->id,
+            'w_id' => $p2->id,
         ]);
 
-        $response->assertRedirect(route('tournaments.edit', $tournament));
+        // Enter Open Room results for 2 boards via AJAX
+        $board1 = [
+            'board_number' => 1,
+            'contract_level' => 4,
+            'contract_suit' => 'S',
+            'contract_risk' => 1,
+            'declarer' => 'N',
+            'tricks' => 10,
+        ];
+
+        $this->actingAs($director)->patch(route('tournaments.match.room.board.update', [$tournament, 'r1', 'm1', 'open', 1]), $board1);
+
+        $board2 = [
+            'board_number' => 2,
+            'contract_level' => 3,
+            'contract_suit' => 'NT',
+            'contract_risk' => 1,
+            'declarer' => 'S',
+            'tricks' => 9,
+        ];
         
+        $this->actingAs($director)->patch(route('tournaments.match.room.board.update', [$tournament, 'r1', 'm1', 'open', 2]), $board2);
+
         $tournament->refresh();
         $match = $tournament->team_results->rounds[0]->matches[0];
-        $this->assertEquals(50, $match->home_imp);
-        // 50-20 = 30 IMP diff. For 16 boards, WBF continuous is ~16.73
-        $this->assertEquals(16.73, $match->home_vp);
-        $this->assertContains($p1->id, $match->open_ns_ids);
         
-        // Standings updated
-        $this->assertEquals(16.73, $tournament->team_results->teams[0]->total_vp);
-        $this->assertEquals(3.27, $tournament->team_results->teams[1]->total_vp);
+        $this->assertEquals(420, $match->boards[0]->home_score);
+        $this->assertEquals(600, $match->boards[1]->home_score); // Board 2 is NS Vul -> 3NT made is 600
+        $this->assertContains($p1->id, $match->open_ns_ids);
+
+        // Now enter Closed Room results for board 1 to trigger IMP calculation
+        $closedBoard1 = [
+            'board_number' => 1,
+            'contract_level' => 3,
+            'contract_suit' => 'S',
+            'contract_risk' => 1,
+            'declarer' => 'N', // declarer of Closed NS (Team T2)
+            'tricks' => 9,
+        ];
+
+        $this->actingAs($director)->patch(route('tournaments.match.room.board.update', [$tournament, 'r1', 'm1', 'closed', 1]), $closedBoard1);
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+        
+        $this->assertEquals(7, $match->boards[0]->home_imp);
+        $this->assertEquals(7, $match->home_imp);
     }
 }

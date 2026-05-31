@@ -105,28 +105,40 @@
                                                     <td class="px-6 py-4">
                                                         <div class="text-sm font-bold text-gray-900 mb-2">{{ $round->name }}</div>
                                                         <!-- Match Pairs -->
-                                                        <div class="space-y-1">
+                                                        <div class="space-y-3">
                                                             @foreach($round->matches as $match)
                                                                 @php
                                                                     $homeName = collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye');
                                                                     $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye');
                                                                     $isBye = !$match->home_team_id || !$match->away_team_id || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
+
+                                                                    $totalBoards = $round->boards_per_round ?? $tournament->team_results->boards_per_round ?? 16;
+                                                                    $openCount = count(array_filter($match->boards, fn($b) => ($b->home_score !== null && $b->home_score !== '')));
+                                                                    $closedCount = count(array_filter($match->boards, fn($b) => ($b->away_score !== null && $b->away_score !== '')));
+
                                                                     $canEdit = $roundStatus === 'inProgress' && !$isBye;
                                                                 @endphp
 
-                                                                @if($canEdit)
-                                                                    <a href="{{ route('tournaments.match.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}" class="text-[11px] text-indigo-600 hover:text-indigo-900 hover:underline flex items-center gap-2 font-bold">
+                                                                <div class="flex flex-col gap-1">
+                                                                    <div class="text-[11px] font-bold text-gray-700 flex items-center gap-2">
                                                                         <span>{{ $homeName }}</span>
                                                                         <span class="text-gray-300 font-normal">vs</span>
                                                                         <span>{{ $awayName }}</span>
-                                                                    </a>
-                                                                @else
-                                                                    <div class="text-[11px] text-gray-500 flex items-center gap-2">
-                                                                        <span class="font-medium text-gray-700">{{ $homeName }}</span>
-                                                                        <span class="text-gray-300">vs</span>
-                                                                        <span class="font-medium text-gray-700">{{ $awayName }}</span>
                                                                     </div>
-                                                                @endif
+
+                                                                    @if($canEdit)
+                                                                        <div class="ml-4 flex flex-col gap-0.5">
+                                                                            <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'open']) }}" class="text-[10px] text-blue-600 hover:text-blue-900 hover:underline flex items-center gap-1">
+                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $openCount == $totalBoards ? 'bg-green-500' : 'bg-blue-400' }}"></span>
+                                                                                {{ __('Open Room') }}: {{ $openCount }}/{{ $totalBoards }}
+                                                                            </a>
+                                                                            <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']) }}" class="text-[10px] text-red-600 hover:text-red-900 hover:underline flex items-center gap-1">
+                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $closedCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
+                                                                                {{ __('Closed Room') }}: {{ $closedCount }}/{{ $totalBoards }}
+                                                                            </a>
+                                                                        </div>
+                                                                    @endif
+                                                                </div>
                                                             @endforeach
                                                         </div>
                                                     </td>
