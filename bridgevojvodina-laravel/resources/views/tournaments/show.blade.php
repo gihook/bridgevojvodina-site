@@ -10,7 +10,7 @@
             
             @if ($tournament->team_results)
                 @include('tournaments.partials.standings', ['results' => $tournament->team_results])
-                @include('tournaments.partials.matches', ['results' => $tournament->team_results])
+                @include('tournaments.partials.match_list', ['results' => $tournament->team_results])
             @else
                 <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     <div class="p-6 text-gray-900">

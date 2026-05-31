@@ -13,7 +13,7 @@ class TournamentShowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_tournament_show_page_displays_results()
+    private function createTournamentWithResults()
     {
         $user = User::factory()->create();
         $club = Club::create([
@@ -21,22 +21,23 @@ class TournamentShowTest extends TestCase
         ]);
         $player = Player::create(['first_name' => 'Slobodan', 'last_name' => 'Guzvica', 'club_id' => $club->id]);
 
-        $tournament = Tournament::create([
+        return Tournament::create([
             'title' => 'NS Team Cup',
             'description' => 'Desc',
             'details' => 'Details',
             'user_id' => $user->id,
             'team_results' => [
                 'teams' => [
-                    ['id' => 't1', 'name' => 'Team A', 'captain_id' => $player->id, 'player_ids' => [$player->id], 'total_vp' => 20.5]
+                    ['id' => 't1', 'name' => 'Team A', 'captain_id' => $player->id, 'player_ids' => [$player->id], 'total_vp' => 20.5],
+                    ['id' => 't2', 'name' => 'Team B', 'captain_id' => $player->id, 'player_ids' => [$player->id], 'total_vp' => 15.0]
                 ],
                 'rounds' => [
                     [
                         'id' => 'r1', 'name' => 'Match 1',
                         'matches' => [
                             [
-                                'home_team_id' => 't1', 'away_team_id' => null,
-                                'home_imp' => 10, 'away_imp' => 0, 'home_vp' => 12.0, 'away_vp' => 0.0,
+                                'home_team_id' => 't1', 'away_team_id' => 't2',
+                                'home_imp' => 10, 'away_imp' => 5, 'home_vp' => 12.0, 'away_vp' => 8.0,
                                 'home_lineup' => [['player_id' => $player->id, 'butler_score' => 1.5]],
                                 'boards' => [
                                     [
@@ -56,6 +57,11 @@ class TournamentShowTest extends TestCase
                 ]
             ]
         ]);
+    }
+
+    public function test_tournament_show_page_displays_standings_and_match_list()
+    {
+        $tournament = $this->createTournamentWithResults();
 
         $response = $this->get("/tournaments/{$tournament->id}");
 
@@ -63,16 +69,30 @@ class TournamentShowTest extends TestCase
         $response->assertSee('Team A');
         $response->assertSee('20.50');
         $response->assertSee('Match 1');
-        $response->assertSee('bye');
+        $response->assertSee('Team B');
+        $response->assertSee('10 : 5');
+        $response->assertSee('View Details');
+        
+        // Detailed board info should NOT be on the show page
+        $response->assertDontSee('3NT');
+        $response->assertDontSee('Slobodan Guzvica');
+    }
+
+    public function test_tournament_match_page_displays_detailed_boards()
+    {
+        $tournament = $this->createTournamentWithResults();
+
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/match/t1");
+
+        $response->assertStatus(200);
+        $response->assertSee('Team A');
+        $response->assertSee('Team B');
+        $response->assertSee('10 : 5');
         $response->assertSee('4');
         $response->assertSee('&spades;', false);
         $response->assertSee('3NT');
         $response->assertSee('420');
         $response->assertSee('430');
-        $response->assertSee('&hearts;', false);
-        $response->assertSee('K');
-        $response->assertSee('&diams;', false);
-        $response->assertSee('4');
         $response->assertSee('Slobodan Guzvica');
     }
 }

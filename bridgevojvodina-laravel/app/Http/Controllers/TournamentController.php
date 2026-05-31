@@ -49,11 +49,29 @@ class TournamentController extends Controller
 
     public function show(Tournament $tournament): View
     {
-        if ($tournament->team_results) {
-            $this->hydrationService->hydratePlayers($tournament->team_results);
+        return view('tournaments.show', compact('tournament'));
+    }
+
+    public function match(Tournament $tournament, string $roundId, string $homeTeamId): View
+    {
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
         }
 
-        return view('tournaments.show', compact('tournament'));
+        $round = collect($results->rounds)->firstWhere('id', $roundId);
+        if (!$round) {
+            abort(404);
+        }
+
+        $match = collect($round->matches)->firstWhere('home_team_id', $homeTeamId);
+        if (!$match) {
+            abort(404);
+        }
+
+        $this->hydrationService->hydrateMatch($match);
+
+        return view('tournaments.match', compact('tournament', 'round', 'match', 'results'));
     }
 
     public function edit(Tournament $tournament): View

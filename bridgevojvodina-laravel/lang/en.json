@@ -63,7 +63,11 @@
     "Table": "Table",
     "Team": "Team",
     "VP": "VP",
+    "Results": "Results",
+    "Back to Tournament": "Back to Tournament",
+    "View Details": "View Details",
     "No results available for this tournament.": "No results available for this tournament.",
+    "No board results available for this match.": "No board results available for this match.",
     "Tournament details": "Tournament details",
     "NS": "NS",
     "EW": "EW"

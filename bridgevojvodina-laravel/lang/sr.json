@@ -94,7 +94,11 @@
     "Table": "Tabela",
     "Team": "Tim",
     "VP": "VP",
+    "Results": "Rezultati",
+    "Back to Tournament": "Nazad na turnir",
+    "View Details": "Prikaži detalje",
     "No results available for this tournament.": "Nema dostupnih rezultata za ovaj turnir.",
+    "No board results available for this match.": "Nema dostupnih rezultata po bordovima za ovaj meč.",
     "Tournament details": "Detalji turnira",
     "NS": "NS",
     "EW": "EW"
