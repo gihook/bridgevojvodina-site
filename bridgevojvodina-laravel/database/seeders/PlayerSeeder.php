@@ -30,7 +30,11 @@ class PlayerSeeder extends Seeder
             [66, 'Filip', 'Katušić', 6], [67, 'Srđan', 'Katušić', 6], [68, 'Igor', 'Stefanović', 6],
             [69, 'Milica', 'Jarić', 6], [70, 'Aleksandar', 'Stefanović', 6], [71, 'Aldo Giovani', 'Gerli', 6],
             [72, 'Piotr', 'Tuczynski', 6], [73, 'Pavle', 'Stanojević', 6], [74, 'Rastko', 'Stanojević', 6],
-            [75, 'Antonia', 'Vladimir', 6], [76, 'Branka', 'Hadžić', 1], [77, 'Nikola', 'Đukanović', 1]
+            [75, 'Antonia', 'Vladimir', 6], [76, 'Branka', 'Hadžić', 1], [77, 'Nikola', 'Đukanović', 1],
+            [78, 'Lenka', 'Mihajlović', 1], [79, 'Atila', 'Baba', 1],
+            [80, 'Boris', 'Jovanović', 6], [81, 'Lena', 'Gordić', 6], [82, 'Mihailo', 'Simić', 6],
+            [83, 'Sofia', 'Martinović', 6], [84, 'Jovan', 'Dmitrović', 6],
+            [85, 'Matej', 'Nežić', 6], [86, 'Leta', 'N.', 2]
         ];
 
         foreach ($players as $player) {

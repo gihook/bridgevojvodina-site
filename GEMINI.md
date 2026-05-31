@@ -16,6 +16,14 @@ All PHP and Artisan commands **MUST** be executed within the Docker container us
 - The `docker-compose.yml` file is in the root directory.
 - When running commands, ensure you are in the root directory or adjust paths accordingly.
 
+## Initial Setup
+
+You can initialize or reset the database using the provided setup script in the root directory:
+```bash
+./setup.sh
+```
+This script runs fresh migrations and seeds the database with legacy data and demo tournaments.
+
 ## Development Workflow
 - **Migrations:** Always run migrations via Docker after creating them.
 - **Testing:** Run tests using `docker-compose exec bridgevojvodina-laravel php artisan test`.
