@@ -110,12 +110,12 @@
                                                                 @php
                                                                     $homeName = collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye');
                                                                     $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye');
-                                                                    $isBye = !$match->home_team_id || !$match->away_team_id;
+                                                                    $isBye = !$match->home_team_id || !$match->away_team_id || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
                                                                     $canEdit = $roundStatus === 'inProgress' && !$isBye;
                                                                 @endphp
 
                                                                 @if($canEdit)
-                                                                    <a href="{{ route('tournaments.match.edit', [$tournament, $round->id, $match->home_team_id]) }}" class="text-[11px] text-indigo-600 hover:text-indigo-900 hover:underline flex items-center gap-2 font-bold">
+                                                                    <a href="{{ route('tournaments.match.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}" class="text-[11px] text-indigo-600 hover:text-indigo-900 hover:underline flex items-center gap-2 font-bold">
                                                                         <span>{{ $homeName }}</span>
                                                                         <span class="text-gray-300 font-normal">vs</span>
                                                                         <span>{{ $awayName }}</span>

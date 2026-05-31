@@ -12,7 +12,7 @@
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <form method="POST" action="{{ route('tournaments.match.update', [$tournament, $round->id, $homeTeam->id]) }}">
+            <form method="POST" action="{{ route('tournaments.match.update', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}">
                 @csrf
                 @method('PATCH')
 

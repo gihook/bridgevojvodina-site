@@ -57,6 +57,7 @@ class TournamentDemoSeeder extends Seeder
                 'name' => '1. KOLO',
                 'matches' => [
                     [
+                        'id' => 'match_1_1',
                         'home_team_id' => 'team_ekspert_1',
                         'away_team_id' => 'team_ekspert_2',
                         'home_imp' => 36,
@@ -95,6 +96,7 @@ class TournamentDemoSeeder extends Seeder
                         'closed_ew_ids' => [73, 55],
                     ],
                     [
+                        'id' => 'match_1_2',
                         'home_team_id' => 'team_ns1',
                         'away_team_id' => 'team_nsbk',
                         'home_imp' => 31,
@@ -109,6 +111,7 @@ class TournamentDemoSeeder extends Seeder
                         ]
                     ],
                     [
+                        'id' => 'match_1_3',
                         'home_team_id' => 'team_saturn',
                         'away_team_id' => 'bye',
                         'home_vp' => 12.00,
@@ -121,6 +124,7 @@ class TournamentDemoSeeder extends Seeder
                 'name' => '2. KOLO',
                 'matches' => [
                     [
+                        'id' => 'match_2_1',
                         'home_team_id' => 'team_saturn',
                         'away_team_id' => 'team_ns1',
                         'home_imp' => 16,
@@ -135,6 +139,7 @@ class TournamentDemoSeeder extends Seeder
                         ]
                     ],
                     [
+                        'id' => 'match_2_2',
                         'home_team_id' => 'team_ekspert_1',
                         'away_team_id' => 'team_nsbk',
                         'home_imp' => 0,
@@ -149,6 +154,7 @@ class TournamentDemoSeeder extends Seeder
                         ]
                     ],
                     [
+                        'id' => 'match_2_3',
                         'home_team_id' => 'team_ekspert_2',
                         'away_team_id' => 'bye',
                         'home_vp' => 12.00,
@@ -160,27 +166,27 @@ class TournamentDemoSeeder extends Seeder
                 'id' => 'round_3',
                 'name' => '3. KOLO',
                 'matches' => [
-                    ['home_team_id' => 'team_ekspert_1', 'away_team_id' => 'team_saturn'],
-                    ['home_team_id' => 'team_ekspert_2', 'away_team_id' => 'team_nsbk'],
-                    ['home_team_id' => 'team_ns1', 'away_team_id' => 'bye', 'home_vp' => 12.00]
+                    ['id' => 'match_3_1', 'home_team_id' => 'team_ekspert_1', 'away_team_id' => 'team_saturn'],
+                    ['id' => 'match_3_2', 'home_team_id' => 'team_ekspert_2', 'away_team_id' => 'team_nsbk'],
+                    ['id' => 'match_3_3', 'home_team_id' => 'team_ns1', 'away_team_id' => 'bye', 'home_vp' => 12.00]
                 ]
             ],
             [
                 'id' => 'round_4',
                 'name' => '4. KOLO',
                 'matches' => [
-                    ['home_team_id' => 'team_ns1', 'away_team_id' => 'team_ekspert_2'],
-                    ['home_team_id' => 'team_nsbk', 'away_team_id' => 'team_saturn'],
-                    ['home_team_id' => 'team_ekspert_1', 'away_team_id' => 'bye', 'home_vp' => 12.00]
+                    ['id' => 'match_4_1', 'home_team_id' => 'team_ns1', 'away_team_id' => 'team_ekspert_2'],
+                    ['id' => 'match_4_2', 'home_team_id' => 'team_nsbk', 'away_team_id' => 'team_saturn'],
+                    ['id' => 'match_4_3', 'home_team_id' => 'team_ekspert_1', 'away_team_id' => 'bye', 'home_vp' => 12.00]
                 ]
             ],
             [
                 'id' => 'round_5',
                 'name' => '5. KOLO',
                 'matches' => [
-                    ['home_team_id' => 'team_ekspert_2', 'away_team_id' => 'team_saturn'],
-                    ['home_team_id' => 'team_ns1', 'away_team_id' => 'team_ekspert_1'],
-                    ['home_team_id' => 'team_nsbk', 'away_team_id' => 'bye', 'home_vp' => 12.00]
+                    ['id' => 'match_5_1', 'home_team_id' => 'team_ekspert_2', 'away_team_id' => 'team_saturn'],
+                    ['id' => 'match_5_2', 'home_team_id' => 'team_ns1', 'away_team_id' => 'team_ekspert_1'],
+                    ['id' => 'match_5_3', 'home_team_id' => 'team_nsbk', 'away_team_id' => 'bye', 'home_vp' => 12.00]
                 ]
             ]
         ];

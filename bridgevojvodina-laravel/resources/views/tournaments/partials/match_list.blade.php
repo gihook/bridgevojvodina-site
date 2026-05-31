@@ -32,9 +32,9 @@
                                     {{ collect($results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye') }}
                                 </div>
                             </div>
-                            @if ($match->home_team_id && $match->away_team_id)
+                            @if ($match->home_team_id && $match->away_team_id && $match->away_team_id !== 'bye')
                                 <div class="flex flex-col items-center gap-2 mt-3">
-                                    <a href="{{ route('tournaments.match', [$tournament, $round->id, $match->home_team_id]) }}" class="text-sm text-blue-600 font-semibold uppercase tracking-wider hover:text-blue-800 transition-colors">
+                                    <a href="{{ route('tournaments.match', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}" class="text-sm text-blue-600 font-semibold uppercase tracking-wider hover:text-blue-800 transition-colors">
                                         {{ __('View Details') }}
                                     </a>
                                 </div>

@@ -47,9 +47,9 @@ Route::delete('tournaments/{tournament}/rounds/{roundId}', [TournamentController
 Route::post('tournaments/{tournament}/teams/{teamId}/players', [TournamentController::class, 'addPlayerToTeam'])->name('tournaments.teams.players.add');
 Route::delete('tournaments/{tournament}/teams/{teamId}/players/{playerId}', [TournamentController::class, 'removePlayerFromTeam'])->name('tournaments.teams.players.remove');
 Route::post('tournaments/{tournament}/teams/{teamId}/captain/{playerId}', [TournamentController::class, 'setTeamCaptain'])->name('tournaments.teams.captain.set');
-Route::get('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'match'])->name('tournaments.match');
-Route::get('tournaments/{tournament}/round/{round}/match/{home_team}/edit', [TournamentController::class, 'editMatch'])->name('tournaments.match.edit');
-Route::patch('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'updateMatch'])->name('tournaments.match.update');
+Route::get('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'match'])->name('tournaments.match');
+Route::get('tournaments/{tournament}/round/{round}/match/{match}/edit', [TournamentController::class, 'editMatch'])->name('tournaments.match.edit');
+Route::patch('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'updateMatch'])->name('tournaments.match.update');
 Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 
 Route::middleware(['auth', 'admin'])->group(function () {

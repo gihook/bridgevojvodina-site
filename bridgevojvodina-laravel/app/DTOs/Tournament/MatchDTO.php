@@ -10,6 +10,7 @@ class MatchDTO
      * @param MatchBoardDTO[] $boards
      */
     public function __construct(
+        public string $id,
         public ?string $home_team_id,
         public ?string $away_team_id,
         public int $home_imp,
@@ -32,6 +33,7 @@ class MatchDTO
     public static function fromArray(array $data): self
     {
         return new self(
+            id: $data['id'] ?? '',
             home_team_id: $data['home_team_id'],
             away_team_id: $data['away_team_id'] ?? null,
             home_imp: $data['home_imp'] ?? 0,
@@ -51,6 +53,7 @@ class MatchDTO
     public function toArray(): array
     {
         return [
+            'id' => $this->id,
             'home_team_id' => $this->home_team_id,
             'away_team_id' => $this->away_team_id,
             'home_imp' => $this->home_imp,

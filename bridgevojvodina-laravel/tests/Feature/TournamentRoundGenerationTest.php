@@ -316,7 +316,7 @@ class TournamentRoundGenerationTest extends TestCase
             ]
         ]);
 
-        $response = $this->actingAs($director)->patch(route('tournaments.match.update', [$tournament, 'r1', 't1']), [
+        $response = $this->actingAs($director)->patch(route('tournaments.match.update', [$tournament, 'r1', 'm1']), [
             'home_imp' => 50,
             'away_imp' => 20,
             'home_vp' => 17.5, // This should be ignored/overwritten by auto-calc

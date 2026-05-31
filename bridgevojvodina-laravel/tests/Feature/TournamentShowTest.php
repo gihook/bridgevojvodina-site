@@ -36,6 +36,7 @@ class TournamentShowTest extends TestCase
                         'id' => 'r1', 'name' => 'Match 1',
                         'matches' => [
                             [
+                                'id' => 'm1',
                                 'home_team_id' => 't1', 'away_team_id' => 't2',
                                 'home_imp' => 10, 'away_imp' => 5, 'home_vp' => 12.0, 'away_vp' => 8.0,
                                 'home_lineup' => [['player_id' => $player->id, 'butler_score' => 1.5]],
@@ -112,7 +113,7 @@ class TournamentShowTest extends TestCase
     {
         $tournament = $this->createTournamentWithResults();
 
-        $response = $this->get("/tournaments/{$tournament->id}/round/r1/match/t1");
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/match/m1");
 
         $response->assertStatus(200);
         $response->assertSee('Team A');

@@ -64,7 +64,7 @@ class TournamentController extends Controller
         return view('tournaments.show', compact('tournament'));
     }
 
-    public function match(Tournament $tournament, string $roundId, string $homeTeamId): View
+    public function match(Tournament $tournament, string $roundId, string $matchId): View
     {
         $results = $tournament->team_results;
         if (!$results) {
@@ -76,7 +76,9 @@ class TournamentController extends Controller
             abort(404);
         }
 
-        $match = collect($round->matches)->firstWhere('home_team_id', $homeTeamId);
+        $match = collect($round->matches)->firstWhere('id', $matchId)
+            ?? collect($round->matches)->firstWhere('home_team_id', $matchId);
+            
         if (!$match) {
             abort(404);
         }
@@ -674,6 +676,7 @@ class TournamentController extends Controller
                 $awayId = $isFixedHome ? $opponent->id : $fixedTeam->id;
                 
                 $matches[] = new MatchDTO(
+                    id: Str::uuid()->toString(),
                     home_team_id: $homeId,
                     away_team_id: $awayId,
                     home_imp: 0, away_imp: 0, 
@@ -692,6 +695,7 @@ class TournamentController extends Controller
 
                 if ($t1->id || $t2->id) {
                     $matches[] = new MatchDTO(
+                        id: Str::uuid()->toString(),
                         home_team_id: $t1->id,
                         away_team_id: $t2->id,
                         home_imp: 0, away_imp: 0, 
@@ -716,6 +720,7 @@ class TournamentController extends Controller
                 $newMatches = [];
                 foreach ($round->matches as $match) {
                     $newMatches[] = new MatchDTO(
+                        id: Str::uuid()->toString(),
                         home_team_id: $match->away_team_id,
                         away_team_id: $match->home_team_id,
                         home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
@@ -784,6 +789,7 @@ class TournamentController extends Controller
             }
 
             $roundsData[$roundName][] = new MatchDTO(
+                id: Str::uuid()->toString(),
                 home_team_id: $homeTeam?->id,
                 away_team_id: $awayTeam?->id,
                 home_imp: 0, away_imp: 0, 
@@ -816,7 +822,7 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds uploaded successfully.'));
     }
 
-    public function editMatch(Tournament $tournament, string $roundId, string $homeTeamId): View
+    public function editMatch(Tournament $tournament, string $roundId, string $matchId): View
     {
         Gate::authorize('update', $tournament);
 
@@ -830,7 +836,9 @@ class TournamentController extends Controller
             return abort(403, __('Results can only be entered for rounds in progress.'));
         }
 
-        $match = collect($round->matches)->firstWhere('home_team_id', $homeTeamId);
+        $match = collect($round->matches)->firstWhere('id', $matchId)
+            ?? collect($round->matches)->firstWhere('home_team_id', $matchId);
+            
         if (!$match) abort(404);
 
         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
@@ -843,10 +851,10 @@ class TournamentController extends Controller
         $homePlayers = Player::whereIn('id', $homeTeam->player_ids)->get();
         $awayPlayers = Player::whereIn('id', $awayTeam->player_ids)->get();
 
-        return view('tournaments.matches.edit', compact('tournament', 'round', 'match', 'homeTeam', 'awayTeam', 'homePlayers', 'awayPlayers'));
+        return view('tournaments.matches.edit', compact('tournament', 'round', 'match', 'homeTeam', 'awayTeam', 'homePlayers', 'awayPlayers', 'results'));
     }
 
-    public function updateMatch(Request $request, Tournament $tournament, string $roundId, string $homeTeamId): RedirectResponse
+    public function updateMatch(Request $request, Tournament $tournament, string $roundId, string $matchId): RedirectResponse
     {
         Gate::authorize('update', $tournament);
 
@@ -860,7 +868,7 @@ class TournamentController extends Controller
             return back()->withErrors(['error' => __('Results can only be entered for rounds in progress.')]);
         }
 
-        $matchIndex = collect($results->rounds[$roundIndex]->matches)->search(fn($m) => $m->home_team_id === $homeTeamId);
+        $matchIndex = collect($results->rounds[$roundIndex]->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
         if ($matchIndex === false) abort(404);
 
         $request->validate([
