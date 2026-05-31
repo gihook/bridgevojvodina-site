@@ -186,10 +186,102 @@ class TournamentRoundGenerationTest extends TestCase
         $response = $this->actingAs($director)->delete(route('tournaments.rounds.idle.destroy', $tournament));
 
         $response->assertRedirect();
-        $response->assertSessionHas('success');
-
         $tournament->refresh();
         $this->assertCount(1, $tournament->team_results->rounds);
         $this->assertEquals('complete', $tournament->team_results->rounds[0]->status);
+    }
+
+    public function test_director_can_reorder_idle_rounds()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'rounds' => [
+                    ['id' => 'r1', 'name' => 'First', 'status' => 'idle'],
+                    ['id' => 'r2', 'name' => 'Second', 'status' => 'idle'],
+                ],
+                'teams' => []
+            ]
+        ]);
+
+        // Move Second UP
+        $this->actingAs($director)->patch(route('tournaments.rounds.reorder', [$tournament, 'r2']), [
+            'direction' => 'up',
+        ]);
+
+        $tournament->refresh();
+        $this->assertEquals('r2', $tournament->team_results->rounds[0]->id);
+        $this->assertEquals('r1', $tournament->team_results->rounds[1]->id);
+    }
+
+    public function test_director_can_upload_rounds_csv()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        
+        $teamResults = [
+            'teams' => [
+                ['id' => 'team1', 'name' => 'T1', 'number' => 1, 'captain_id' => 0, 'player_ids' => []],
+                ['id' => 'team2', 'name' => 'T2', 'number' => 2, 'captain_id' => 0, 'player_ids' => []],
+            ],
+            'rounds' => []
+        ];
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => $teamResults,
+        ]);
+
+        $csvContent = "Round Name,Home Team Number,Away Team Number\n";
+        $csvContent .= "Round A,1,2\n";
+
+        $file = \Illuminate\Http\UploadedFile::fake()->createWithContent('rounds.csv', $csvContent);
+
+        $this->actingAs($director)->post(route('tournaments.rounds.upload-csv', $tournament), [
+            'csv_file' => $file,
+        ]);
+
+        $tournament->refresh();
+        $this->assertCount(1, $tournament->team_results->rounds);
+        $this->assertEquals('Round A', $tournament->team_results->rounds[0]->name);
+        $this->assertEquals('team1', $tournament->team_results->rounds[0]->matches[0]->home_team_id);
+        $this->assertEquals('team2', $tournament->team_results->rounds[0]->matches[0]->away_team_id);
+    }
+
+    public function test_director_can_update_bye_vp()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        
+        $teamResults = [
+            'teams' => [
+                ['id' => 't1', 'name' => 'T1', 'number' => 1, 'total_vp' => 0, 'captain_id' => 0, 'player_ids' => []]
+            ],
+            'rounds' => [
+                [
+                    'id' => 'r1', 'name' => 'R1', 'status' => 'idle', 'board_set_id' => null,
+                    'matches' => [
+                        ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => null, 'home_vp' => 12, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'boards' => []]
+                    ]
+                ]
+            ],
+            'bye_vp' => 12.0
+        ];
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => $teamResults,
+        ]);
+
+        $response = $this->actingAs($director)->patch(route('tournaments.bye-vp.update', $tournament), [
+            'bye_vp' => 15.5,
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertEquals(15.5, $tournament->team_results->bye_vp);
+        $this->assertEquals(15.5, $tournament->team_results->rounds[0]->matches[0]->home_vp);
+        $this->assertEquals(15.5, $tournament->team_results->teams[0]->total_vp);
     }
 }

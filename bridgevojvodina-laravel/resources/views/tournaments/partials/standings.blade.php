@@ -11,7 +11,7 @@
             </thead>
             <tbody class="bg-white divide-y divide-gray-200">
                 @php
-                    $sortedTeams = collect($results->teams)->sortByDesc('total_vp');
+                    $sortedTeams = collect($results->teams)->sortByDesc(fn($t) => [$t->total_vp, -($t->number ?? 999999)]);
                 @endphp
                 @foreach ($sortedTeams as $index => $team)
                     <tr>

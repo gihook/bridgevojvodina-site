@@ -8,6 +8,7 @@ use App\Models\Board;
 use App\Models\Player;
 use App\DTOs\Tournament\RoundDTO;
 use App\DTOs\Tournament\MatchDTO;
+use App\DTOs\Tournament\TournamentResultsDTO;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -518,6 +519,104 @@ class TournamentController extends Controller
         return back()->with('success', __('Team name updated successfully.'));
     }
 
+    public function reorderRound(Request $request, Tournament $tournament, string $roundId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'direction' => 'required|string|in:up,down',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $rounds = $results->rounds;
+        $index = collect($rounds)->search(fn($r) => $r->id === $roundId);
+
+        if ($index === false) {
+            abort(404);
+        }
+
+        if ($rounds[$index]->status !== 'idle') {
+            return back()->withErrors(['error' => __('Only idle rounds can be reordered.')]);
+        }
+
+        $direction = $request->direction;
+        $newIndex = ($direction === 'up') ? $index - 1 : $index + 1;
+
+        if ($newIndex < 0 || $newIndex >= count($rounds)) {
+            return back();
+        }
+
+        // Swap
+        $temp = $rounds[$index];
+        $rounds[$index] = $rounds[$newIndex];
+        $rounds[$newIndex] = $temp;
+
+        $results->rounds = $rounds;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Round reordered successfully.'));
+    }
+
+    public function updateByeVP(Request $request, Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'bye_vp' => 'required|numeric|min:0|max:20',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $results->bye_vp = (float) $request->bye_vp;
+        
+        $this->recalculateStandings($results);
+        
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Bye VP updated and standings recalculated.'));
+    }
+
+    protected function recalculateStandings(TournamentResultsDTO $results): void
+    {
+        // Reset all team VPs
+        foreach ($results->teams as $team) {
+            $team->total_vp = 0;
+        }
+
+        // Process all matches in all rounds
+        foreach ($results->rounds as $round) {
+            foreach ($round->matches as $match) {
+                // If it's a bye, update the VP based on current tournament setting
+                if (!$match->home_team_id || !$match->away_team_id) {
+                    if ($match->home_team_id) {
+                        $match->home_vp = $results->bye_vp;
+                        $match->away_vp = 0;
+                    } else {
+                        $match->away_vp = $results->bye_vp;
+                        $match->home_vp = 0;
+                    }
+                }
+
+                // Add VPs to teams
+                if ($match->home_team_id) {
+                    $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
+                    if ($team) $team->total_vp += $match->home_vp;
+                }
+                if ($match->away_team_id) {
+                    $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
+                    if ($team) $team->total_vp += $match->away_vp;
+                }
+            }
+        }
+    }
+
     public function generateRounds(Request $request, Tournament $tournament): RedirectResponse
     {
         Gate::authorize('update', $tournament);
@@ -554,14 +653,19 @@ class TournamentController extends Controller
             $rotatingTeamIdx = ($r - 1) % ($n - 1);
             $opponent = $teams[$rotatingTeamIdx];
 
-            if ($fixedTeam->id && $opponent->id) {
+            if ($fixedTeam->id || $opponent->id) {
                 // Alternating home/away for the fixed team
                 // Fixed team is Home in odd rounds, Away in even rounds
                 $isFixedHome = ($r % 2 !== 0);
+                $homeId = $isFixedHome ? $fixedTeam->id : $opponent->id;
+                $awayId = $isFixedHome ? $opponent->id : $fixedTeam->id;
+                
                 $matches[] = new MatchDTO(
-                    home_team_id: $isFixedHome ? $fixedTeam->id : $opponent->id,
-                    away_team_id: $isFixedHome ? $opponent->id : $fixedTeam->id,
-                    home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
+                    home_team_id: $homeId,
+                    away_team_id: $awayId,
+                    home_imp: 0, away_imp: 0, 
+                    home_vp: (!$awayId ? $results->bye_vp : 0), 
+                    away_vp: (!$homeId ? $results->bye_vp : 0)
                 );
             }
 
@@ -573,11 +677,13 @@ class TournamentController extends Controller
                 $t1 = $teams[$idx1];
                 $t2 = $teams[$idx2];
 
-                if ($t1->id && $t2->id) {
+                if ($t1->id || $t2->id) {
                     $matches[] = new MatchDTO(
                         home_team_id: $t1->id,
                         away_team_id: $t2->id,
-                        home_imp: 0, away_imp: 0, home_vp: 0, away_vp: 0
+                        home_imp: 0, away_imp: 0, 
+                        home_vp: (!$t2->id ? $results->bye_vp : 0), 
+                        away_vp: (!$t1->id ? $results->bye_vp : 0)
                     );
                 }
             }
@@ -612,10 +718,85 @@ class TournamentController extends Controller
         }
 
         $results->rounds = array_merge($results->rounds, $rounds);
+        $this->recalculateStandings($results);
         $tournament->team_results = $results;
         $tournament->save();
 
         return back()->with('success', __('Rounds generated successfully.'));
+    }
+
+    public function uploadRoundsCsv(Request $request, Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'csv_file' => 'required|file',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $file = $request->file('csv_file');
+        $handle = fopen($file->getRealPath(), 'r');
+        
+        // Skip header
+        fgetcsv($handle);
+
+        $roundsData = [];
+        $teamMap = collect($results->teams)->keyBy('number');
+
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 3) continue;
+
+            $roundName = trim($row[0]);
+            $homeNum = trim($row[1]);
+            $awayNum = trim($row[2]);
+
+            if (empty($roundName) || empty($homeNum) || empty($awayNum)) continue;
+            if (strtolower($homeNum) === 'bye' || strtolower($awayNum) === 'bye') continue;
+
+            $homeTeam = $teamMap->get($homeNum);
+            $awayTeam = $teamMap->get($awayNum);
+
+            // One can be null (bye), but not both
+            if (!$homeTeam && !$awayTeam) continue;
+
+            if (!isset($roundsData[$roundName])) {
+                $roundsData[$roundName] = [];
+            }
+
+            $roundsData[$roundName][] = new MatchDTO(
+                home_team_id: $homeTeam?->id,
+                away_team_id: $awayTeam?->id,
+                home_imp: 0, away_imp: 0, 
+                home_vp: (!$awayTeam ? $results->bye_vp : 0), 
+                away_vp: (!$homeTeam ? $results->bye_vp : 0)
+            );
+        }
+        fclose($handle);
+
+        if (empty($roundsData)) {
+            return back()->withErrors(['csv_file' => __('No valid matches found in CSV.')]);
+        }
+
+        $newRounds = [];
+        foreach ($roundsData as $name => $matches) {
+            $newRounds[] = new RoundDTO(
+                id: Str::uuid()->toString(),
+                name: $name,
+                status: 'idle',
+                matches: $matches
+            );
+        }
+
+        $results->rounds = array_merge($results->rounds, $newRounds);
+        $this->recalculateStandings($results);
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Rounds uploaded successfully.'));
     }
 
     public function destroyRound(Tournament $tournament, string $roundId): RedirectResponse

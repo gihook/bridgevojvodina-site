@@ -38,7 +38,10 @@ Route::patch('tournaments/{tournament}/teams/numbers', [TournamentController::cl
 Route::get('tournaments/{tournament}/teams/{teamId}/edit', [TournamentController::class, 'editTeam'])->name('tournaments.teams.edit');
 Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
 Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
+Route::patch('tournaments/{tournament}/bye-vp', [TournamentController::class, 'updateByeVP'])->name('tournaments.bye-vp.update');
 Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
+Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
+Route::patch('tournaments/{tournament}/rounds/{roundId}/reorder', [TournamentController::class, 'reorderRound'])->name('tournaments.rounds.reorder');
 Route::delete('tournaments/{tournament}/rounds/idle', [TournamentController::class, 'destroyIdleRounds'])->name('tournaments.rounds.idle.destroy');
 Route::delete('tournaments/{tournament}/rounds/{roundId}', [TournamentController::class, 'destroyRound'])->name('tournaments.rounds.destroy');
 Route::post('tournaments/{tournament}/teams/{teamId}/players', [TournamentController::class, 'addPlayerToTeam'])->name('tournaments.teams.players.add');

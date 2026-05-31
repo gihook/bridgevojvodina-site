@@ -10,7 +10,7 @@ class MatchDTO
      * @param MatchBoardDTO[] $boards
      */
     public function __construct(
-        public string $home_team_id,
+        public ?string $home_team_id,
         public ?string $away_team_id,
         public int $home_imp,
         public int $away_imp,
