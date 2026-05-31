@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <a href="{{ route('clubs.index') }}" class="text-blue-500 hover:text-blue-700">{{ __('Clubs') }}</a>
+            <span class="mx-2 text-gray-500">/</span>
             {{ $club->name }}
         </h2>
     </x-slot>
@@ -31,7 +33,7 @@
                     <div>
                         <p><strong>{{ __('Email') }}:</strong> {{ $club->email }}</p>
                         <p><strong>{{ __('Phone') }}:</strong> {{ $club->phone }}</p>
-                        <p><strong>{{ __('Status') }}:</strong> {{ $club->status }}</p>
+                        <p><strong>{{ __('Status') }}:</strong> {{ __($club->status) }}</p>
                         @if($club->link)
                             <p><strong>{{ __('Link') }}:</strong> <a href="{{ $club->link }}" target="_blank" class="text-blue-500 underline">{{ $club->link }}</a></p>
                         @endif

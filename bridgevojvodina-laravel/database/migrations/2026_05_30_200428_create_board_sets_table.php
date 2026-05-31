@@ -1,0 +1,30 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('board_sets', function (Blueprint $table) {
+            $table->id();
+            $table->foreignUuid('running_tournament_id')->nullable()->constrained('running_tournaments')->onDelete('cascade');
+            $table->foreignUuid('tournament_id')->nullable()->constrained('tournaments')->onDelete('cascade');
+            $table->string('name');
+            $table->timestamps();
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('board_sets');
+    }
+};

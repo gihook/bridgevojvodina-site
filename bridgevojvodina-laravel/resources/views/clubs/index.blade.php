@@ -30,7 +30,7 @@
                                 <tr class="hover:bg-gray-100 cursor-pointer" onclick="window.location='{{ route('clubs.show', $club) }}'">
                                     <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $club->name }}</td>
                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $club->city }}</td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $club->status }}</td>
+                                    <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ __($club->status) }}</td>
                                 </tr>
                             @endforeach
                         </tbody>

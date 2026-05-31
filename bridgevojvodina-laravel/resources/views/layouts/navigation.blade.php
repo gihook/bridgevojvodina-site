@@ -24,6 +24,9 @@
                     <x-nav-link :href="route('events.index')" :active="request()->routeIs('events.*')">
                         {{ __('Events') }}
                     </x-nav-link>
+                    <x-nav-link :href="route('tournaments.index')" :active="request()->routeIs('tournaments.*')">
+                        {{ __('Tournaments') }}
+                    </x-nav-link>
                     <x-nav-link :href="route('contact')" :active="request()->routeIs('contact')">
                         {{ __('Contact') }}
                     </x-nav-link>
@@ -118,6 +121,9 @@
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('events.index')" :active="request()->routeIs('events.*')">
                 {{ __('Events') }}
+            </x-responsive-nav-link>
+            <x-responsive-nav-link :href="route('tournaments.index')" :active="request()->routeIs('tournaments.*')">
+                {{ __('Tournaments') }}
             </x-responsive-nav-link>
             <x-responsive-nav-link :href="route('contact')" :active="request()->routeIs('contact')">
                 {{ __('Contact') }}

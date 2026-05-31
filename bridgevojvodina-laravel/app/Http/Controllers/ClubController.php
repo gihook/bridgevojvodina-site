@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Club;
 use Illuminate\Http\Request;
+use Illuminate\Foundation\Auth\Access\AuthorizesRequests;
 
 class ClubController extends Controller
 {
+    use AuthorizesRequests;
+
     /**
      * Display a listing of the resource.
      */
@@ -18,11 +21,13 @@ class ClubController extends Controller
 
     public function create()
     {
+        $this->authorize('create', Club::class);
         return view('clubs.create');
     }
 
     public function store(Request $request)
     {
+        $this->authorize('create', Club::class);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
@@ -30,7 +35,7 @@ class ClubController extends Controller
             'representative' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:255',
-            'status' => 'required|string|max:255',
+            'status' => 'required|in:Active,Inactive',
             'link' => 'nullable|url|max:255',
         ]);
 
@@ -46,11 +51,13 @@ class ClubController extends Controller
 
     public function edit(Club $club)
     {
+        $this->authorize('update', $club);
         return view('clubs.edit', compact('club'));
     }
 
     public function update(Request $request, Club $club)
     {
+        $this->authorize('update', $club);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'city' => 'required|string|max:255',
@@ -58,7 +65,7 @@ class ClubController extends Controller
             'representative' => 'required|string|max:255',
             'email' => 'required|email|max:255',
             'phone' => 'required|string|max:255',
-            'status' => 'required|string|max:255',
+            'status' => 'required|in:Active,Inactive',
             'link' => 'nullable|url|max:255',
         ]);
 
@@ -69,6 +76,7 @@ class ClubController extends Controller
 
     public function destroy(Club $club)
     {
+        $this->authorize('delete', $club);
         $club->delete();
 
         return redirect()->route('clubs.index')->with('success', 'Club deleted successfully.');

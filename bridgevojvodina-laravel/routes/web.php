@@ -12,8 +12,8 @@ use App\Http\Controllers\EventController;
 use App\Http\Controllers\UserController;
 
 use App\Http\Controllers\ContactController;
-
 use App\Http\Controllers\HomeController;
+use App\Http\Controllers\TournamentController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -26,15 +26,35 @@ Route::get('lang/{locale}', function ($locale) {
     return redirect()->back();
 })->name('lang.switch');
 
-Route::resource('clubs', ClubController::class)->only(['index', 'show']);
-Route::resource('players', PlayerController::class)->only(['index', 'show']);
-Route::resource('events', EventController::class)->only(['index', 'show']);
+Route::resource('clubs', ClubController::class);
+Route::resource('players', PlayerController::class);
+Route::resource('events', EventController::class);
+Route::resource('tournaments', TournamentController::class);
+Route::post('tournaments/{tournament}/board-sets', [TournamentController::class, 'uploadBoardSet'])->name('tournaments.board-sets.upload');
+Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
+Route::delete('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'destroyBoardSet'])->name('tournaments.board-sets.destroy');
+Route::get('tournaments/{tournament}/teams/numbers', [TournamentController::class, 'editTeamNumbers'])->name('tournaments.teams.numbers.edit');
+Route::patch('tournaments/{tournament}/teams/numbers', [TournamentController::class, 'updateTeamNumbers'])->name('tournaments.teams.numbers.update');
+Route::get('tournaments/{tournament}/teams/{teamId}/edit', [TournamentController::class, 'editTeam'])->name('tournaments.teams.edit');
+Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
+Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
+Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
+Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
+Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
+Route::patch('tournaments/{tournament}/rounds/{roundId}/reorder', [TournamentController::class, 'reorderRound'])->name('tournaments.rounds.reorder');
+Route::delete('tournaments/{tournament}/rounds/idle', [TournamentController::class, 'destroyIdleRounds'])->name('tournaments.rounds.idle.destroy');
+Route::delete('tournaments/{tournament}/rounds/{roundId}', [TournamentController::class, 'destroyRound'])->name('tournaments.rounds.destroy');
+Route::post('tournaments/{tournament}/teams/{teamId}/players', [TournamentController::class, 'addPlayerToTeam'])->name('tournaments.teams.players.add');
+Route::delete('tournaments/{tournament}/teams/{teamId}/players/{playerId}', [TournamentController::class, 'removePlayerFromTeam'])->name('tournaments.teams.players.remove');
+Route::post('tournaments/{tournament}/teams/{teamId}/captain/{playerId}', [TournamentController::class, 'setTeamCaptain'])->name('tournaments.teams.captain.set');
+Route::get('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'match'])->name('tournaments.match');
+Route::get('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/edit', [TournamentController::class, 'editMatchRoom'])->name('tournaments.match.room.edit');
+Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/lineup', [TournamentController::class, 'updateMatchLineup'])->name('tournaments.match.room.lineup.update');
+Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/board/{boardNumber}', [TournamentController::class, 'updateMatchBoard'])->name('tournaments.match.room.board.update');
+Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
-    Route::resource('clubs', ClubController::class)->except(['index', 'show']);
-    Route::resource('players', PlayerController::class)->except(['index', 'show']);
-    Route::resource('events', EventController::class)->except(['index', 'show']);
 });
 
 Route::get('/dashboard', function () {
@@ -48,13 +68,4 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
-
-Route::get('/run-migrations-v1-769a3d1f', function () {
-    try {
-        Artisan::call('migrate', ['--force' => true]);
-        return '<pre>' . Artisan::output() . '</pre>';
-    } catch (\Exception $e) {
-        return 'Error: ' . $e->getMessage();
-    }
-});
 

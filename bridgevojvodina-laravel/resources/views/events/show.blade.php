@@ -1,6 +1,8 @@
 <x-app-layout>
     <x-slot name="header">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <a href="{{ route('events.index') }}" class="text-blue-500 hover:text-blue-700">{{ __('Events') }}</a>
+            <span class="mx-2 text-gray-500">/</span>
             {{ $event->title }}
         </h2>
     </x-slot>
@@ -24,9 +26,10 @@
                 @endif
                 <p><strong>{{ __('Date') }}:</strong> {{ $event->date }}</p>
                 <p><strong>{{ __('Club') }}:</strong> <a href="{{ route('clubs.show', $event->club) }}" class="text-blue-500 underline">{{ $event->club->name }}</a></p>
-                <div class="mt-4">
-                    <p><strong>{{ __('Description') }}:</strong></p>
-                    <div class="mt-2 whitespace-pre-wrap">{{ $event->description }}</div>
+                <div class="mt-8 border-t pt-6">
+                    <div class="prose max-w-none">
+                        {!! Illuminate\Support\Str::markdown($event->description ?? '') !!}
+                    </div>
                 </div>
             </div>
         </div>
