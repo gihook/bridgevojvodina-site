@@ -21,7 +21,8 @@ use Illuminate\Support\Str;
 class TournamentController extends Controller
 {
     public function __construct(
-        protected TournamentHydrationService $hydrationService
+        protected TournamentHydrationService $hydrationService,
+        protected \App\Services\VpCalculationService $vpService
     ) {}
 
     public function index(): View
@@ -594,6 +595,8 @@ class TournamentController extends Controller
 
         // Process all matches in all rounds
         foreach ($results->rounds as $round) {
+            $boards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+            
             foreach ($round->matches as $match) {
                 // If it's a bye, update the VP based on current tournament setting
                 if (!$match->home_team_id || !$match->away_team_id) {
@@ -603,6 +606,13 @@ class TournamentController extends Controller
                     } else {
                         $match->away_vp = $results->bye_vp;
                         $match->home_vp = 0;
+                    }
+                } else {
+                    // Automatically calculate VP based on IMPs
+                    if ($match->home_imp !== 0 || $match->away_imp !== 0) {
+                        list($hVp, $aVp) = $this->vpService->calculateVp($match->home_imp, $match->away_imp, $boards);
+                        $match->home_vp = $hVp;
+                        $match->away_vp = $aVp;
                     }
                 }
 

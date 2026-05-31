@@ -137,7 +137,47 @@
                 </div>
 
                 <!-- Match Score -->
-                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg" x-data="{
+                    homeImp: {{ $match->home_imp }},
+                    awayImp: {{ $match->away_imp }},
+                    homeVp: {{ $match->home_vp }},
+                    awayVp: {{ $match->away_vp }},
+                    boards: {{ $round->boards_per_round ?? $results->boards_per_round ?? 16 }},
+                    
+                    calculate() {
+                        let imps = this.homeImp - this.awayImp;
+                        let absImps = Math.abs(imps);
+                        let x = 15 * Math.sqrt(this.boards);
+                        
+                        if (absImps >= x) {
+                            this.homeVp = imps >= 0 ? 20.00 : 0.00;
+                            this.awayVp = imps >= 0 ? 0.00 : 20.00;
+                            return;
+                        }
+                        
+                        if (absImps === 0) {
+                            this.homeVp = 10.00;
+                            this.awayVp = 10.00;
+                            return;
+                        }
+
+                        let tau = (Math.sqrt(5) - 1) / 2;
+                        let r = Math.pow(tau, 3);
+                        let raw = 10 + 10 * ((1 - Math.pow(r, absImps / x)) / (1 - r));
+                        
+                        // WBF Rounding: truncate to 3, round to 2
+                        let winVp = Math.round(Math.floor(raw * 1000 + 1e-9) / 10) / 100;
+                        let loseVp = Math.round((20 - winVp) * 100) / 100;
+
+                        if (imps > 0) {
+                            this.homeVp = winVp.toFixed(2);
+                            this.awayVp = loseVp.toFixed(2);
+                        } else {
+                            this.homeVp = loseVp.toFixed(2);
+                            this.awayVp = winVp.toFixed(2);
+                        }
+                    }
+                }">
                     <div class="p-6">
                         <h3 class="text-lg font-bold mb-6 border-b pb-2">{{ __('Match Score') }}</h3>
                         
@@ -146,12 +186,12 @@
                                 <div class="flex items-center gap-4">
                                     <div class="flex-1">
                                         <x-input-label for="home_imp" :value="__('Home IMPs')" />
-                                        <x-text-input id="home_imp" name="home_imp" type="number" class="mt-1 block w-full text-2xl text-center font-bold" :value="old('home_imp', $match->home_imp)" required />
+                                        <x-text-input id="home_imp" name="home_imp" type="number" class="mt-1 block w-full text-2xl text-center font-bold" x-model.number="homeImp" @input="calculate()" required />
                                     </div>
                                     <div class="text-3xl font-black pt-6">:</div>
                                     <div class="flex-1">
                                         <x-input-label for="away_imp" :value="__('Away IMPs')" />
-                                        <x-text-input id="away_imp" name="away_imp" type="number" class="mt-1 block w-full text-2xl text-center font-bold" :value="old('away_imp', $match->away_imp)" required />
+                                        <x-text-input id="away_imp" name="away_imp" type="number" class="mt-1 block w-full text-2xl text-center font-bold" x-model.number="awayImp" @input="calculate()" required />
                                     </div>
                                 </div>
                             </div>
@@ -160,16 +200,16 @@
                                 <div class="flex items-center gap-4">
                                     <div class="flex-1">
                                         <x-input-label for="home_vp" :value="__('Home VP')" />
-                                        <x-text-input id="home_vp" name="home_vp" type="number" step="0.01" class="mt-1 block w-full text-xl text-center text-blue-700 font-black" :value="old('home_vp', $match->home_vp)" required />
+                                        <x-text-input id="home_vp" name="home_vp" type="number" step="0.01" class="mt-1 block w-full text-xl text-center text-blue-700 font-black bg-gray-100" x-model="homeVp" readonly required />
                                     </div>
                                     <div class="text-2xl font-bold pt-6">-</div>
                                     <div class="flex-1">
                                         <x-input-label for="away_vp" :value="__('Away VP')" />
-                                        <x-text-input id="away_vp" name="away_vp" type="number" step="0.01" class="mt-1 block w-full text-xl text-center text-blue-700 font-black" :value="old('away_vp', $match->away_vp)" required />
+                                        <x-text-input id="away_vp" name="away_vp" type="number" step="0.01" class="mt-1 block w-full text-xl text-center text-blue-700 font-black bg-gray-100" x-model="awayVp" readonly required />
                                     </div>
                                 </div>
                                 <p class="text-xs text-gray-500 italic text-center">
-                                    {{ __('Enter Victory Points manually or based on WBF scale.') }}
+                                    {{ __('Victory Points are automatically calculated based on the WBF Continuous Scale.') }}
                                 </p>
                             </div>
                         </div>

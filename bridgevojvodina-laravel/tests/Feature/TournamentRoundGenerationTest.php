@@ -319,8 +319,8 @@ class TournamentRoundGenerationTest extends TestCase
         $response = $this->actingAs($director)->patch(route('tournaments.match.update', [$tournament, 'r1', 't1']), [
             'home_imp' => 50,
             'away_imp' => 20,
-            'home_vp' => 17.5,
-            'away_vp' => 2.5,
+            'home_vp' => 17.5, // This should be ignored/overwritten by auto-calc
+            'away_vp' => 2.5,  // This should be ignored/overwritten by auto-calc
             'open_n_id' => $p1->id,
             'open_s_id' => null,
             'open_e_id' => $p2->id,
@@ -336,11 +336,12 @@ class TournamentRoundGenerationTest extends TestCase
         $tournament->refresh();
         $match = $tournament->team_results->rounds[0]->matches[0];
         $this->assertEquals(50, $match->home_imp);
-        $this->assertEquals(17.5, $match->home_vp);
+        // 50-20 = 30 IMP diff. For 16 boards, WBF continuous is ~16.73
+        $this->assertEquals(16.73, $match->home_vp);
         $this->assertContains($p1->id, $match->open_ns_ids);
         
         // Standings updated
-        $this->assertEquals(17.5, $tournament->team_results->teams[0]->total_vp);
-        $this->assertEquals(2.5, $tournament->team_results->teams[1]->total_vp);
+        $this->assertEquals(16.73, $tournament->team_results->teams[0]->total_vp);
+        $this->assertEquals(3.27, $tournament->team_results->teams[1]->total_vp);
     }
 }
