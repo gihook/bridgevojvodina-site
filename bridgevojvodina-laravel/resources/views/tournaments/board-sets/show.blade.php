@@ -103,6 +103,62 @@
                             </div>
                         @endforeach
                     </div>
+
+                    <!-- Board Results Table -->
+                    <div class="mt-12 border-t pt-8">
+                        @foreach($boards as $index => $board)
+                            <div x-show="currentIdx === {{ $index }}" x-cloak>
+                                <div class="flex items-center justify-between mb-6">
+                                    <h4 class="text-lg font-black uppercase tracking-widest text-gray-500">
+                                        {{ __('Match Results for Board') }} {{ $board->board_number }}
+                                    </h4>
+                                </div>
+
+                                @if(!empty($boardResults[$board->board_number]))
+                                    <div class="overflow-x-auto rounded-xl border border-gray-200">
+                                        <table class="min-w-full text-xs text-center border-collapse">
+                                            <thead class="bg-gray-50 font-black text-gray-700 uppercase tracking-tighter">
+                                                <tr>
+                                                    <th class="py-4 border px-4">{{ __('Match') }}</th>
+                                                    <th class="py-4 border">{{ __('Room') }}</th>
+                                                    <th class="py-4 border text-blue-600">{{ __('NS') }}</th>
+                                                    <th class="py-4 border text-blue-600">{{ __('EW') }}</th>
+                                                    <th class="py-4 border">{{ __('Contract') }}</th>
+                                                    <th class="py-4 border text-center">{{ __('Score') }} (NS)</th>
+                                                    <th class="py-4 border" colspan="2">{{ __('IMPs') }}</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody class="divide-y divide-gray-200">
+                                                @foreach($boardResults[$board->board_number] as $res)
+                                                    <tr class="hover:bg-gray-50 transition-colors">
+                                                        <td class="py-4 px-4 border text-left">
+                                                            <div class="font-black text-gray-900 leading-tight">{{ $res['home_team'] }} <span class="text-gray-300 font-normal">vs</span> {{ $res['away_team'] }}</div>
+                                                            <div class="text-[9px] text-gray-400 font-bold uppercase mt-0.5">{{ $res['round_name'] }}</div>
+                                                        </td>
+                                                        <td class="py-4 px-4 border font-bold uppercase tracking-widest text-[10px] {{ $res['room'] === 'Open' ? 'text-blue-600' : 'text-red-600' }}">
+                                                            {{ __($res['room']) }}
+                                                        </td>
+                                                        <td class="py-4 border px-3 text-gray-600 font-medium">{{ $res['ns_names'] }}</td>
+                                                        <td class="py-4 border px-3 text-gray-600 font-medium">{{ $res['ew_names'] }}</td>
+                                                        <td class="py-4 border font-bold italic">{{ $res['contract'] ?: '-' }}</td>
+                                                        <td class="py-4 border font-mono font-black text-sm {{ $res['score'] > 0 ? 'text-green-600' : ($res['score'] < 0 ? 'text-red-600' : '') }}">
+                                                            {{ $res['score'] !== null ? ($res['score'] > 0 ? '+' : '') . $res['score'] : '-' }}
+                                                        </td>
+                                                        <td class="py-4 border font-black text-green-700 text-sm w-12">{{ $res['home_imp'] ?: '' }}</td>
+                                                        <td class="py-4 border font-black text-red-700 text-sm w-12">{{ $res['away_imp'] ?: '' }}</td>
+                                                    </tr>
+                                                @endforeach
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                @else
+                                    <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-12 text-center text-gray-400 font-bold italic text-sm">
+                                        {{ __('No match results recorded for this board yet.') }}
+                                    </div>
+                                @endif
+                            </div>
+                        @endforeach
+                    </div>
                 </div>
             </div>
         </div>

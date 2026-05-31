@@ -158,7 +158,7 @@ class TournamentController extends Controller
     public function showBoardSet(Tournament $tournament, BoardSet $boardSet): View
     {
         Gate::authorize('update', $tournament);
-        
+
         if ($boardSet->tournament_id !== $tournament->id) {
             abort(404);
         }
@@ -166,7 +166,77 @@ class TournamentController extends Controller
         $boardSet->load('boards');
         $boards = $boardSet->boards->sortBy('board_number');
 
-        return view('tournaments.board-sets.show', compact('tournament', 'boardSet', 'boards'));
+        $results = $tournament->team_results;
+        $boardResults = [];
+
+        if ($results) {
+            // Find ALL rounds that use this board set (could be multiple if set is reused)
+            $relevantRounds = collect($results->rounds)->where('board_set_id', $boardSet->id);
+
+            if ($relevantRounds->isNotEmpty()) {
+                // Pre-load all players for this tournament for faster lookup
+                $playerIds = collect($results->teams)->flatMap->player_ids->unique();
+                $players = Player::whereIn('id', $playerIds)->get()->keyBy('id');
+
+                foreach ($relevantRounds as $round) {
+                    foreach ($round->matches as $match) {
+                        if (!$match->home_team_id || !$match->away_team_id || $match->home_team_id === 'bye' || $match->away_team_id === 'bye') {
+                            continue;
+                        }
+
+                        $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
+                        $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
+
+                        // Helper to get player names (last names joined by hyphen)
+                        $getNames = function($ids) use ($players) {
+                            if (empty($ids)) return '-';
+                            return collect($ids)->map(fn($id) => optional($players->get($id))->last_name)->filter()->implode(' - ');
+                        };
+
+                        $openNs = $getNames($match->open_ns_ids);
+                        $openEw = $getNames($match->open_ew_ids);
+                        $closedNs = $getNames($match->closed_ns_ids);
+                        $closedEw = $getNames($match->closed_ew_ids);
+
+                        foreach ($match->boards as $boardData) {
+                            // Add Open Room result if it exists
+                            if ($boardData->home_score !== null) {
+                                $boardResults[$boardData->board_number][] = [
+                                    'round_name' => $round->name,
+                                    'home_team' => $homeTeam->name ?? 'Unknown',
+                                    'away_team' => $awayTeam->name ?? 'Unknown',
+                                    'room' => 'Open',
+                                    'ns_names' => $openNs,
+                                    'ew_names' => $openEw,
+                                    'contract' => $boardData->home_contract,
+                                    'score' => $boardData->home_score,
+                                    'home_imp' => $boardData->home_imp,
+                                    'away_imp' => $boardData->away_imp,
+                                ];
+                            }
+                            
+                            // Add Closed Room result if it exists
+                            if ($boardData->away_score !== null) {
+                                $boardResults[$boardData->board_number][] = [
+                                    'round_name' => $round->name,
+                                    'home_team' => $homeTeam->name ?? 'Unknown',
+                                    'away_team' => $awayTeam->name ?? 'Unknown',
+                                    'room' => 'Closed',
+                                    'ns_names' => $closedNs,
+                                    'ew_names' => $closedEw,
+                                    'contract' => $boardData->away_contract,
+                                    'score' => $boardData->away_score,
+                                    'home_imp' => $boardData->home_imp,
+                                    'away_imp' => $boardData->away_imp,
+                                ];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        return view('tournaments.board-sets.show', compact('tournament', 'boardSet', 'boards', 'boardResults'));
     }
 
     public function destroyBoardSet(Tournament $tournament, BoardSet $boardSet): RedirectResponse
