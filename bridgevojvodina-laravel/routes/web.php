@@ -33,6 +33,12 @@ Route::resource('tournaments', TournamentController::class);
 Route::post('tournaments/{tournament}/board-sets', [TournamentController::class, 'uploadBoardSet'])->name('tournaments.board-sets.upload');
 Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
 Route::delete('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'destroyBoardSet'])->name('tournaments.board-sets.destroy');
+Route::get('tournaments/{tournament}/teams/{teamId}/edit', [TournamentController::class, 'editTeam'])->name('tournaments.teams.edit');
+Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
+Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
+Route::post('tournaments/{tournament}/teams/{teamId}/players', [TournamentController::class, 'addPlayerToTeam'])->name('tournaments.teams.players.add');
+Route::delete('tournaments/{tournament}/teams/{teamId}/players/{playerId}', [TournamentController::class, 'removePlayerFromTeam'])->name('tournaments.teams.players.remove');
+Route::post('tournaments/{tournament}/teams/{teamId}/captain/{playerId}', [TournamentController::class, 'setTeamCaptain'])->name('tournaments.teams.captain.set');
 Route::get('tournaments/{tournament}/round/{round}/match/{home_team}', [TournamentController::class, 'match'])->name('tournaments.match');
 Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 

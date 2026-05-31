@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Tournament;
 use App\Models\BoardSet;
 use App\Models\Board;
+use App\Models\Player;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -309,6 +310,159 @@ class TournamentController extends Controller
 
         return redirect()->route('tournaments.edit', $tournament)
             ->with('success', __('Board set uploaded successfully.'));
+    }
+
+    public function editTeam(Tournament $tournament, string $teamId): View
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $team = collect($results->teams)->firstWhere('id', $teamId);
+        if (!$team) {
+            abort(404);
+        }
+
+        $allTournamentPlayerIds = collect($results->teams)->flatMap(fn($t) => $t->player_ids)->unique()->toArray();
+        $teamPlayerIds = $team->player_ids ?? [];
+        
+        $currentPlayers = Player::whereIn('id', $teamPlayerIds)->orderBy('last_name')->get();
+        
+        // Players not in any team of this tournament
+        $availablePlayers = Player::whereNotIn('id', $allTournamentPlayerIds)->orderBy('last_name')->get();
+
+        return view('tournaments.teams.edit', compact('tournament', 'team', 'currentPlayers', 'availablePlayers'));
+    }
+
+    public function addPlayerToTeam(Request $request, Tournament $tournament, string $teamId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'player_id' => 'required|integer|exists:players,id',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $allTournamentPlayerIds = collect($results->teams)->flatMap(fn($t) => $t->player_ids)->unique()->toArray();
+        if (in_array($request->player_id, $allTournamentPlayerIds)) {
+            return back()->withErrors(['player_id' => __('Player is already registered in a team for this tournament.')]);
+        }
+
+        $teamIndex = collect($results->rounds)->search(fn($t) => false); // Just finding index
+        $teamIndex = collect($results->teams)->search(fn($t) => $t->id === $teamId);
+        if ($teamIndex === false) abort(404);
+
+        $playerIds = $results->teams[$teamIndex]->player_ids ?? [];
+        $playerIds[] = (int) $request->player_id;
+        $results->teams[$teamIndex]->player_ids = array_values(array_unique($playerIds));
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Player added to team.'));
+    }
+
+    public function removePlayerFromTeam(Tournament $tournament, string $teamId, int $playerId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $teamIndex = collect($results->teams)->search(fn($t) => $t->id === $teamId);
+        if ($teamIndex === false) abort(404);
+
+        $playerIds = $results->teams[$teamIndex]->player_ids ?? [];
+        $results->teams[$teamIndex]->player_ids = array_values(array_filter($playerIds, fn($id) => $id != $playerId));
+
+        // If removed player was captain, unset captain
+        if ($results->teams[$teamIndex]->captain_id == $playerId) {
+            $results->teams[$teamIndex]->captain_id = 0;
+        }
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Player removed from team.'));
+    }
+
+    public function setTeamCaptain(Tournament $tournament, string $teamId, int $playerId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $teamIndex = collect($results->teams)->search(fn($t) => $t->id === $teamId);
+        if ($teamIndex === false) abort(404);
+
+        if (!in_array($playerId, $results->teams[$teamIndex]->player_ids)) {
+            return back()->withErrors(['error' => __('Player must be in the team to be captain.')]);
+        }
+
+        $results->teams[$teamIndex]->captain_id = $playerId;
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team captain updated.'));
+    }
+
+    public function updateRoundStatus(Request $request, Tournament $tournament, string $roundId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'status' => 'required|string|in:idle,inProgress,complete',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        $results->rounds[$roundIndex]->status = $request->status;
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Round status updated.'));
+    }
+
+    public function updateTeam(Request $request, Tournament $tournament, string $teamId): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $teamIndex = collect($results->teams)->search(fn($t) => $t->id === $teamId);
+        if ($teamIndex === false) {
+            abort(404);
+        }
+
+        $results->teams[$teamIndex]->name = $request->name;
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team name updated successfully.'));
     }
 
     public function destroy(Tournament $tournament): RedirectResponse

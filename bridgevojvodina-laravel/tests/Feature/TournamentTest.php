@@ -105,7 +105,7 @@ class TournamentTest extends TestCase
         $this->assertDatabaseHas('tournaments', ['id' => $tournament->id, 'title' => 'Admin Updated']);
     }
 
-    public function test_players_cannot_create_tournaments()
+    public function test_player_cannot_create_tournament()
     {
         $player = User::factory()->create(['role' => User::ROLE_PLAYER]);
 
@@ -115,4 +115,63 @@ class TournamentTest extends TestCase
 
         $response->assertStatus(403);
     }
-}
+
+    public function test_director_cannot_edit_others_tournament()
+    {
+        $director1 = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $director2 = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create(['user_id' => $director1->id]);
+
+        $response = $this->actingAs($director2)->get(route('tournaments.edit', $tournament));
+        $response->assertStatus(403);
+
+        $response = $this->actingAs($director2)->patch(route('tournaments.update', $tournament), [
+            'title' => 'Hijacked',
+        ]);
+        $response->assertStatus(403);
+    }
+
+    public function test_admin_can_edit_any_tournament()
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create(['user_id' => $director->id]);
+
+        $response = $this->actingAs($admin)->get(route('tournaments.edit', $tournament));
+        $response->assertStatus(200);
+
+        $response = $this->actingAs($admin)->patch(route('tournaments.update', $tournament), [
+            'title' => 'Admin Edited',
+            'description' => 'Desc',
+            'details' => 'Details',
+        ]);
+        $response->assertRedirect();
+        $this->assertEquals('Admin Edited', $tournament->fresh()->title);
+        }
+
+        public function test_director_can_update_round_status()
+        {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'rounds' => [
+                    ['id' => 'r1', 'name' => 'Round 1', 'status' => 'idle']
+                ],
+                'teams' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->patch(route('tournaments.rounds.status.update', [$tournament, 'r1']), [
+            'status' => 'inProgress',
+        ]);
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertEquals('inProgress', $tournament->team_results->rounds[0]->status);
+        }
+        }

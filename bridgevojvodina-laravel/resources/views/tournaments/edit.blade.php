@@ -53,42 +53,128 @@
                         </div>
                     @endif
 
-                    @if(isset($boardSets) && $boardSets->count() > 0)
+                    @if($tournament->team_results && count($tournament->team_results->rounds) > 0)
                         <div class="mt-12 pt-8 border-t border-gray-200">
-                            <h3 class="text-lg font-bold mb-4">{{ __('Board Sets') }}</h3>
+                            <h3 class="text-lg font-bold mb-4">{{ __('Rounds & Board Sets') }}</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <thead class="bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Round') }}</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Status') }}</th>
+                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Board Set') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($tournament->team_results->rounds as $round)
+                                            <tr class="align-top">
+                                                <td class="px-6 py-4">
+                                                    <div class="text-sm font-bold text-gray-900 mb-2">{{ $round->name }}</div>
+                                                    <!-- Match Pairs -->
+                                                    <div class="space-y-1">
+                                                        @foreach($round->matches as $match)
+                                                            <div class="text-[11px] text-gray-500 flex items-center gap-2">
+                                                                <span class="font-medium text-gray-700">{{ collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye') }}</span>
+                                                                <span class="text-gray-300">vs</span>
+                                                                <span class="font-medium text-gray-700">{{ collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye') }}</span>
+                                                            </div>
+                                                        @endforeach
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    @php
+                                                        $statusColors = [
+                                                            'idle' => 'bg-gray-100 text-gray-800',
+                                                            'inProgress' => 'bg-blue-100 text-blue-800',
+                                                            'complete' => 'bg-green-100 text-green-800',
+                                                        ];
+                                                        $roundStatus = $round->status ?? 'idle';
+                                                    @endphp
+                                                    <div class="flex flex-col gap-2">
+                                                        <span class="inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase {{ $statusColors[$roundStatus] ?? 'bg-gray-100 text-gray-800' }}">
+                                                            {{ __($roundStatus) }}
+                                                        </span>
+                                                        <form method="POST" action="{{ route('tournaments.rounds.status.update', [$tournament, $round->id]) }}">
+                                                            @csrf
+                                                            @method('PATCH')
+                                                            <select name="status" onchange="this.form.submit()" class="text-[10px] py-1 px-2 border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                                                                <option value="idle" {{ $roundStatus === 'idle' ? 'selected' : '' }}>{{ __('idle') }}</option>
+                                                                <option value="inProgress" {{ $roundStatus === 'inProgress' ? 'selected' : '' }}>{{ __('inProgress') }}</option>
+                                                                <option value="complete" {{ $roundStatus === 'complete' ? 'selected' : '' }}>{{ __('complete') }}</option>
+                                                            </select>
+                                                        </form>
+                                                    </div>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                                                    @if($round->board_set_id)
+                                                        @php
+                                                            $set = $boardSets->firstWhere('id', $round->board_set_id);
+                                                        @endphp
+                                                        @if($set)
+                                                            <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="group flex flex-col">
+                                                                <span class="font-bold text-indigo-600 group-hover:text-indigo-900 group-hover:underline">{{ $set->name }}</span>
+                                                                <span class="text-[10px] text-gray-400">{{ $set->created_at->format('d.m.Y H:i') }}</span>
+                                                            </a>
+                                                        @else
+                                                            <span class="text-red-400 italic text-xs">{{ __('Set not found') }}</span>
+                                                        @endif
+                                                    @else
+                                                        <span class="text-gray-400 italic text-xs">{{ __('None') }}</span>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    @php
+                        $unassignedSets = $boardSets->filter(function($set) use ($tournament) {
+                            return !$tournament->team_results || !collect($tournament->team_results->rounds)->contains('board_set_id', $set->id);
+                        });
+                    @endphp
+
+                    @if($unassignedSets->count() > 0)
+                        <div class="mt-8 pt-8 border-t border-gray-200">
+                            <h3 class="text-lg font-bold mb-4 text-gray-600">{{ __('Unassigned Board Sets') }}</h3>
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full divide-y divide-gray-200">
+                                    <tbody class="bg-white divide-y divide-gray-200">
+                                        @foreach($unassignedSets as $set)
+                                            <tr>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                                                    <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="text-indigo-600 hover:text-indigo-900 font-bold">
+                                                        {{ $set->name }}
+                                                    </a>
+                                                </td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $set->created_at->format('d.m.Y H:i') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if($tournament->team_results && count($tournament->team_results->teams) > 0)
+                        <div class="mt-12 pt-8 border-t border-gray-200">
+                            <h3 class="text-lg font-bold mb-4">{{ __('Teams') }}</h3>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">
                                         <tr>
                                             <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Name') }}</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Round') }}</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Date') }}</th>
                                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Actions') }}</th>
                                         </tr>
                                     </thead>
                                     <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($boardSets as $set)
+                                        @foreach($tournament->team_results->teams as $team)
                                             <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $set->name }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                    @php
-                                                        $associatedRounds = $tournament->team_results 
-                                                            ? collect($tournament->team_results->rounds)->filter(fn($r) => $r->board_set_id == $set->id)->pluck('name')->implode(', ')
-                                                            : '';
-                                                    @endphp
-                                                    {{ $associatedRounds ?: __('None') }}
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $set->created_at->format('d.m.Y H:i') }}</td>
+                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $team->name }}</td>
                                                 <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <div class="flex justify-end gap-3">
-                                                        <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('View Details') }}</a>
-                                                        
-                                                        <form method="POST" action="{{ route('tournaments.board-sets.destroy', [$tournament, $set]) }}" onsubmit="return confirm('{{ __('Are you sure?') }}')">
-                                                            @csrf
-                                                            @method('DELETE')
-                                                            <button type="submit" class="text-red-600 hover:text-red-900">{{ __('Delete') }}</button>
-                                                        </form>
-                                                    </div>
+                                                    <a href="{{ route('tournaments.teams.edit', [$tournament, $team->id]) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('Edit') }}</a>
                                                 </td>
                                             </tr>
                                         @endforeach
