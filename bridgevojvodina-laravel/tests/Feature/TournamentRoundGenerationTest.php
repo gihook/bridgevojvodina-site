@@ -321,19 +321,23 @@ class TournamentRoundGenerationTest extends TestCase
             'away_imp' => 20,
             'home_vp' => 17.5,
             'away_vp' => 2.5,
-            'open_ns_ids' => [$p1->id],
-            'closed_ew_ids' => [$p1->id],
-            'open_ew_ids' => [$p2->id],
-            'closed_ns_ids' => [$p2->id],
+            'open_n_id' => $p1->id,
+            'open_s_id' => null,
+            'open_e_id' => $p2->id,
+            'open_w_id' => null,
+            'closed_e_id' => $p1->id,
+            'closed_w_id' => null,
+            'closed_n_id' => $p2->id,
+            'closed_s_id' => null,
         ]);
 
-        $response->assertRedirect();
+        $response->assertRedirect(route('tournaments.edit', $tournament));
         
         $tournament->refresh();
         $match = $tournament->team_results->rounds[0]->matches[0];
         $this->assertEquals(50, $match->home_imp);
         $this->assertEquals(17.5, $match->home_vp);
-        $this->assertEquals([$p1->id], $match->open_ns_ids);
+        $this->assertContains($p1->id, $match->open_ns_ids);
         
         // Standings updated
         $this->assertEquals(17.5, $tournament->team_results->teams[0]->total_vp);

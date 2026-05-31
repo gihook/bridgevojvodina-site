@@ -98,17 +98,35 @@
                                         </thead>
                                         <tbody class="bg-white divide-y divide-gray-200">
                                             @foreach($tournament->team_results->rounds as $round)
+                                                @php
+                                                    $roundStatus = $round->status ?? 'idle';
+                                                @endphp
                                                 <tr class="align-top">
                                                     <td class="px-6 py-4">
                                                         <div class="text-sm font-bold text-gray-900 mb-2">{{ $round->name }}</div>
                                                         <!-- Match Pairs -->
                                                         <div class="space-y-1">
                                                             @foreach($round->matches as $match)
-                                                                <div class="text-[11px] text-gray-500 flex items-center gap-2">
-                                                                    <span class="font-medium text-gray-700">{{ collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye') }}</span>
-                                                                    <span class="text-gray-300">vs</span>
-                                                                    <span class="font-medium text-gray-700">{{ collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye') }}</span>
-                                                                </div>
+                                                                @php
+                                                                    $homeName = collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye');
+                                                                    $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye');
+                                                                    $isBye = !$match->home_team_id || !$match->away_team_id;
+                                                                    $canEdit = $roundStatus === 'inProgress' && !$isBye;
+                                                                @endphp
+
+                                                                @if($canEdit)
+                                                                    <a href="{{ route('tournaments.match.edit', [$tournament, $round->id, $match->home_team_id]) }}" class="text-[11px] text-indigo-600 hover:text-indigo-900 hover:underline flex items-center gap-2 font-bold">
+                                                                        <span>{{ $homeName }}</span>
+                                                                        <span class="text-gray-300 font-normal">vs</span>
+                                                                        <span>{{ $awayName }}</span>
+                                                                    </a>
+                                                                @else
+                                                                    <div class="text-[11px] text-gray-500 flex items-center gap-2">
+                                                                        <span class="font-medium text-gray-700">{{ $homeName }}</span>
+                                                                        <span class="text-gray-300">vs</span>
+                                                                        <span class="font-medium text-gray-700">{{ $awayName }}</span>
+                                                                    </div>
+                                                                @endif
                                                             @endforeach
                                                         </div>
                                                     </td>
@@ -119,7 +137,6 @@
                                                                 'inProgress' => 'bg-blue-100 text-blue-800',
                                                                 'complete' => 'bg-green-100 text-green-800',
                                                             ];
-                                                            $roundStatus = $round->status ?? 'idle';
                                                         @endphp
                                                         <div class="flex flex-col gap-2">
                                                             <span class="inline-flex w-fit items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase {{ $statusColors[$roundStatus] ?? 'bg-gray-100 text-gray-800' }}">

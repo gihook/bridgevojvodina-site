@@ -858,10 +858,14 @@ class TournamentController extends Controller
             'away_imp' => 'required|integer',
             'home_vp' => 'required|numeric|min:0|max:20',
             'away_vp' => 'required|numeric|min:0|max:20',
-            'open_ns_ids' => 'nullable|array|max:2',
-            'open_ew_ids' => 'nullable|array|max:2',
-            'closed_ns_ids' => 'nullable|array|max:2',
-            'closed_ew_ids' => 'nullable|array|max:2',
+            'open_n_id' => 'nullable|integer|exists:players,id',
+            'open_s_id' => 'nullable|integer|exists:players,id',
+            'open_e_id' => 'nullable|integer|exists:players,id',
+            'open_w_id' => 'nullable|integer|exists:players,id',
+            'closed_n_id' => 'nullable|integer|exists:players,id',
+            'closed_s_id' => 'nullable|integer|exists:players,id',
+            'closed_e_id' => 'nullable|integer|exists:players,id',
+            'closed_w_id' => 'nullable|integer|exists:players,id',
         ]);
 
         $match = $results->rounds[$roundIndex]->matches[$matchIndex];
@@ -870,16 +874,16 @@ class TournamentController extends Controller
         $match->home_vp = (float) $request->home_vp;
         $match->away_vp = (float) $request->away_vp;
         
-        $match->open_ns_ids = array_map('intval', $request->input('open_ns_ids', []));
-        $match->open_ew_ids = array_map('intval', $request->input('open_ew_ids', []));
-        $match->closed_ns_ids = array_map('intval', $request->input('closed_ns_ids', []));
-        $match->closed_ew_ids = array_map('intval', $request->input('closed_ew_ids', []));
+        $match->open_ns_ids = array_map('intval', array_values(array_filter([$request->open_n_id, $request->open_s_id])));
+        $match->open_ew_ids = array_map('intval', array_values(array_filter([$request->open_e_id, $request->open_w_id])));
+        $match->closed_ns_ids = array_map('intval', array_values(array_filter([$request->closed_n_id, $request->closed_s_id])));
+        $match->closed_ew_ids = array_map('intval', array_values(array_filter([$request->closed_e_id, $request->closed_w_id])));
 
         $this->recalculateStandings($results);
         $tournament->team_results = $results;
         $tournament->save();
 
-        return redirect()->route('tournaments.match', [$tournament, $roundId, $homeTeamId])
+        return redirect()->route('tournaments.edit', $tournament)
             ->with('success', __('Match updated successfully.'));
     }
 

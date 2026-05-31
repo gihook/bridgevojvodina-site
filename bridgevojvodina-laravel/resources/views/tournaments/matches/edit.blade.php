@@ -4,8 +4,8 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Enter Results') }}: {{ $homeTeam->name }} vs {{ $awayTeam->name }}
             </h2>
-            <a href="{{ route('tournaments.match', [$tournament, $round->id, $homeTeam->id]) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                {{ __('Back to Match') }}
+            <a href="{{ route('tournaments.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                {{ __('Back to Tournament') }}
             </a>
         </div>
     </x-slot>
@@ -16,69 +16,121 @@
                 @csrf
                 @method('PATCH')
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-8">
-                    <!-- Home Team Lineup -->
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-t-4 border-blue-500">
-                        <div class="p-6">
-                            <h3 class="text-lg font-bold mb-4 text-blue-800">{{ $homeTeam->name }} {{ __('Lineup') }}</h3>
-                            
-                            <div class="space-y-4">
-                                <div>
-                                    <x-input-label :value="__('Open Room NS (Select 2)')" />
-                                    <div class="grid grid-cols-1 gap-2 mt-1">
-                                        @foreach($homePlayers as $player)
-                                            <label class="inline-flex items-center">
-                                                <input type="checkbox" name="open_ns_ids[]" value="{{ $player->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ in_array($player->id, $match->open_ns_ids) ? 'checked' : '' }}>
-                                                <span class="ml-2 text-sm text-gray-600">{{ $player->last_name }} {{ $player->first_name }}</span>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
+                    <!-- Open Room Table -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-blue-500">
+                        <div class="text-center font-bold uppercase text-blue-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Open Room') }}</div>
+                        
+                        <div class="flex flex-col items-center gap-4">
+                            <!-- North (Home) -->
+                            <div class="w-full max-w-[200px]">
+                                <x-input-label class="text-center text-[10px] text-blue-600 font-black mb-1" value="N ({{ $homeTeam->name }})" />
+                                <select name="open_n_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                    <option value="">-</option>
+                                    @foreach($homePlayers as $player)
+                                        <option value="{{ $player->id }}" {{ ($match->open_ns_ids[0] ?? null) == $player->id ? 'selected' : '' }}>
+                                            {{ $player->last_name }} {{ $player->first_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                                <div class="pt-4 border-t border-gray-100">
-                                    <x-input-label :value="__('Closed Room EW (Select 2)')" />
-                                    <div class="grid grid-cols-1 gap-2 mt-1">
-                                        @foreach($homePlayers as $player)
-                                            <label class="inline-flex items-center">
-                                                <input type="checkbox" name="closed_ew_ids[]" value="{{ $player->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ in_array($player->id, $match->closed_ew_ids) ? 'checked' : '' }}>
-                                                <span class="ml-2 text-sm text-gray-600">{{ $player->last_name }} {{ $player->first_name }}</span>
-                                            </label>
+                            <!-- East/West (Away) -->
+                            <div class="flex justify-between w-full gap-4">
+                                <div class="flex-1">
+                                    <x-input-label class="text-center text-[10px] text-red-600 font-black mb-1" value="W ({{ $awayTeam->name }})" />
+                                    <select name="open_w_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                        <option value="">-</option>
+                                        @foreach($awayPlayers as $player)
+                                            <option value="{{ $player->id }}" {{ ($match->open_ew_ids[1] ?? null) == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
                                         @endforeach
-                                    </div>
+                                    </select>
                                 </div>
+                                <div class="flex-1">
+                                    <x-input-label class="text-center text-[10px] text-red-600 font-black mb-1" value="E ({{ $awayTeam->name }})" />
+                                    <select name="open_e_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                        <option value="">-</option>
+                                        @foreach($awayPlayers as $player)
+                                            <option value="{{ $player->id }}" {{ ($match->open_ew_ids[0] ?? null) == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- South (Home) -->
+                            <div class="w-full max-w-[200px]">
+                                <x-input-label class="text-center text-[10px] text-blue-600 font-black mb-1" value="S ({{ $homeTeam->name }})" />
+                                <select name="open_s_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                    <option value="">-</option>
+                                    @foreach($homePlayers as $player)
+                                        <option value="{{ $player->id }}" {{ ($match->open_ns_ids[1] ?? null) == $player->id ? 'selected' : '' }}>
+                                            {{ $player->last_name }} {{ $player->first_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
                     </div>
 
-                    <!-- Away Team Lineup -->
-                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg border-t-4 border-red-500">
-                        <div class="p-6">
-                            <h3 class="text-lg font-bold mb-4 text-red-800">{{ $awayTeam->name }} {{ __('Lineup') }}</h3>
-                            
-                            <div class="space-y-4">
-                                <div>
-                                    <x-input-label :value="__('Open Room EW (Select 2)')" />
-                                    <div class="grid grid-cols-1 gap-2 mt-1">
-                                        @foreach($awayPlayers as $player)
-                                            <label class="inline-flex items-center">
-                                                <input type="checkbox" name="open_ew_ids[]" value="{{ $player->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ in_array($player->id, $match->open_ew_ids) ? 'checked' : '' }}>
-                                                <span class="ml-2 text-sm text-gray-600">{{ $player->last_name }} {{ $player->first_name }}</span>
-                                            </label>
-                                        @endforeach
-                                    </div>
-                                </div>
+                    <!-- Closed Room Table -->
+                    <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-red-500">
+                        <div class="text-center font-bold uppercase text-red-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Closed Room') }}</div>
+                        
+                        <div class="flex flex-col items-center gap-4">
+                            <!-- North (Away) -->
+                            <div class="w-full max-w-[200px]">
+                                <x-input-label class="text-center text-[10px] text-red-600 font-black mb-1" value="N ({{ $awayTeam->name }})" />
+                                <select name="closed_n_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                    <option value="">-</option>
+                                    @foreach($awayPlayers as $player)
+                                        <option value="{{ $player->id }}" {{ ($match->closed_ns_ids[0] ?? null) == $player->id ? 'selected' : '' }}>
+                                            {{ $player->last_name }} {{ $player->first_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
 
-                                <div class="pt-4 border-t border-gray-100">
-                                    <x-input-label :value="__('Closed Room NS (Select 2)')" />
-                                    <div class="grid grid-cols-1 gap-2 mt-1">
-                                        @foreach($awayPlayers as $player)
-                                            <label class="inline-flex items-center">
-                                                <input type="checkbox" name="closed_ns_ids[]" value="{{ $player->id }}" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" {{ in_array($player->id, $match->closed_ns_ids) ? 'checked' : '' }}>
-                                                <span class="ml-2 text-sm text-gray-600">{{ $player->last_name }} {{ $player->first_name }}</span>
-                                            </label>
+                            <!-- East/West (Home) -->
+                            <div class="flex justify-between w-full gap-4">
+                                <div class="flex-1">
+                                    <x-input-label class="text-center text-[10px] text-blue-600 font-black mb-1" value="W ({{ $homeTeam->name }})" />
+                                    <select name="closed_w_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                        <option value="">-</option>
+                                        @foreach($homePlayers as $player)
+                                            <option value="{{ $player->id }}" {{ ($match->closed_ew_ids[1] ?? null) == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
                                         @endforeach
-                                    </div>
+                                    </select>
                                 </div>
+                                <div class="flex-1">
+                                    <x-input-label class="text-center text-[10px] text-blue-600 font-black mb-1" value="E ({{ $homeTeam->name }})" />
+                                    <select name="closed_e_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                        <option value="">-</option>
+                                        @foreach($homePlayers as $player)
+                                            <option value="{{ $player->id }}" {{ ($match->closed_ew_ids[0] ?? null) == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- South (Away) -->
+                            <div class="w-full max-w-[200px]">
+                                <x-input-label class="text-center text-[10px] text-red-600 font-black mb-1" value="S ({{ $awayTeam->name }})" />
+                                <select name="closed_s_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-xs">
+                                    <option value="">-</option>
+                                    @foreach($awayPlayers as $player)
+                                        <option value="{{ $player->id }}" {{ ($match->closed_ns_ids[1] ?? null) == $player->id ? 'selected' : '' }}>
+                                            {{ $player->last_name }} {{ $player->first_name }}
+                                        </option>
+                                    @endforeach
+                                </select>
                             </div>
                         </div>
                     </div>
