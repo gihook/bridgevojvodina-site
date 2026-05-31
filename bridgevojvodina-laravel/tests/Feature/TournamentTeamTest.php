@@ -176,4 +176,68 @@ class TournamentTeamTest extends TestCase
         ]);
         $response->assertStatus(403);
     }
+
+    public function test_director_can_view_team_numbers_page()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = $this->createTournamentWithTeams($director);
+
+        $response = $this->actingAs($director)->get(route('tournaments.teams.numbers.edit', $tournament));
+
+        $response->assertStatus(200);
+        $response->assertSee('Manage Team Numbers');
+    }
+
+    public function test_director_can_update_team_numbers()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'Team 1', 'number' => null, 'captain_id' => 0, 'player_ids' => []],
+                    ['id' => 't2', 'name' => 'Team 2', 'number' => null, 'captain_id' => 0, 'player_ids' => []],
+                ],
+                'rounds' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->patch(route('tournaments.teams.numbers.update', $tournament), [
+            'numbers' => [
+                't1' => 5,
+                't2' => 2,
+            ]
+        ]);
+
+        $response->assertRedirect(route('tournaments.edit', $tournament));
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertEquals(5, $tournament->team_results->teams[0]->number);
+        $this->assertEquals(2, $tournament->team_results->teams[1]->number);
+    }
+
+    public function test_team_numbers_must_be_unique()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'T1', 'number' => null, 'captain_id' => 0, 'player_ids' => []],
+                    ['id' => 't2', 'name' => 'T2', 'number' => null, 'captain_id' => 0, 'player_ids' => []],
+                ],
+                'rounds' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->patch(route('tournaments.teams.numbers.update', $tournament), [
+            'numbers' => [
+                't1' => 1,
+                't2' => 1, // Duplicate
+            ]
+        ]);
+
+        $response->assertSessionHasErrors('error');
+    }
 }

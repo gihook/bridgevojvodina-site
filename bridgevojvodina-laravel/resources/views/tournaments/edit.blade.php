@@ -56,7 +56,18 @@
                     @if($tournament->team_results && count($tournament->team_results->teams) >= 2)
                         <div class="mt-12 pt-8 border-t border-gray-200">
                             <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold">{{ __('Rounds & Board Sets') }}</h3>
+                                <div class="flex items-center gap-4">
+                                    <h3 class="text-lg font-bold">{{ __('Rounds & Board Sets') }}</h3>
+                                    @if(collect($tournament->team_results->rounds)->contains('status', 'idle'))
+                                        <form method="POST" action="{{ route('tournaments.rounds.idle.destroy', $tournament) }}" onsubmit="return confirm('{{ __('Are you sure you want to delete all idle rounds?') }}')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-red-600 hover:text-red-900 font-bold uppercase tracking-wider">
+                                                {{ __('Delete All Idle') }}
+                                            </button>
+                                        </form>
+                                    @endif
+                                </div>
                                 
                                 <form method="POST" action="{{ route('tournaments.rounds.generate', $tournament) }}" onsubmit="return confirm('{{ __('New rounds will be appended to the current schedule. Are you sure?') }}')">
                                     @csrf
@@ -165,37 +176,14 @@
                         </div>
                     @endif
 
-                    @php
-                        $unassignedSets = $boardSets->filter(function($set) use ($tournament) {
-                            return !$tournament->team_results || !collect($tournament->team_results->rounds)->contains('board_set_id', $set->id);
-                        });
-                    @endphp
-
-                    @if($unassignedSets->count() > 0)
-                        <div class="mt-8 pt-8 border-t border-gray-200">
-                            <h3 class="text-lg font-bold mb-4 text-gray-600">{{ __('Unassigned Board Sets') }}</h3>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach($unassignedSets as $set)
-                                            <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                                    <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="text-indigo-600 hover:text-indigo-900 font-bold">
-                                                        {{ $set->name }}
-                                                    </a>
-                                                </td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{{ $set->created_at->format('d.m.Y H:i') }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    @endif
-
                     @if($tournament->team_results && count($tournament->team_results->teams) > 0)
                         <div class="mt-12 pt-8 border-t border-gray-200">
-                            <h3 class="text-lg font-bold mb-4">{{ __('Teams') }}</h3>
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold">{{ __('Teams') }}</h3>
+                                <a href="{{ route('tournaments.teams.numbers.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('Manage Numbers') }}
+                                </a>
+                            </div>
                             <div class="overflow-x-auto">
                                 <table class="min-w-full divide-y divide-gray-200">
                                     <thead class="bg-gray-50">

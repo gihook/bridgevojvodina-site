@@ -167,4 +167,29 @@ class TournamentRoundGenerationTest extends TestCase
         $tournament->refresh();
         $this->assertCount(1, $tournament->team_results->rounds);
     }
+
+    public function test_director_can_delete_all_idle_rounds()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'rounds' => [
+                    ['id' => 'r1', 'name' => 'R1', 'status' => 'complete'],
+                    ['id' => 'r2', 'name' => 'R2', 'status' => 'idle'],
+                    ['id' => 'r3', 'name' => 'R3', 'status' => 'idle'],
+                ],
+                'teams' => []
+            ]
+        ]);
+
+        $response = $this->actingAs($director)->delete(route('tournaments.rounds.idle.destroy', $tournament));
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertCount(1, $tournament->team_results->rounds);
+        $this->assertEquals('complete', $tournament->team_results->rounds[0]->status);
+    }
 }

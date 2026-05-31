@@ -25,13 +25,8 @@
                                 <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name', $team->name)" required />
                                 <x-input-error class="mt-2" :messages="$errors->get('name')" />
                             </div>
-                            <div class="w-32">
-                                <x-input-label for="number" :value="__('Team Number')" />
-                                <x-text-input id="number" name="number" type="number" class="mt-1 block w-full" :value="old('number', $team->number)" />
-                                <x-input-error class="mt-2" :messages="$errors->get('number')" />
-                            </div>
                             <x-primary-button>
-                                {{ __('Update') }}
+                                {{ __('Update Name') }}
                             </x-primary-button>
                         </div>
                     </form>

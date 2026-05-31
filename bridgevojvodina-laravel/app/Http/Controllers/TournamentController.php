@@ -442,13 +442,62 @@ class TournamentController extends Controller
         return back()->with('success', __('Round status updated.'));
     }
 
+    public function editTeamNumbers(Tournament $tournament): View
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $teams = collect($results->teams)->sortBy(fn($t) => $t->number ?? 999999);
+
+        return view('tournaments.teams.numbers', compact('tournament', 'teams'));
+    }
+
+    public function updateTeamNumbers(Request $request, Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $teamCount = count($results->teams);
+
+        $request->validate([
+            'numbers' => 'required|array',
+            'numbers.*' => "nullable|integer|min:1|max:{$teamCount}",
+        ]);
+
+        $newNumbers = $request->input('numbers');
+        $filteredNumbers = array_filter($newNumbers, fn($v) => !is_null($v) && $v !== '');
+        
+        if (count($filteredNumbers) !== count(array_unique($filteredNumbers))) {
+            return back()->withErrors(['error' => __('Team numbers must be unique.')]);
+        }
+
+        foreach ($results->teams as $team) {
+            if (isset($newNumbers[$team->id])) {
+                $team->number = $newNumbers[$team->id] !== '' ? (int) $newNumbers[$team->id] : null;
+            }
+        }
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return redirect()->route('tournaments.edit', $tournament)
+            ->with('success', __('Team numbers updated successfully.'));
+    }
+
     public function updateTeam(Request $request, Tournament $tournament, string $teamId): RedirectResponse
     {
         Gate::authorize('update', $tournament);
 
         $request->validate([
             'name' => 'required|string|max:255',
-            'number' => 'nullable|integer|min:1',
         ]);
 
         $results = $tournament->team_results;
@@ -462,12 +511,11 @@ class TournamentController extends Controller
         }
 
         $results->teams[$teamIndex]->name = $request->name;
-        $results->teams[$teamIndex]->number = $request->filled('number') ? (int) $request->number : null;
 
         $tournament->team_results = $results;
         $tournament->save();
 
-        return back()->with('success', __('Team updated successfully.'));
+        return back()->with('success', __('Team name updated successfully.'));
     }
 
     public function generateRounds(Request $request, Tournament $tournament): RedirectResponse
@@ -595,6 +643,28 @@ class TournamentController extends Controller
         $tournament->save();
 
         return back()->with('success', __('Round deleted successfully.'));
+    }
+
+    public function destroyIdleRounds(Tournament $tournament): RedirectResponse
+    {
+        Gate::authorize('update', $tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $newRounds = array_values(array_filter($results->rounds, fn($r) => $r->status !== 'idle'));
+        
+        if (count($newRounds) === count($results->rounds)) {
+            return back()->with('info', __('No idle rounds found to delete.'));
+        }
+
+        $results->rounds = $newRounds;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('All idle rounds deleted successfully.'));
     }
 
     public function destroy(Tournament $tournament): RedirectResponse
