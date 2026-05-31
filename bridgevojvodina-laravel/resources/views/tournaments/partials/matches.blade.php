@@ -113,17 +113,19 @@
                                         <thead class="bg-gray-50 font-bold">
                                             <tr>
                                                 <th class="py-2 border" rowspan="2">{{ __('Board') }}</th>
-                                                <th class="py-2 border" colspan="4">{{ __('Open Room') }}</th>
-                                                <th class="py-2 border" colspan="4">{{ __('Closed Room') }}</th>
+                                                <th class="py-2 border" colspan="5">{{ __('Open Room') }}</th>
+                                                <th class="py-2 border" colspan="5">{{ __('Closed Room') }}</th>
                                                 <th class="py-2 border" colspan="2">{{ __('IMPs') }}</th>
                                             </tr>
                                             <tr>
                                                 <th class="py-1 border text-xs">{{ __('Contr.') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Decl.') }}</th>
+                                                <th class="py-1 border text-xs">{{ __('Lead') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Tr.') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Score') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Contr.') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Decl.') }}</th>
+                                                <th class="py-1 border text-xs">{{ __('Lead') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Tr.') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('Score') }}</th>
                                                 <th class="py-1 border text-xs">{{ __('H') }}</th>
@@ -134,12 +136,14 @@
                                             @foreach ($match->boards as $board)
                                                 <tr class="hover:bg-blue-50">
                                                     <td class="py-2 border font-bold">{{ $board->board_number }}</td>
-                                                    <td class="py-2 border">{{ $board->home_contract }}</td>
+                                                    <td class="py-2 border"><x-bridge-contract :contract="$board->home_contract" /></td>
                                                     <td class="py-2 border">{{ $board->home_declarer }}</td>
+                                                    <td class="py-2 border"><x-bridge-contract :contract="$board->home_lead" /></td>
                                                     <td class="py-2 border">{{ $board->home_tricks }}</td>
                                                     <td class="py-2 border font-mono">{{ $board->home_score }}</td>
-                                                    <td class="py-2 border">{{ $board->away_contract }}</td>
+                                                    <td class="py-2 border"><x-bridge-contract :contract="$board->away_contract" /></td>
                                                     <td class="py-2 border">{{ $board->away_declarer }}</td>
+                                                    <td class="py-2 border"><x-bridge-contract :contract="$board->away_lead" /></td>
                                                     <td class="py-2 border">{{ $board->away_tricks }}</td>
                                                     <td class="py-2 border font-mono">{{ $board->away_score }}</td>
                                                     <td class="py-2 border font-bold text-green-700">{{ $board->home_imp ?: '' }}</td>

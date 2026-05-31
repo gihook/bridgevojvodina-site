@@ -41,8 +41,8 @@ class TournamentShowTest extends TestCase
                                 'boards' => [
                                     [
                                         'board_number' => 1,
-                                        'home_contract' => '3NT', 'home_declarer' => 'S', 'home_tricks' => 9, 'home_score' => 400,
-                                        'away_contract' => '3NT', 'away_declarer' => 'N', 'away_tricks' => 10, 'away_score' => 430,
+                                        'home_contract' => '4S', 'home_declarer' => 'S', 'home_lead' => 'HK', 'home_tricks' => 10, 'home_score' => 420,
+                                        'away_contract' => '3NT', 'away_declarer' => 'N', 'away_lead' => 'D4', 'away_tricks' => 10, 'away_score' => 430,
                                         'home_imp' => 0, 'away_imp' => 1
                                     ]
                                 ],
@@ -64,9 +64,15 @@ class TournamentShowTest extends TestCase
         $response->assertSee('20.50');
         $response->assertSee('Match 1');
         $response->assertSee('bye');
+        $response->assertSee('4');
+        $response->assertSee('&spades;', false);
         $response->assertSee('3NT');
-        $response->assertSee('400');
+        $response->assertSee('420');
         $response->assertSee('430');
+        $response->assertSee('&hearts;', false);
+        $response->assertSee('K');
+        $response->assertSee('&diams;', false);
+        $response->assertSee('4');
         $response->assertSee('Slobodan Guzvica');
     }
 }
