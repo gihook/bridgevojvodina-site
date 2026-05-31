@@ -48,14 +48,14 @@ class EventSeeder extends Seeder
             [
                 'id' => 7,
                 'title' => 'Novi Sad Bridge Festival - 2024',
-                'description' => "May 8 - 12, 2024\r\nFor more details:\r\nhttps://bridgescanner.news/event/novi-sad-bridge-festival-2024",
+                'description' => "May 8 - 12, 2024\n\nFor more details:\n[BridgeScanner](https://bridgescanner.news/event/novi-sad-bridge-festival-2024)",
                 'date' => '2024',
                 'club_id' => 1,
             ],
             [
                 'id' => 8,
                 'title' => 'Novi Sad Bridž festival 2025',
-                'description' => 'Od 07.05. do 11.05.2025\r\nRezultati:   https://www.bridzs.hu/hu/versenyek-eredmenyek?vid=9131',
+                'description' => "Od 07.05. do 11.05.2025\n\n[Rezultati](https://www.bridzs.hu/hu/versenyek-eredmenyek?vid=9131)",
                 'date' => '2025',
                 'club_id' => 1,
             ],

@@ -26,9 +26,10 @@
                 @endif
                 <p><strong>{{ __('Date') }}:</strong> {{ $event->date }}</p>
                 <p><strong>{{ __('Club') }}:</strong> <a href="{{ route('clubs.show', $event->club) }}" class="text-blue-500 underline">{{ $event->club->name }}</a></p>
-                <div class="mt-4">
-                    <p><strong>{{ __('Description') }}:</strong></p>
-                    <div class="mt-2 whitespace-pre-wrap">{{ $event->description }}</div>
+                <div class="mt-8 border-t pt-6">
+                    <div class="prose max-w-none">
+                        {!! Illuminate\Support\Str::markdown($event->description ?? '') !!}
+                    </div>
                 </div>
             </div>
         </div>
