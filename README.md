@@ -19,13 +19,22 @@ Projekat se može pokrenuti lokalno koristeći Docker Compose.
    cd bridgevojvodina-site
    ```
 
-2. Pokrenite kontejnere:
+2. Konfigurišite `.env` fajlove za Docker i Laravel:
+   - Kreirajte `bridgevojvodina-site/.env` fajl na osnovu podešavanja baze u `docker-compose.yml`.
+   - Iskopirajte `bridgevojvodina-laravel/.env.example` u `bridgevojvodina-laravel/.env` i postavite pristup bazi u skladu sa Docker konfiguracijom.
+
+3. Pokrenite kontejnere:
    ```bash
-   docker compose up -d
+   docker-compose up -d
+   ```
+
+4. Pokrenite skriptu za inicijalno podešavanje (instalira Composer pakete, generiše ključ i puni bazu):
+   ```bash
+   ./setup.sh
    ```
 
 Nakon pokretanja, servisi su dostupni na sledećim adresama:
 
-- **Sajt:** [http://localhost:8080](http://localhost:8080)
+- **Sajt:** [http://localhost:8082](http://localhost:8082)
 - **phpMyAdmin:** [http://localhost:8081](http://localhost:8081)
 

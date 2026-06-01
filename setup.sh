@@ -2,6 +2,15 @@
 
 # Setup script for Bridge Vojvodina application
 
+echo "Installing Composer dependencies..."
+docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app composer install
+
+echo "Generating application key..."
+docker-compose exec web php artisan key:generate
+
+echo "Fixing permissions for storage and bootstrap/cache..."
+docker-compose exec web chown -R www-data:www-data /var/www/html/storage /var/www/html/bootstrap/cache
+
 echo "Starting database setup..."
 
 # Run migrations
