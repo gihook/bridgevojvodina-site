@@ -78,6 +78,9 @@ jobs:
         CLEAN_TOKEN=$(echo -n "$DEPLOY_TOKEN" | tr -d '\r\n ' )
         USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
         
+        # Allow some time for the server to recognize the newly uploaded files
+        sleep 5
+
         # Try both common locations with POST and browser headers
         # Use -d instead of --get to make it a POST request, which often bypasses GET filters
         curl -L -f -v -H "User-Agent: $USER_AGENT" -H "Content-Type: application/x-www-form-urlencoded" -d "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/extract.php" || \

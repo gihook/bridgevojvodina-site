@@ -75,7 +75,6 @@ if ($zip->open($zipPath) === TRUE) {
         echo "Artisan not found at $artisanPath\n";
     }
 
-    unlink(__FILE__);
 } else {
     header('HTTP/1.0 500 Internal Server Error');
     echo "Failed to open ZIP file.";
