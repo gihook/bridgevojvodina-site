@@ -38,6 +38,9 @@ class TournamentController extends Controller
         if ($tournament instanceof Tournament) {
             Gate::authorize('update', $tournament);
         } else {
+            if (!auth()->check()) {
+                abort(401);
+            }
             if (!auth()->user()->isAdmin() && auth()->id() !== $tournament->user_id) {
                 abort(403);
             }
@@ -46,7 +49,19 @@ class TournamentController extends Controller
 
     public function index(): View
     {
-        $tournaments = Tournament::latest()->paginate(10);
+        $published = Tournament::latest()->get();
+        $drafts = collect();
+        
+        if (auth()->check()) {
+            $query = TournamentConfiguration::latest();
+            if (!auth()->user()->isAdmin()) {
+                $query->where('user_id', auth()->id());
+            }
+            $drafts = $query->get();
+        }
+        
+        $tournaments = $published->concat($drafts)->sortByDesc('created_at');
+        
         return view('tournaments.index', compact('tournaments'));
     }
 
@@ -87,10 +102,6 @@ class TournamentController extends Controller
     public function show(string $id): View|RedirectResponse
     {
         $tournament = $this->resolveTournament($id);
-
-        if ($tournament instanceof TournamentConfiguration) {
-            return redirect()->route('tournaments.edit', $tournament);
-        }
 
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
@@ -288,6 +299,7 @@ class TournamentController extends Controller
     public function destroyBoardSet(string $tournamentId, BoardSet $boardSet): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
             abort(404);
@@ -343,6 +355,7 @@ class TournamentController extends Controller
     public function uploadBoardSet(Request $request, string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'round_id' => 'required|string',
@@ -449,6 +462,7 @@ class TournamentController extends Controller
     public function editTeam(string $tournamentId, string $teamId): View
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -474,6 +488,7 @@ class TournamentController extends Controller
     public function addPlayerToTeam(Request $request, string $tournamentId, string $teamId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'player_id' => 'required|integer|exists:players,id',
@@ -504,6 +519,7 @@ class TournamentController extends Controller
     public function removePlayerFromTeam(string $tournamentId, string $teamId, int $playerId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -528,6 +544,7 @@ class TournamentController extends Controller
     public function setTeamCaptain(string $tournamentId, string $teamId, int $playerId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -550,6 +567,7 @@ class TournamentController extends Controller
     public function updateRoundStatus(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'status' => 'required|string|in:idle,inProgress,complete',
@@ -576,6 +594,7 @@ class TournamentController extends Controller
     public function editTeamNumbers(string $tournamentId): View
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -590,6 +609,7 @@ class TournamentController extends Controller
     public function updateTeamNumbers(Request $request, string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -626,6 +646,7 @@ class TournamentController extends Controller
     public function updateTeam(Request $request, string $tournamentId, string $teamId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -652,6 +673,7 @@ class TournamentController extends Controller
     public function reorderRound(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'direction' => 'required|string|in:up,down',
@@ -695,6 +717,7 @@ class TournamentController extends Controller
     public function updateSettings(Request $request, string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'bye_vp' => 'required|numeric|min:0|max:20',
@@ -761,6 +784,7 @@ class TournamentController extends Controller
     public function generateRounds(Request $request, string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'format' => 'required|string|in:single_round_robin,double_round_robin',
@@ -875,6 +899,7 @@ class TournamentController extends Controller
     public function uploadRoundsCsv(Request $request, string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'csv_file' => 'required|file',
@@ -952,6 +977,7 @@ class TournamentController extends Controller
     public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View
     {
         $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -1003,6 +1029,7 @@ class TournamentController extends Controller
     public function updateMatchLineup(Request $request, string $id, string $roundId, string $matchId, string $room): RedirectResponse|array
     {
         $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -1042,6 +1069,7 @@ class TournamentController extends Controller
     public function updateMatchBoard(Request $request, string $id, string $roundId, string $matchId, string $room, int $boardNumber): RedirectResponse|array
     {
         $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -1152,6 +1180,7 @@ class TournamentController extends Controller
     public function destroyRound(string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -1179,6 +1208,7 @@ class TournamentController extends Controller
     public function destroyIdleRounds(string $tournamentId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {

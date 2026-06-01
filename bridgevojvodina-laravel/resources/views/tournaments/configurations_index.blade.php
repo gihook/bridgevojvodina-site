@@ -22,7 +22,7 @@
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h3 class="text-lg font-bold">
-                                            <a href="{{ route('tournaments.edit', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
+                                            <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
                                             <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">

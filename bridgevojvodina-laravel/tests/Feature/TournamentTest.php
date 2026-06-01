@@ -49,8 +49,10 @@ class TournamentTest extends TestCase
             'details' => 'Some details',
         ]);
 
-        $response->assertRedirect(route('tournaments.index'));
-        $this->assertDatabaseHas('tournaments', ['title' => 'New Tournament', 'user_id' => $director->id]);
+        $config = \App\Models\TournamentConfiguration::where('title', 'New Tournament')->first();
+        $this->assertNotNull($config);
+        $response->assertRedirect(route('tournaments.edit', $config->id));
+        $this->assertEquals($director->id, $config->user_id);
     }
 
     public function test_directors_can_edit_their_own_tournaments()
