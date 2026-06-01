@@ -10,6 +10,7 @@ use App\Models\Player;
 use App\DTOs\Tournament\RoundDTO;
 use App\DTOs\Tournament\MatchDTO;
 use App\DTOs\Tournament\MatchBoardDTO;
+use App\DTOs\Tournament\TeamDTO;
 use App\DTOs\Tournament\TournamentResultsDTO;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
@@ -195,6 +196,16 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
         $this->authorizeTournament($tournament);
+
+        if (!$tournament->team_results) {
+            $tournament->team_results = new TournamentResultsDTO(
+                teams: [],
+                rounds: [],
+                bye_vp: 12.0,
+                boards_per_round: 16
+            );
+            $tournament->save();
+        }
 
         $boardSets = $tournament->boardSets()->get();
 
@@ -1226,6 +1237,65 @@ class TournamentController extends Controller
         $tournament->save();
 
         return back()->with('success', __('All idle rounds deleted successfully.'));
+    }
+
+    public function addTeam(Request $request, string $tournamentId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $teamCount = count($results->teams);
+        $newTeam = new TeamDTO(
+            id: (string) Str::uuid(),
+            name: $request->input('name'),
+            captain_id: 0,
+            player_ids: [],
+            total_vp: 0,
+            number: $teamCount + 1
+        );
+
+        $results->teams[] = $newTeam;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team added successfully.'));
+    }
+
+    public function destroyTeam(string $tournamentId, string $teamId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        // Check if team is in any match
+        foreach ($results->rounds as $round) {
+            foreach ($round->matches as $match) {
+                if ($match->home_team_id === $teamId || $match->away_team_id === $teamId) {
+                    return back()->withErrors(['error' => __('Cannot delete team that is already in a schedule. Delete rounds first.')]);
+                }
+            }
+        }
+
+        $results->teams = array_values(array_filter($results->teams, fn($t) => $t->id !== $teamId));
+        
+        // Re-number teams
+        foreach ($results->teams as $index => $team) {
+            $team->number = $index + 1;
+        }
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team deleted successfully.'));
     }
 
     public function destroy(string $id): RedirectResponse

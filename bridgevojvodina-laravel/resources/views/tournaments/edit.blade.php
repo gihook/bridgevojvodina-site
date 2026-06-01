@@ -37,6 +37,7 @@
                     </form>
 
                     @if($tournament->team_results)
+                        <!-- Tournament Settings -->
                         <div class="mt-12 pt-8 border-t border-gray-200">
                             <h3 class="text-lg font-bold mb-4">{{ __('Tournament Settings') }}</h3>
                             <form method="POST" action="{{ route('tournaments.settings.update', $tournament) }}">
@@ -66,9 +67,65 @@
                                 </p>
                             </form>
                         </div>
-                    @endif
 
-                    @if($tournament->team_results && count($tournament->team_results->teams) >= 2)
+                        <!-- Teams Section -->
+                        <div class="mt-12 pt-8 border-t border-gray-200">
+                            <div class="flex justify-between items-center mb-4">
+                                <h3 class="text-lg font-bold">{{ __('Teams') }}</h3>
+                                <div class="flex gap-4">
+                                    <form method="POST" action="{{ route('tournaments.teams.add', $tournament) }}" class="flex gap-2">
+                                        @csrf
+                                        <x-text-input name="name" type="text" class="py-1 px-3 text-sm" placeholder="{{ __('Team Name') }}" required />
+                                        <x-primary-button type="submit" class="!py-1 !text-[10px]">
+                                            {{ __('Add Team') }}
+                                        </x-primary-button>
+                                    </form>
+                                    @if(count($tournament->team_results->teams) > 0)
+                                        <a href="{{ route('tournaments.teams.numbers.edit', $tournament) }}" class="inline-flex items-center px-4 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                            {{ __('Manage Numbers') }}
+                                        </a>
+                                    @endif
+                                </div>
+                            </div>
+                            
+                            @if(count($tournament->team_results->teams) > 0)
+                                <div class="overflow-x-auto">
+                                    <table class="min-w-full divide-y divide-gray-200">
+                                        <thead class="bg-gray-50">
+                                            <tr>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
+                                                <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Name') }}</th>
+                                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Actions') }}</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody class="bg-white divide-y divide-gray-200">
+                                            @foreach(collect($tournament->team_results->teams)->sortBy(fn($t) => $t->number ?? 999999) as $team)
+                                                <tr>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">{{ $team->number ?? '-' }}</td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $team->name }}</td>
+                                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                                        <div class="flex justify-end gap-3">
+                                                            <a href="{{ route('tournaments.teams.edit', [$tournament, $team->id]) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('Edit') }}</a>
+                                                            <form method="POST" action="{{ route('tournaments.teams.destroy', [$tournament, $team->id]) }}" onsubmit="return confirm('{{ __('Are you sure you want to delete this team?') }}')">
+                                                                @csrf
+                                                                @method('DELETE')
+                                                                <button type="submit" class="text-red-600 hover:text-red-900">{{ __('Delete') }}</button>
+                                                            </form>
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            @endforeach
+                                        </tbody>
+                                    </table>
+                                </div>
+                            @else
+                                <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-12 text-center text-gray-500 italic">
+                                    {{ __('No teams added yet. Add your first team using the form above.') }}
+                                </div>
+                            @endif
+                        </div>
+
+                        <!-- Rounds & Board Sets -->
                         <div class="mt-12 pt-8 border-t border-gray-200">
                             <div class="flex justify-between items-center mb-4">
                                 <div class="flex items-center gap-4">
@@ -85,9 +142,13 @@
                                 </div>
                                 
                                 <div class="flex items-center gap-3">
-                                    <x-secondary-button type="button" @click="generateRoundsModalOpen = true" class="!py-1 !text-[10px]">
-                                        {{ count($tournament->team_results->rounds) > 0 ? __('Add More Rounds') : __('Generate Rounds') }}
-                                    </x-secondary-button>
+                                    @if(count($tournament->team_results->teams) >= 2)
+                                        <x-secondary-button type="button" @click="generateRoundsModalOpen = true" class="!py-1 !text-[10px]">
+                                            {{ count($tournament->team_results->rounds) > 0 ? __('Add More Rounds') : __('Generate Rounds') }}
+                                        </x-secondary-button>
+                                    @else
+                                        <span class="text-[10px] text-gray-400 italic">{{ __('Add at least 2 teams to generate rounds') }}</span>
+                                    @endif
                                     
                                     <x-secondary-button type="button" @click="uploadCsvModalOpen = true" class="!py-1 !text-[10px]">
                                         {{ __('Upload CSV') }}
@@ -143,7 +204,7 @@
                                                                                 {{ __('Open Room') }}: {{ $openCount }}/{{ $totalBoards }}
                                                                             </a>
                                                                             <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']) }}" class="text-[10px] text-red-600 hover:text-red-900 hover:underline flex items-center gap-1">
-                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $closedCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
+                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $openCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
                                                                                 {{ __('Closed Room') }}: {{ $closedCount }}/{{ $totalBoards }}
                                                                             </a>
                                                                         </div>
@@ -242,42 +303,9 @@
                                 </div>
                             @else
                                 <div class="bg-gray-50 border-2 border-dashed border-gray-200 rounded-lg p-12 text-center text-gray-500 italic">
-                                    {{ __('No rounds generated yet. Select a format and click Generate Rounds.') }}
+                                    {{ __('No rounds generated yet. Add teams first, then click Generate Rounds.') }}
                                 </div>
                             @endif
-                        </div>
-                    @endif
-
-                    @if($tournament->team_results && count($tournament->team_results->teams) > 0)
-                        <div class="mt-12 pt-8 border-t border-gray-200">
-                            <div class="flex justify-between items-center mb-4">
-                                <h3 class="text-lg font-bold">{{ __('Teams') }}</h3>
-                                <a href="{{ route('tournaments.teams.numbers.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-xs text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
-                                    {{ __('Manage Numbers') }}
-                                </a>
-                            </div>
-                            <div class="overflow-x-auto">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50">
-                                        <tr>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider w-16">#</th>
-                                            <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Name') }}</th>
-                                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{{ __('Actions') }}</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="bg-white divide-y divide-gray-200">
-                                        @foreach(collect($tournament->team_results->teams)->sortBy(fn($t) => $t->number ?? 999999) as $team)
-                                            <tr>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-500">{{ $team->number ?? '-' }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ $team->name }}</td>
-                                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                                    <a href="{{ route('tournaments.teams.edit', [$tournament, $team->id]) }}" class="text-indigo-600 hover:text-indigo-900">{{ __('Edit') }}</a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                            </div>
                         </div>
                     @endif
                 </div>

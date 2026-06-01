@@ -31,11 +31,6 @@ Route::resource('clubs', ClubController::class);
 Route::resource('players', PlayerController::class);
 Route::resource('events', EventController::class);
 
-Route::resource('tournaments', TournamentController::class)->only(['index', 'show']);
-Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
-Route::get('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'match'])->name('tournaments.match');
-Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
-
 Route::middleware('auth')->group(function () {
     Route::resource('tournaments', TournamentController::class)->except(['index', 'show']);
     Route::get('tournament-configurations', [TournamentConfigurationController::class, 'index'])->name('tournament-configurations.index');
@@ -43,8 +38,10 @@ Route::middleware('auth')->group(function () {
     Route::delete('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'destroyBoardSet'])->name('tournaments.board-sets.destroy');
     Route::get('tournaments/{tournament}/teams/numbers', [TournamentController::class, 'editTeamNumbers'])->name('tournaments.teams.numbers.edit');
     Route::patch('tournaments/{tournament}/teams/numbers', [TournamentController::class, 'updateTeamNumbers'])->name('tournaments.teams.numbers.update');
+    Route::post('tournaments/{tournament}/teams', [TournamentController::class, 'addTeam'])->name('tournaments.teams.add');
     Route::get('tournaments/{tournament}/teams/{teamId}/edit', [TournamentController::class, 'editTeam'])->name('tournaments.teams.edit');
     Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
+    Route::delete('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'destroyTeam'])->name('tournaments.teams.destroy');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
@@ -60,6 +57,11 @@ Route::middleware('auth')->group(function () {
     Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/board/{boardNumber}', [TournamentController::class, 'updateMatchBoard'])->name('tournaments.match.room.board.update');
     Route::post('tournaments/{tournament}/publish', [TournamentController::class, 'publish'])->name('tournaments.publish');
 });
+
+Route::resource('tournaments', TournamentController::class)->only(['index', 'show']);
+Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
+Route::get('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'match'])->name('tournaments.match');
+Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');
 
 Route::middleware(['auth', 'admin'])->group(function () {
     Route::resource('users', UserController::class);
