@@ -33,14 +33,21 @@ class TournamentController extends Controller
         return RunningTournament::find($id) ?? Tournament::findOrFail($id);
     }
 
+    protected function authorizeTournament(\Illuminate\Database\Eloquent\Model $tournament)
+    {
+        if ($tournament instanceof Tournament) {
+            Gate::authorize('update', $tournament);
+        } else {
+            if (!auth()->user()->isAdmin() && auth()->id() !== $tournament->user_id) {
+                abort(403);
+            }
+        }
+    }
+
     public function index(): View
     {
-        $tournaments = Tournament::latest()->get();
-        $runningTournaments = RunningTournament::latest()->get();
-        
-        $allTournaments = $tournaments->concat($runningTournaments)->sortByDesc('created_at');
-
-        return view('tournaments.index', ['tournaments' => $allTournaments]);
+        $tournaments = Tournament::latest()->paginate(10);
+        return view('tournaments.index', compact('tournaments'));
     }
 
     public function create(): View
@@ -55,16 +62,25 @@ class TournamentController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'details' => 'required|string',
-            'is_completed' => 'boolean',
+            'description' => 'nullable|string|max:255',
+            'details' => 'nullable|string',
         ]);
 
-        $validated['is_completed'] = $request->has('is_completed');
+        $runningTournament = RunningTournament::create([
+            'id' => Str::uuid(),
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'details' => $validated['details'],
+            'user_id' => $request->user()->id,
+            'team_results' => [
+                'teams' => [],
+                'rounds' => [],
+                'bye_vp' => 12.0,
+                'boards_per_round' => 16
+            ],
+        ]);
 
-        $tournament = $request->user()->tournaments()->create($validated);
-
-        return redirect()->route('tournaments.index')
+        return redirect()->route('tournaments.edit', $runningTournament->id)
             ->with('success', __('Tournament created successfully.'));
     }
 
@@ -162,10 +178,7 @@ class TournamentController extends Controller
     public function edit(Request $request, string $id): View
     {
         $tournament = $this->resolveTournament($id);
-        
-        if ($tournament instanceof Tournament) {
-            Gate::authorize('update', $tournament);
-        }
+        $this->authorizeTournament($tournament);
 
         $boardSets = $tournament->boardSets()->get();
 
@@ -175,6 +188,7 @@ class TournamentController extends Controller
     public function publish(Request $request, string $id): RedirectResponse
     {
         $runningTournament = RunningTournament::findOrFail($id);
+        $this->authorizeTournament($runningTournament);
         
         $tournament = $runningTournament->publishToTournament();
 
@@ -297,23 +311,27 @@ class TournamentController extends Controller
     public function update(Request $request, string $id): RedirectResponse
     {
         $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
-        if ($tournament instanceof Tournament) {
-            Gate::authorize('update', $tournament);
-        }
-
-        $validated = $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'details' => 'nullable|string',
-            'is_completed' => 'boolean',
-        ]);
+        ];
+        
+        if ($tournament instanceof Tournament) {
+            $rules['is_completed'] = 'boolean';
+        }
 
-        $validated['is_completed'] = $request->has('is_completed');
+        $validated = $request->validate($rules);
+
+        if ($tournament instanceof Tournament) {
+            $validated['is_completed'] = $request->has('is_completed');
+        }
 
         $tournament->update($validated);
 
-        return redirect()->route('tournaments.index')
+        return redirect()->route($tournament instanceof RunningTournament ? 'running-tournaments.index' : 'tournaments.index')
             ->with('success', __('Tournament updated successfully.'));
     }
 

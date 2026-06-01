@@ -195,6 +195,9 @@ class TournamentDemoSeeder extends Seeder
         $runningTournament = RunningTournament::create([
             'id' => Str::uuid(),
             'title' => 'Timsko prvenstvo Novog Sada',
+            'description' => 'Zvanično timsko prvenstvo Novog Sada za sezonu 2026.',
+            'details' => "## Format takmičenja\n- Round-robin sistem (svako sa svakim)\n- Obračun po VP skali za 12 bordova\n- Dozvoljeno do 7 igrača po timu",
+            'user_id' => $user->id,
             'team_results' => [
                 'teams' => $teams,
                 'rounds' => $rounds

@@ -15,24 +15,25 @@
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
-                    <form method="POST" action="{{ route('tournaments.update', $tournament) }}">
+                    <div class="mb-6 flex justify-end gap-4">
+                        @if($tournament instanceof \App\Models\RunningTournament)
+                            <form method="POST" action="{{ route('tournaments.publish', $tournament) }}" id="publish-form" class="hidden">
+                                @csrf
+                            </form>
+                            <x-secondary-button type="button" onclick="if(confirm('{{ __('Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.') }}')) document.getElementById('publish-form').submit();" class="!bg-green-600 !text-white hover:!bg-green-700">
+                                {{ __('Publish Tournament') }}
+                            </x-secondary-button>
+                        @endif
+                        
+                        <x-primary-button type="submit" form="update-tournament-form">
+                            {{ __('Update Tournament') }}
+                        </x-primary-button>
+                    </div>
+
+                    <form method="POST" action="{{ route('tournaments.update', $tournament) }}" id="update-tournament-form">
                         @csrf
                         @method('PATCH')
                         @include('tournaments.form')
-                        <div class="mt-6 flex justify-end gap-4">
-                            @if($tournament instanceof \App\Models\RunningTournament)
-                                <form method="POST" action="{{ route('tournaments.publish', $tournament) }}" id="publish-form" class="inline">
-                                    @csrf
-                                    <x-secondary-button type="submit" onclick="return confirm('{{ __('Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.') }}')" class="!bg-green-600 !text-white hover:!bg-green-700">
-                                        {{ __('Publish Tournament') }}
-                                    </x-secondary-button>
-                                </form>
-                            @endif
-                            
-                            <x-primary-button>
-                                {{ __('Update Tournament') }}
-                            </x-primary-button>
-                        </div>
                     </form>
 
                     @if($tournament->team_results)

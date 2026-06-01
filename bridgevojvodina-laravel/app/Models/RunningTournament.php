@@ -16,13 +16,21 @@ class RunningTournament extends Model
 
     protected $fillable = [
         'title',
+        'description',
+        'details',
         'team_results',
         'tournament_id',
+        'user_id',
     ];
 
     protected $casts = [
         'team_results' => TournamentResultsCast::class,
     ];
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
 
     public function tournament(): BelongsTo
     {
@@ -41,12 +49,12 @@ class RunningTournament extends Model
             
             if (!$tournament) {
                 $tournament = new Tournament();
-                $tournament->user_id = auth()->id() ?? User::first()->id; 
+                $tournament->user_id = $this->user_id ?? auth()->id() ?? User::first()->id; 
             }
 
             $tournament->title = $this->title;
-            $tournament->description = $this->title; 
-            $tournament->details = ''; 
+            $tournament->description = $this->description ?? $this->title; 
+            $tournament->details = $this->details ?? ''; 
             $tournament->team_results = $this->team_results;
             $tournament->save();
 
