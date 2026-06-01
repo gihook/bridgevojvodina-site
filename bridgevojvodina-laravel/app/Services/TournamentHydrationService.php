@@ -7,6 +7,10 @@ use App\Models\Player;
 
 class TournamentHydrationService
 {
+    public function __construct(
+        protected VpCalculationService $vpService
+    ) {}
+
     public function hydratePlayers(TournamentResultsDTO $results): void
     {
         $playerIds = [];
@@ -225,6 +229,58 @@ class TournamentHydrationService
             }
             $stats[$id]['total_imps'] += $imp;
             $stats[$id]['boards'] += 1;
+        }
+    }
+
+    public function recalculateStandings(TournamentResultsDTO $results): void
+    {
+        // Reset all team VPs
+        foreach ($results->teams as $team) {
+            $team->total_vp = 0;
+        }
+
+        // Process all matches in all rounds
+        foreach ($results->rounds as $round) {
+            $boards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+            
+            foreach ($round->matches as $match) {
+                // Determine if it's a bye and award configured bye VP
+                $isHomeBye = empty($match->home_team_id) || $match->home_team_id === 'bye';
+                $isAwayBye = empty($match->away_team_id) || $match->away_team_id === 'bye';
+
+                if ($isHomeBye || $isAwayBye) {
+                    if (!$isHomeBye) {
+                        $match->home_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->home_imp = 0;
+                        $match->away_vp = 0;
+                        $match->away_imp = 0;
+                    } elseif (!$isAwayBye) {
+                        $match->away_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->away_imp = 0;
+                        $match->home_vp = 0;
+                        $match->home_imp = 0;
+                    }
+                } else {
+                    // Automatically calculate VP based on IMPs for normal matches
+                    if ($match->home_imp !== 0 || $match->away_imp !== 0) {
+                        list($hVp, $aVp) = $this->vpService->calculateVp($match->home_imp, $match->away_imp, $boards);
+                        $match->home_vp = $hVp;
+                        $match->away_vp = $aVp;
+                    }
+                }
+
+                // Add VPs to teams ONLY if the round is complete
+                if ($round->status === 'complete') {
+                    if (!$isHomeBye) {
+                        $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
+                        if ($team) $team->total_vp += (float)$match->home_vp;
+                    }
+                    if (!$isAwayBye) {
+                        $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
+                        if ($team) $team->total_vp += (float)$match->away_vp;
+                    }
+                }
+            }
         }
     }
 }
