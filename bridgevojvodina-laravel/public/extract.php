@@ -5,7 +5,9 @@
 
 $token = 'DEPLOY_TOKEN_PLACEHOLDER'; 
 
-if (!isset($_GET['token']) || $_GET['token'] !== $token) {
+$receivedToken = $_POST['token'] ?? $_GET['token'] ?? null;
+
+if (!$receivedToken || $receivedToken !== $token) {
     header('HTTP/1.0 403 Forbidden');
     die('Unauthorized');
 }
