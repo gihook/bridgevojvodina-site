@@ -310,9 +310,14 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-blue-500">
                         <div class="flex justify-between items-center mb-6 border-b pb-1">
                             <div class="font-bold uppercase text-blue-800 text-sm tracking-widest">{{ __('Open Room') }}</div>
-                            <x-secondary-button type="button" onclick="document.getElementById('csvInputOpen').click()" class="!py-0.5 !text-[9px]">
-                                {{ __('CSV') }}
-                            </x-secondary-button>
+                            <div class="flex gap-1">
+                                <x-secondary-button type="button" onclick="document.getElementById('csvInputOpen').click()" class="!py-0.5 !text-[9px]">
+                                    {{ __('Import') }}
+                                </x-secondary-button>
+                                <a href="{{ route('tournaments.match.room.boards.csv.download', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" class="inline-flex items-center px-2 py-0.5 bg-white border border-gray-300 rounded-md font-semibold text-[9px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('Export') }}
+                                </a>
+                            </div>
                         </div>
                         
                         <div class="flex flex-col items-center gap-4">
@@ -374,9 +379,14 @@
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-red-500">
                         <div class="flex justify-between items-center mb-6 border-b pb-1">
                             <div class="font-bold uppercase text-red-800 text-sm tracking-widest">{{ __('Closed Room') }}</div>
-                            <x-secondary-button type="button" onclick="document.getElementById('csvInputClosed').click()" class="!py-0.5 !text-[9px]">
-                                {{ __('CSV') }}
-                            </x-secondary-button>
+                            <div class="flex gap-1">
+                                <x-secondary-button type="button" onclick="document.getElementById('csvInputClosed').click()" class="!py-0.5 !text-[9px]">
+                                    {{ __('Import') }}
+                                </x-secondary-button>
+                                <a href="{{ route('tournaments.match.room.boards.csv.download', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" class="inline-flex items-center px-2 py-0.5 bg-white border border-gray-300 rounded-md font-semibold text-[9px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('Export') }}
+                                </a>
+                            </div>
                         </div>
                         
                         <div class="flex flex-col items-center gap-4">

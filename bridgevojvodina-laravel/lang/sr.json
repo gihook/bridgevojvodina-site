@@ -253,5 +253,8 @@
     ":count board results imported successfully.": "Uspešno uvezeno :count rezultata bordova.",
     "Upload Scores CSV": "Otpremi rezultate (CSV)",
     "Upload Scores CSV for": "Otpremi rezultate (CSV) za",
-    "Format: bd,contract,by,lead,result": "Format: bd,kontrakt,izvođač,napad,rezultat"
+    "Format: bd,contract,by,lead,result": "Format: bd,kontrakt,izvođač,napad,rezultat",
+    "Import": "Uvezi",
+    "Export": "Izvezi",
+    "Export CSV": "Izvezi CSV"
 }

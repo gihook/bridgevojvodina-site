@@ -1338,6 +1338,68 @@ class TournamentController extends Controller
         return back()->with('success', __(':count board results imported successfully.', ['count' => $importedCount]));
     }
 
+    public function downloadMatchBoardsCsv(string $id, string $roundId, string $matchId, string $room): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $tournament = $this->resolveTournament($id);
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        $round = $results->rounds[$roundIndex];
+        
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+        $match = $round->matches[$matchIndex];
+
+        $filename = sprintf('match_%s_%s_%s.csv', $matchId, $room, now()->format('Y-m-d_H-i'));
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        return response()->stream(function () use ($match, $room) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['bd', 'contract', 'by', 'lead', 'result']);
+
+            foreach ($match->boards as $board) {
+                $contract = $room === 'open' ? $board->home_contract : $board->away_contract;
+                $decl = $room === 'open' ? $board->home_declarer : $board->away_declarer;
+                $lead = $room === 'open' ? $board->home_lead : $board->away_lead;
+                $tricks = $room === 'open' ? $board->home_tricks : $board->away_tricks;
+                
+                if (!$contract || $contract === 'Pass') {
+                    if ($contract === 'Pass') {
+                        fputcsv($handle, [$board->board_number, 'Pass', '', '', '=']);
+                    } else {
+                        // Skip unplayed boards or keep empty? Let's export empty ones too.
+                        fputcsv($handle, [$board->board_number, '', '', '', '']);
+                    }
+                    continue;
+                }
+
+                // Parse contract level to calculate relative result
+                preg_match('/^(\d)/', $contract, $m);
+                $level = isset($m[1]) ? (int)$m[1] : 0;
+                $result = '';
+                if ($level > 0 && $tricks !== null) {
+                    $diff = $tricks - (6 + $level);
+                    $result = $diff === 0 ? '=' : ($diff > 0 ? '+' . $diff : $diff);
+                }
+
+                fputcsv($handle, [
+                    $board->board_number,
+                    $contract,
+                    $decl,
+                    $lead,
+                    $result
+                ]);
+            }
+            fclose($handle);
+        }, 200, $headers);
+    }
+
     public function destroyRound(string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
