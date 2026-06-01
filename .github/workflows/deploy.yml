@@ -76,6 +76,9 @@ jobs:
         DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
       run: |
         CLEAN_TOKEN=$(echo -n "$DEPLOY_TOKEN" | tr -d '\r\n ' )
-        # Try both common locations just in case
-        curl -L -f -v --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/extract.php" || \
-        curl -L -f -v --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/public_html/extract.php"
+        USER_AGENT="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+        ACCEPT="text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        
+        # Try both common locations with browser-like headers
+        curl -L -f -v -H "User-Agent: $USER_AGENT" -H "Accept: $ACCEPT" --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/extract.php" || \
+        curl -L -f -v -H "User-Agent: $USER_AGENT" -H "Accept: $ACCEPT" --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/public_html/extract.php"
