@@ -24,13 +24,13 @@
             $data = $b->toArray();
             $data['home_contract_level'] = $parsed[0];
             $data['home_contract_suit'] = $parsed[1];
-            $data['home_contract_risk'] = $parsed[2];
+            $data['home_contract_risk'] = $parsed[2] ?: 1;
             $data['home_contract_base'] = $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1];
             
             $parsedAway = (new \App\Services\BridgeScoringService())->parseContract($b->away_contract ?? '');
             $data['away_contract_level'] = $parsedAway[0];
             $data['away_contract_suit'] = $parsedAway[1];
-            $data['away_contract_risk'] = $parsedAway[2];
+            $data['away_contract_risk'] = $parsedAway[2] ?: 1;
             $data['away_contract_base'] = $parsedAway[0] === 0 ? '0' : $parsedAway[0] . $parsedAway[1];
             return $data;
         }, $match->boards)) }},
@@ -502,14 +502,26 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.home_contract_level > 0">
-                                                <x-input-label value="{{ __('Risk') }}" />
-                                                <select x-model.number="editingBoard.home_contract_risk" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="1">{{ __('None') }}</option>
-                                                    <option value="2">DBL (X)</option>
-                                                    <option value="4">RDBL (XX)</option>
-                                                </select>
+                                        <div class="col-span-2" x-show="editingBoard.home_contract_level > 0">
+                                            <x-input-label value="{{ __('Risk') }}" class="mb-2" />
+                                            <div class="flex p-1 bg-gray-100 rounded-lg w-full">
+                                                <button type="button" @click="editingBoard.home_contract_risk = 1; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    {{ __('None') }}
+                                                </button>
+                                                <button type="button" @click="editingBoard.home_contract_risk = 2; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 2 ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    DBL (X)
+                                                </button>
+                                                <button type="button" @click="editingBoard.home_contract_risk = 4; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 4 ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    RDBL (XX)
+                                                </button>
                                             </div>
+                                        </div>
                                         </div>
                                         <div x-show="editingBoard.home_contract_level > 0">
                                             <x-input-label value="{{ __('Declarer') }}" />
@@ -520,7 +532,16 @@
                                         </div>
                                         <div x-show="editingBoard.home_contract_level > 0">
                                             <x-input-label value="{{ __('Lead') }}" />
-                                            <x-text-input type="text" class="block w-full text-sm" x-model="editingBoard.home_lead" maxlength="3" placeholder="e.g. HA" />
+                                            <select x-model="editingBoard.home_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div x-show="editingBoard.home_contract_level > 0" class="col-span-2">
                                             <x-input-label value="{{ __('Tricks') }}" />
@@ -553,14 +574,26 @@
                                                     @endforeach
                                                 </select>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.away_contract_level > 0">
-                                                <x-input-label value="{{ __('Risk') }}" />
-                                                <select x-model.number="editingBoard.away_contract_risk" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="1">{{ __('None') }}</option>
-                                                    <option value="2">DBL (X)</option>
-                                                    <option value="4">RDBL (XX)</option>
-                                                </select>
+                                        <div class="col-span-2" x-show="editingBoard.away_contract_level > 0">
+                                            <x-input-label value="{{ __('Risk') }}" class="mb-2" />
+                                            <div class="flex p-1 bg-gray-100 rounded-lg w-full">
+                                                <button type="button" @click="editingBoard.away_contract_risk = 1; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    {{ __('None') }}
+                                                </button>
+                                                <button type="button" @click="editingBoard.away_contract_risk = 2; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 2 ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    DBL (X)
+                                                </button>
+                                                <button type="button" @click="editingBoard.away_contract_risk = 4; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 4 ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    RDBL (XX)
+                                                </button>
                                             </div>
+                                        </div>
                                         </div>
                                         <div x-show="editingBoard.away_contract_level > 0">
                                             <x-input-label value="{{ __('Declarer') }}" />
@@ -571,7 +604,16 @@
                                         </div>
                                         <div x-show="editingBoard.away_contract_level > 0">
                                             <x-input-label value="{{ __('Lead') }}" />
-                                            <x-text-input type="text" class="block w-full text-sm" x-model="editingBoard.away_lead" maxlength="3" placeholder="e.g. HA" />
+                                            <select x-model="editingBoard.away_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
                                         </div>
                                         <div x-show="editingBoard.away_contract_level > 0" class="col-span-2">
                                             <x-input-label value="{{ __('Tricks') }}" />

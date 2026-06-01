@@ -453,7 +453,16 @@
                                         
                                         <div x-show="editingBoard.current_room_contract_level > 0">
                                             <x-input-label value="{{ __('Lead') }}" />
-                                            <x-text-input type="text" class="block w-full text-sm" x-model="editingBoard.current_room_lead" maxlength="3" placeholder="e.g. HA" />
+                                            <select x-model="editingBoard.current_room_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
                                         </div>
 
                                         <div class="col-span-2" x-show="editingBoard.current_room_contract_level > 0">
