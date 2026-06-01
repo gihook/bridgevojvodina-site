@@ -256,5 +256,10 @@
     "Format: bd,contract,by,lead,result": "Format: bd,kontrakt,izvođač,napad,rezultat",
     "Import": "Uvezi",
     "Export": "Izvezi",
-    "Export CSV": "Izvezi CSV"
+    "Export CSV": "Izvezi CSV",
+    "Butler": "Batler",
+    "Butler (IMPs per Player)": "Batler (IMP po igraču)",
+    "Boards": "Bordova",
+    "IMPs/Board": "IMP/Bordu",
+    "Unknown Player": "Nepoznat igrač"
 }

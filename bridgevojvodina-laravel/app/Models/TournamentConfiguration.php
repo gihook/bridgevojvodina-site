@@ -51,6 +51,13 @@ class TournamentConfiguration extends Model
             $tournament->title = $this->title;
             $tournament->description = $this->description ?? $this->title; 
             $tournament->details = $this->details ?? ''; 
+            
+            // Calculate Butler per player before publishing
+            if ($this->team_results) {
+                $hydrationService = app(\App\Services\TournamentHydrationService::class);
+                $this->team_results->player_butlers = $hydrationService->calculatePlayerButlers($this->team_results);
+            }
+
             $tournament->team_results = $this->team_results;
             $tournament->save();
 

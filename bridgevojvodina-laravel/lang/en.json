@@ -199,5 +199,10 @@
     "Format: bd,contract,by,lead,result": "Format: bd,contract,by,lead,result",
     "Import": "Import",
     "Export": "Export",
-    "Export CSV": "Export CSV"
+    "Export CSV": "Export CSV",
+    "Butler": "Butler",
+    "Butler (IMPs per Player)": "Butler (IMPs per Player)",
+    "Boards": "Boards",
+    "IMPs/Board": "IMPs/Board",
+    "Unknown Player": "Unknown Player"
 }

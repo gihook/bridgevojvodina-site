@@ -119,7 +119,22 @@ class TournamentController extends Controller
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
         }]);
+
         return view('tournaments.show', compact('tournament'));
+    }
+
+    public function butler(string $id): View
+    {
+        $tournament = $this->resolveTournament($id);
+        $results = $tournament->team_results;
+        
+        $butlerPlayers = collect();
+        if ($results && !empty($results->player_butlers)) {
+            $playerIds = collect($results->player_butlers)->pluck('player_id')->unique()->toArray();
+            $butlerPlayers = \App\Models\Player::whereIn('id', $playerIds)->get()->keyBy('id');
+        }
+
+        return view('tournaments.butler', compact('tournament', 'butlerPlayers'));
     }
 
     public function match(string $tournamentId, string $roundId, string $matchId): View
