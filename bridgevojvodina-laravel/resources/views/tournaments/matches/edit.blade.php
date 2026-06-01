@@ -548,8 +548,8 @@
                                                 <select x-model="editingBoard.home_contract_base" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                     <option value="0">Pass</option>
                                                     @foreach(['1','2','3','4','5','6','7'] as $l)
-                                                        @foreach(['C', 'D', 'H', 'S', 'NT'] as $s)
-                                                            <option value="{{ $l.$s }}">{{ $l.$s }}</option>
+                                                        @foreach(['C' => '♣', 'D' => '♦', 'H' => '♥', 'S' => '♠', 'NT' => 'NT'] as $s => $sym)
+                                                            <option value="{{ $l.$s }}">{{ $l }}{{ $sym }}</option>
                                                         @endforeach
                                                     @endforeach
                                                 </select>
@@ -589,7 +589,7 @@
                                                 @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
                                                     <optgroup label="{{ $suitSym }} {{ $suitCode }}">
                                                         @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
-                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitCode }}</option>
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitSym }}</option>
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach
@@ -620,8 +620,8 @@
                                                 <select x-model="editingBoard.away_contract_base" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                     <option value="0">Pass</option>
                                                     @foreach(['1','2','3','4','5','6','7'] as $l)
-                                                        @foreach(['C', 'D', 'H', 'S', 'NT'] as $s)
-                                                            <option value="{{ $l.$s }}">{{ $l.$s }}</option>
+                                                        @foreach(['C' => '♣', 'D' => '♦', 'H' => '♥', 'S' => '♠', 'NT' => 'NT'] as $s => $sym)
+                                                            <option value="{{ $l.$s }}">{{ $l }}{{ $sym }}</option>
                                                         @endforeach
                                                     @endforeach
                                                 </select>
@@ -661,7 +661,7 @@
                                                 @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
                                                     <optgroup label="{{ $suitSym }} {{ $suitCode }}">
                                                         @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
-                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitCode }}</option>
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitSym }}</option>
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach
