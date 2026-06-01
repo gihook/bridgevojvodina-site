@@ -190,5 +190,7 @@
     "Tournament Configurations": "Tournament Configurations",
     "No tournament configurations found.": "No tournament configurations found.",
     "No tournaments found.": "No tournaments found.",
-    "Delete Tournament": "Delete Tournament"
+    "Delete Tournament": "Delete Tournament",
+    "Contract": "Contract",
+    "Risk": "Risk"
 }

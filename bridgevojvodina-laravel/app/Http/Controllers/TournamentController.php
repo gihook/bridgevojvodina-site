@@ -1143,17 +1143,23 @@ class TournamentController extends Controller
             $contract = $level . $suit . $suffix;
         }
 
+        $lead = $data['lead'] ?? null;
+
         $board = $match->boards[$boardIndex];
         if ($room === 'open') {
             $board->home_score = $score;
             $board->home_contract = $contract;
             $board->home_declarer = $decl;
             $board->home_tricks = $tricks;
+            $board->home_lead = $lead;
+            $board->home_updated_by = auth()->id();
         } else {
             $board->away_score = $score;
             $board->away_contract = $contract;
             $board->away_declarer = $decl;
             $board->away_tricks = $tricks;
+            $board->away_lead = $lead;
+            $board->away_updated_by = auth()->id();
         }
 
         // Recalculate board IMPs
