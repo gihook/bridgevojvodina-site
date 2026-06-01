@@ -28,10 +28,27 @@ Projekat se može pokrenuti lokalno koristeći Docker Compose.
    docker-compose up -d
    ```
 
-4. Pokrenite skriptu za inicijalno podešavanje (instalira Composer pakete, generiše ključ i puni bazu):
+4. Pokrenite skriptu za inicijalno podešavanje (instalira Composer pakete, instalira NPM pakete, bilda asset-e, generiše ključ i puni bazu):
    ```bash
    ./setup.sh
    ```
+
+### Frontend razvoj (NPM)
+
+Za razvoj frontenda možete koristiti privremeni Node kontejner kako biste izbegli instalaciju Node-a na lokalnoj mašini:
+
+- **Instalacija paketa:**
+  ```bash
+  docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app -w /app node:20 npm install
+  ```
+- **Build asset-a:**
+  ```bash
+  docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app -w /app node:20 npm run build
+  ```
+- **Watch mod (za razvoj):**
+  ```bash
+  docker run --rm -it -v $(pwd)/bridgevojvodina-laravel:/app -w /app -p 5173:5173 node:20 npm run dev
+  ```
 
 Nakon pokretanja, servisi su dostupni na sledećim adresama:
 

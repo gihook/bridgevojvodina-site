@@ -5,6 +5,10 @@
 echo "Installing Composer dependencies..."
 docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app composer install
 
+echo "Installing NPM dependencies and building assets..."
+docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app -w /app node:20 npm install
+docker run --rm -v $(pwd)/bridgevojvodina-laravel:/app -w /app node:20 npm run build
+
 echo "Generating application key..."
 docker-compose exec web php artisan key:generate
 
