@@ -24,8 +24,8 @@
                             {{ (auth()->user()->isAdmin() || auth()->user()->isDirector()) ? __('Manage Tournaments') : __('View Tournaments') }}
                         </a>
                         @if(auth()->user()->isAdmin() || auth()->user()->isDirector())
-                            <a href="{{ route('running-tournaments.index') }}" class="p-6 bg-red-600 rounded-lg hover:bg-red-700 transition text-center font-bold text-white shadow-md">
-                                {{ __('Running Tournaments') }}
+                            <a href="{{ route('tournament-configurations.index') }}" class="p-6 bg-red-600 rounded-lg hover:bg-red-700 transition text-center font-bold text-white shadow-md">
+                                {{ __('Tournament Configurations') }}
                             </a>
                         @endif
                         @if(auth()->user()->isAdmin())

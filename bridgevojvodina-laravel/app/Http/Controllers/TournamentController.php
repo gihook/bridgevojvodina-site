@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tournament;
-use App\Models\RunningTournament;
+use App\Models\TournamentConfiguration;
 use App\Models\BoardSet;
 use App\Models\Board;
 use App\Models\Player;
@@ -30,7 +30,7 @@ class TournamentController extends Controller
 
     protected function resolveTournament(string $id)
     {
-        return RunningTournament::find($id) ?? Tournament::findOrFail($id);
+        return TournamentConfiguration::find($id) ?? Tournament::findOrFail($id);
     }
 
     protected function authorizeTournament(\Illuminate\Database\Eloquent\Model $tournament)
@@ -66,7 +66,7 @@ class TournamentController extends Controller
             'details' => 'nullable|string',
         ]);
 
-        $runningTournament = RunningTournament::create([
+        $tournamentConfiguration = TournamentConfiguration::create([
             'id' => Str::uuid(),
             'title' => $validated['title'],
             'description' => $validated['description'],
@@ -80,13 +80,18 @@ class TournamentController extends Controller
             ],
         ]);
 
-        return redirect()->route('tournaments.edit', $runningTournament->id)
+        return redirect()->route('tournaments.edit', $tournamentConfiguration->id)
             ->with('success', __('Tournament created successfully.'));
     }
 
-    public function show(string $id): View
+    public function show(string $id): View|RedirectResponse
     {
         $tournament = $this->resolveTournament($id);
+
+        if ($tournament instanceof TournamentConfiguration) {
+            return redirect()->route('tournaments.edit', $tournament);
+        }
+
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
         }]);
@@ -187,10 +192,10 @@ class TournamentController extends Controller
 
     public function publish(Request $request, string $id): RedirectResponse
     {
-        $runningTournament = RunningTournament::findOrFail($id);
-        $this->authorizeTournament($runningTournament);
+        $tournamentConfiguration = TournamentConfiguration::findOrFail($id);
+        $this->authorizeTournament($tournamentConfiguration);
         
-        $tournament = $runningTournament->publishToTournament();
+        $tournament = $tournamentConfiguration->publishToTournament();
 
         return redirect()->route('tournaments.show', $tournament)
             ->with('success', __('Tournament published successfully.'));
@@ -200,7 +205,7 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($tournamentId);
 
-        if ($boardSet->tournament_id !== $tournament->id && $boardSet->running_tournament_id !== $tournament->id) {
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
             abort(404);
         }
 
@@ -284,7 +289,7 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($tournamentId);
 
-        if ($boardSet->tournament_id !== $tournament->id && $boardSet->running_tournament_id !== $tournament->id) {
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
             abort(404);
         }
 
@@ -331,7 +336,7 @@ class TournamentController extends Controller
 
         $tournament->update($validated);
 
-        return redirect()->route($tournament instanceof RunningTournament ? 'running-tournaments.index' : 'tournaments.index')
+        return redirect()->route($tournament instanceof TournamentConfiguration ? 'tournament-configurations.index' : 'tournaments.index')
             ->with('success', __('Tournament updated successfully.'));
     }
 
@@ -394,7 +399,7 @@ class TournamentController extends Controller
         DB::transaction(function () use ($boardsData, $eventName, $tournament, $results, $roundIndex, &$boardSetId) {
             $boardSet = BoardSet::create([
                 'tournament_id' => $tournament instanceof Tournament ? $tournament->id : null,
-                'running_tournament_id' => $tournament instanceof RunningTournament ? $tournament->id : null,
+                'tournament_configuration_id' => $tournament instanceof TournamentConfiguration ? $tournament->id : null,
                 'name' => $eventName,
             ]);
             $boardSetId = $boardSet->id;

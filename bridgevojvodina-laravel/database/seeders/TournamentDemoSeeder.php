@@ -2,7 +2,7 @@
 
 namespace Database\Seeders;
 
-use App\Models\RunningTournament;
+use App\Models\TournamentConfiguration;
 use App\Models\Tournament;
 use App\Models\User;
 use Illuminate\Database\Seeder;
@@ -192,7 +192,7 @@ class TournamentDemoSeeder extends Seeder
             ]
         ];
 
-        $runningTournament = RunningTournament::create([
+        $tournamentConfiguration = TournamentConfiguration::create([
             'id' => Str::uuid(),
             'title' => 'Timsko prvenstvo Novog Sada',
             'description' => 'Zvanično timsko prvenstvo Novog Sada za sezonu 2026.',
@@ -206,17 +206,17 @@ class TournamentDemoSeeder extends Seeder
 
         // Create BoardSet and Boards
         $boardSet = \App\Models\BoardSet::create([
-            'running_tournament_id' => $runningTournament->id,
+            'tournament_configuration_id' => $tournamentConfiguration->id,
             'name' => 'Bordovi za Timsko prvenstvo NS',
         ]);
 
         // Link BoardSet to rounds in JSON
-        $results = $runningTournament->team_results;
+        $results = $tournamentConfiguration->team_results;
         foreach ($results->rounds as $round) {
             $round->board_set_id = $boardSet->id;
         }
-        $runningTournament->team_results = $results;
-        $runningTournament->save();
+        $tournamentConfiguration->team_results = $results;
+        $tournamentConfiguration->save();
 
         // Seed some boards
         $boardData = [

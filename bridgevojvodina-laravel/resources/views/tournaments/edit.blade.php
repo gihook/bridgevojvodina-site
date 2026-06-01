@@ -16,7 +16,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="mb-6 flex justify-end gap-4">
-                        @if($tournament instanceof \App\Models\RunningTournament)
+                        @if($tournament instanceof \App\Models\TournamentConfiguration)
                             <form method="POST" action="{{ route('tournaments.publish', $tournament) }}" id="publish-form" class="hidden">
                                 @csrf
                             </form>

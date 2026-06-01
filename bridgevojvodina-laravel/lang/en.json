@@ -187,6 +187,6 @@
     "Publish Tournament": "Publish Tournament",
     "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.": "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.",
     "Tournament published successfully.": "Tournament published successfully.",
-    "Running Tournaments": "Running Tournaments",
-    "No running tournaments found.": "No running tournaments found."
+    "Tournament Configurations": "Tournament Configurations",
+    "No tournament configurations found.": "No tournament configurations found."
 }

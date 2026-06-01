@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Facades\DB;
 
-class RunningTournament extends Model
+class TournamentConfiguration extends Model
 {
     use HasFactory, HasUuids;
 
@@ -19,7 +19,6 @@ class RunningTournament extends Model
         'description',
         'details',
         'team_results',
-        'tournament_id',
         'user_id',
     ];
 
@@ -32,23 +31,20 @@ class RunningTournament extends Model
         return $this->belongsTo(User::class);
     }
 
-    public function tournament(): BelongsTo
-    {
-        return $this->belongsTo(Tournament::class);
-    }
-
     public function boardSets(): HasMany
     {
-        return $this->hasMany(BoardSet::class);
+        return $this->hasMany(BoardSet::class, 'tournament_configuration_id');
     }
 
     public function publishToTournament(): Tournament
     {
         return DB::transaction(function () {
-            $tournament = $this->tournament;
+            // Find existing tournament with same ID or create new one with matching ID
+            $tournament = Tournament::find($this->id);
             
             if (!$tournament) {
                 $tournament = new Tournament();
+                $tournament->id = $this->id; // Enforce identical UUID
                 $tournament->user_id = $this->user_id ?? auth()->id() ?? User::first()->id; 
             }
 
@@ -58,17 +54,18 @@ class RunningTournament extends Model
             $tournament->team_results = $this->team_results;
             $tournament->save();
 
-            $this->tournament_id = $tournament->id;
-            $this->save();
+            // Refresh to ensure we have any defaults
             $this->refresh();
 
+            // Clear existing board sets on the published tournament
             $tournament->boardSets()->each(function ($set) {
                 $set->delete();
             });
 
+            // Copy all board sets, boards, and results
             foreach ($this->boardSets as $boardSet) {
                 $newBoardSet = $boardSet->replicate();
-                $newBoardSet->running_tournament_id = null;
+                $newBoardSet->tournament_configuration_id = null; // Unlink from config
                 $newBoardSet->tournament_id = $tournament->id;
                 $newBoardSet->save();
 
@@ -85,6 +82,7 @@ class RunningTournament extends Model
                 }
             }
 
+            // Sync players
             $playerIds = [];
             if ($this->team_results && !empty($this->team_results->teams)) {
                 foreach ($this->team_results->teams as $team) {

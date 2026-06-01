@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('board_sets', function (Blueprint $table) {
             $table->id();
-            $table->foreignUuid('running_tournament_id')->nullable()->constrained('running_tournaments')->onDelete('cascade');
+            $table->foreignUuid('tournament_configuration_id')->nullable()->constrained('tournament_configurations')->onDelete('cascade');
             $table->foreignUuid('tournament_id')->nullable()->constrained('tournaments')->onDelete('cascade');
             $table->string('name');
             $table->timestamps();

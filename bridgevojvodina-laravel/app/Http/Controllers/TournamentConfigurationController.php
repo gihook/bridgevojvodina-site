@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\RunningTournament;
+use App\Models\TournamentConfiguration;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
 use Illuminate\Support\Facades\Gate;
 
-class RunningTournamentController extends Controller
+class TournamentConfigurationController extends Controller
 {
     public function index(Request $request): View
     {
         $user = $request->user();
         
-        $query = RunningTournament::latest();
+        $query = TournamentConfiguration::latest();
 
         if (!$user->isAdmin()) {
             $query->where('user_id', $user->id);
@@ -21,6 +21,6 @@ class RunningTournamentController extends Controller
 
         $tournaments = $query->paginate(10);
 
-        return view('tournaments.running_index', compact('tournaments'));
+        return view('tournaments.configurations_index', compact('tournaments'));
     }
 }

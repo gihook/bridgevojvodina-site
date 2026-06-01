@@ -12,14 +12,14 @@ class BoardSet extends Model
     use HasFactory;
 
     protected $fillable = [
-        'running_tournament_id',
+        'tournament_configuration_id',
         'tournament_id',
         'name',
     ];
 
-    public function runningTournament(): BelongsTo
+    public function tournamentConfiguration(): BelongsTo
     {
-        return $this->belongsTo(RunningTournament::class);
+        return $this->belongsTo(TournamentConfiguration::class);
     }
 
     public function tournament(): BelongsTo

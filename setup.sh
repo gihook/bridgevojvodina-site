@@ -19,7 +19,7 @@ docker-compose exec -w /var/www/html web chown -R www-data:www-data /var/www/htm
 echo "Starting database setup..."
 
 # Run migrations
-docker-compose exec -w /var/www/html web php artisan migrate --force
+docker-compose exec -w /var/www/html web php artisan migrate:fresh --force
 
 # Run seeders
 docker-compose exec -w /var/www/html web php artisan db:seed --force

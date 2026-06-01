@@ -25,7 +25,7 @@
                                             <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
-                                            @if($tournament instanceof \App\Models\RunningTournament)
+                                            @if($tournament instanceof \App\Models\TournamentConfiguration)
                                                 <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
                                                     {{ __('Draft') }}
                                                 </span>

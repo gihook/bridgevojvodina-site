@@ -14,7 +14,7 @@ use App\Http\Controllers\UserController;
 use App\Http\Controllers\ContactController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\TournamentController;
-use App\Http\Controllers\RunningTournamentController;
+use App\Http\Controllers\TournamentConfigurationController;
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 
@@ -31,7 +31,7 @@ Route::resource('clubs', ClubController::class);
 Route::resource('players', PlayerController::class);
 Route::resource('events', EventController::class);
 Route::resource('tournaments', TournamentController::class);
-Route::get('running-tournaments', [RunningTournamentController::class, 'index'])->name('running-tournaments.index');
+Route::get('tournament-configurations', [TournamentConfigurationController::class, 'index'])->name('tournament-configurations.index');
 Route::post('tournaments/{tournament}/board-sets', [TournamentController::class, 'uploadBoardSet'])->name('tournaments.board-sets.upload');
 Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
 Route::delete('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'destroyBoardSet'])->name('tournaments.board-sets.destroy');

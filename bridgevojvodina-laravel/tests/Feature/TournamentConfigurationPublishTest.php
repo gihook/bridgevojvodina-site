@@ -5,18 +5,18 @@ namespace Tests\Feature;
 use App\Models\Board;
 use App\Models\BoardSet;
 use App\Models\Player;
-use App\Models\RunningTournament;
+use App\Models\TournamentConfiguration;
 use App\Models\Tournament;
 use App\Models\User;
 use App\Models\Club;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
-class TournamentPublishTest extends TestCase
+class TournamentConfigurationPublishTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_can_publish_running_tournament()
+    public function test_can_publish_tournament_configuration()
     {
         $user = User::factory()->create();
         $club = Club::create([
@@ -31,7 +31,7 @@ class TournamentPublishTest extends TestCase
         $player1 = Player::create(['first_name' => 'P1', 'last_name' => 'L1', 'club_id' => $club->id]);
         $player2 = Player::create(['first_name' => 'P2', 'last_name' => 'L2', 'club_id' => $club->id]);
 
-        $running = RunningTournament::create([
+        $config = TournamentConfiguration::create([
             'title' => 'NS Team Cup',
             'team_results' => [
                 'teams' => [
@@ -40,7 +40,7 @@ class TournamentPublishTest extends TestCase
             ]
         ]);
 
-        $set = BoardSet::create(['running_tournament_id' => $running->id, 'name' => 'Kolo 1']);
+        $set = BoardSet::create(['tournament_configuration_id' => $config->id, 'name' => 'Kolo 1']);
         Board::create([
             'board_set_id' => $set->id,
             'board_number' => 1,
@@ -48,12 +48,11 @@ class TournamentPublishTest extends TestCase
             'cards_north' => [], 'cards_south' => [], 'cards_east' => [], 'cards_west' => []
         ]);
 
-        $published = $running->publishToTournament();
+        $published = $config->publishToTournament();
 
-        $this->assertDatabaseHas('tournaments', ['id' => $published->id, 'title' => 'NS Team Cup']);
-        
-        $freshRunning = RunningTournament::find($running->id);
-        $this->assertEquals($published->id, $freshRunning->tournament_id);
+        // Verify shared UUID
+        $this->assertEquals($config->id, $published->id);
+        $this->assertDatabaseHas('tournaments', ['id' => $config->id, 'title' => 'NS Team Cup']);
         
         $this->assertCount(1, $published->boardSets);
         $this->assertCount(1, $published->boardSets->first()->boards);
