@@ -236,9 +236,27 @@
                 options.push({ value: t, label: label + ' (' + t + ')' });
             }
             return options;
+        },
+
+        formatTricks(level, tricks) {
+            if (level === 0 || level === null || tricks === null || tricks === '') return '-';
+            let required = 6 + parseInt(level);
+            let diff = tricks - required;
+            if (diff === 0) return '=';
+            return (diff > 0 ? '+' : '') + diff;
         }
-    }">,old_string:
+    }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Hidden CSV Upload Forms -->
+            <form id="csvFormOpen" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInputOpen" name="csv_file" accept=".csv" onchange="document.getElementById('csvFormOpen').submit()">
+            </form>
+            <form id="csvFormClosed" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInputClosed" name="csv_file" accept=".csv" onchange="document.getElementById('csvFormClosed').submit()">
+            </form>
+
             <form method="POST" action="{{ route('tournaments.match.update', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}">
                 @csrf
                 @method('PATCH')
@@ -290,7 +308,12 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
                     <!-- Open Room Table -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-blue-500">
-                        <div class="text-center font-bold uppercase text-blue-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Open Room') }}</div>
+                        <div class="flex justify-between items-center mb-6 border-b pb-1">
+                            <div class="font-bold uppercase text-blue-800 text-sm tracking-widest">{{ __('Open Room') }}</div>
+                            <x-secondary-button type="button" onclick="document.getElementById('csvInputOpen').click()" class="!py-0.5 !text-[9px]">
+                                {{ __('CSV') }}
+                            </x-secondary-button>
+                        </div>
                         
                         <div class="flex flex-col items-center gap-4">
                             <!-- North (Home) -->
@@ -349,7 +372,12 @@
 
                     <!-- Closed Room Table -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-red-500">
-                        <div class="text-center font-bold uppercase text-red-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Closed Room') }}</div>
+                        <div class="flex justify-between items-center mb-6 border-b pb-1">
+                            <div class="font-bold uppercase text-red-800 text-sm tracking-widest">{{ __('Closed Room') }}</div>
+                            <x-secondary-button type="button" onclick="document.getElementById('csvInputClosed').click()" class="!py-0.5 !text-[9px]">
+                                {{ __('CSV') }}
+                            </x-secondary-button>
+                        </div>
                         
                         <div class="flex flex-col items-center gap-4">
                             <!-- North (Away) -->
@@ -536,8 +564,8 @@
                                                 <option value="">-</option>
                                                 @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
                                                     <optgroup label="{{ $suitSym }} {{ $suitCode }}">
-                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
-                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitCode }}</option>
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach
@@ -608,8 +636,8 @@
                                                 <option value="">-</option>
                                                 @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
                                                     <optgroup label="{{ $suitSym }} {{ $suitCode }}">
-                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
-                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitCode }}</option>
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach

@@ -18,6 +18,11 @@
                 <div id="save-indicator" class="hidden text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full animate-pulse">
                     {{ __('Saving...') }}
                 </div>
+                
+                <x-secondary-button type="button" onclick="document.getElementById('csvInput').click()" class="!text-[10px]">
+                    {{ __('Upload CSV') }}
+                </x-secondary-button>
+
                 <a href="{{ route('tournaments.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                     {{ __('Back to Tournament') }}
                 </a>
@@ -242,6 +247,12 @@
         }
     }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Hidden CSV Upload Form -->
+            <form id="csvForm" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), $room]) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInput" name="csv_file" accept=".csv" onchange="document.getElementById('csvForm').submit()">
+            </form>
+
             <!-- Match Score (TOP) -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8 border-b-4 border-indigo-500">
                 <div class="p-6">
@@ -457,8 +468,8 @@
                                                 <option value="">-</option>
                                                 @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
                                                     <optgroup label="{{ $suitSym }} {{ $suitCode }}">
-                                                        @foreach(['A', 'K', 'Q', 'J', '10', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
-                                                            <option value="{{ $suitCode }}{{ $val }}">{{ $suitCode }}{{ $val }}</option>
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitCode }}</option>
                                                         @endforeach
                                                     </optgroup>
                                                 @endforeach

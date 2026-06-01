@@ -192,5 +192,9 @@
     "No tournaments found.": "No tournaments found.",
     "Delete Tournament": "Delete Tournament",
     "Contract": "Contract",
-    "Risk": "Risk"
+    "Risk": "Risk",
+    ":count board results imported successfully.": ":count board results imported successfully.",
+    "Upload Scores CSV": "Upload Scores CSV",
+    "Upload Scores CSV for": "Upload Scores CSV for",
+    "Format: bd,contract,by,lead,result": "Format: bd,contract,by,lead,result"
 }

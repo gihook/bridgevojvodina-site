@@ -1206,6 +1206,138 @@ class TournamentController extends Controller
         return back()->with('success', __('Board updated.'));
     }
 
+    public function uploadMatchBoardsCsv(Request $request, string $id, string $roundId, string $matchId, string $room): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'csv_file' => 'required|file',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        $round = $results->rounds[$roundIndex];
+        
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+
+        $match = $round->matches[$matchIndex];
+
+        // Ensure boards are initialized
+        if (empty($match->boards)) {
+            $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+            $boards = [];
+            for ($i = 1; $i <= $numBoards; $i++) {
+                $boards[] = new MatchBoardDTO(board_number: $i);
+            }
+            $match->boards = $boards;
+        }
+
+        $file = $request->file('csv_file');
+        $handle = fopen($file->getRealPath(), 'r');
+        $header = fgetcsv($handle); // bd,contract,by,lead,result
+        
+        $importedCount = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 5) continue;
+            
+            $boardNum = (int) $row[0];
+            $contractStr = $row[1];
+            $by = strtoupper($row[2]);
+            $lead = strtoupper($row[3]);
+            $result = $row[4];
+
+            $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNum);
+            if ($boardIndex === false) continue;
+
+            $board = $match->boards[$boardIndex];
+            $parsed = $this->scoringService->parseContract($contractStr);
+            $level = $parsed[0];
+            
+            if ($level === 0) {
+                $score = 0;
+                $contract = 'Pass';
+                $decl = null;
+                $tricks = null;
+            } else {
+                $suit = $parsed[1];
+                $risk = $parsed[2];
+                $decl = $by;
+
+                // Parse result (e.g. =, +1, -2)
+                $tricks = 6 + $level;
+                if ($result !== '=') {
+                    $tricks += (int) $result;
+                }
+
+                // Standardize declarer to one of N, E, S, W
+                if (!in_array($decl, ['N', 'E', 'S', 'W'])) {
+                    // Try to normalize or skip
+                    continue;
+                }
+
+                $isVul = $this->hydrationService->calculateVulnerability($boardNum);
+                $isRoomVul = ($isVul === 'All' || $isVul === ($decl === 'N' || $decl === 'S' ? 'NS' : 'EW'));
+                $absScore = $this->scoringService->calculateScore($level, $suit, $risk, $tricks, $isRoomVul);
+                $score = ($decl === 'N' || $decl === 'S') ? $absScore : -$absScore;
+                
+                $suffix = $risk === 2 ? 'X' : ($risk === 4 ? 'XX' : '');
+                $contract = $level . $suit . $suffix;
+            }
+
+            if ($room === 'open') {
+                $board->home_score = $score;
+                $board->home_contract = $contract;
+                $board->home_declarer = $decl;
+                $board->home_tricks = $tricks;
+                $board->home_lead = $lead;
+                $board->home_updated_by = auth()->id();
+            } else {
+                $board->away_score = $score;
+                $board->away_contract = $contract;
+                $board->away_declarer = $decl;
+                $board->away_tricks = $tricks;
+                $board->away_lead = $lead;
+                $board->away_updated_by = auth()->id();
+            }
+
+            // Recalculate board IMPs
+            if ($board->home_score !== null && $board->away_score !== null) {
+                $diff = $board->home_score - $board->away_score;
+                $imp = $this->hydrationService->scoreToImp($diff);
+                $board->home_imp = $imp > 0 ? $imp : 0;
+                $board->away_imp = $imp < 0 ? abs($imp) : 0;
+            }
+            $importedCount++;
+        }
+        fclose($handle);
+
+        // Recalculate match totals
+        $totalHomeImp = 0;
+        $totalAwayImp = 0;
+        foreach ($match->boards as $b) {
+            $totalHomeImp += $b->home_imp;
+            $totalAwayImp += $b->away_imp;
+        }
+        $match->home_imp = $totalHomeImp;
+        $match->away_imp = $totalAwayImp;
+
+        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
+        $match->home_vp = $hVp;
+        $match->away_vp = $aVp;
+
+        $this->recalculateStandings($results);
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __(':count board results imported successfully.', ['count' => $importedCount]));
+    }
+
     public function destroyRound(string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);

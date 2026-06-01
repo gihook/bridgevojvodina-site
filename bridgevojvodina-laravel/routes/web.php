@@ -55,6 +55,7 @@ Route::middleware('auth')->group(function () {
     Route::get('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/edit', [TournamentController::class, 'editMatchRoom'])->name('tournaments.match.room.edit');
     Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/lineup', [TournamentController::class, 'updateMatchLineup'])->name('tournaments.match.room.lineup.update');
     Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/board/{boardNumber}', [TournamentController::class, 'updateMatchBoard'])->name('tournaments.match.room.board.update');
+    Route::post('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/boards/csv', [TournamentController::class, 'uploadMatchBoardsCsv'])->name('tournaments.match.room.boards.csv.upload');
     Route::post('tournaments/{tournament}/publish', [TournamentController::class, 'publish'])->name('tournaments.publish');
 });
 

@@ -249,5 +249,9 @@
     "Tournament Configurations": "Konfiguracije turnira",
     "No tournament configurations found.": "Nema pronađenih konfiguracija turnira.",
     "No tournaments found.": "Turniri nisu pronađeni.",
-    "Delete Tournament": "Obriši turnir"
+    "Delete Tournament": "Obriši turnir",
+    ":count board results imported successfully.": "Uspešno uvezeno :count rezultata bordova.",
+    "Upload Scores CSV": "Otpremi rezultate (CSV)",
+    "Upload Scores CSV for": "Otpremi rezultate (CSV) za",
+    "Format: bd,contract,by,lead,result": "Format: bd,kontrakt,izvođač,napad,rezultat"
 }

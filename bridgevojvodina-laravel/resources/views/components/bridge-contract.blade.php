@@ -14,10 +14,10 @@
 
     $rendered = $contract;
     foreach ($suitSymbols as $letter => $symbol) {
-        // Matches the suit letter (case-insensitive) when it follows a number (4S)
-        // OR when it is at the start of a string followed by a rank (SK, S4, ST)
-        $rendered = preg_replace("/(\d)" . $letter . "/i", "$1" . $symbol, $rendered);
-        $rendered = preg_replace("/^" . $letter . "([0-9TJQKA])/i", $symbol . "$1", $rendered);
+        // Matches the suit letter (case-insensitive) when it follows a number or rank (4S, KS, AS)
+        $rendered = preg_replace("/([0-9TJQKA])" . $letter . "/i", "$1" . $symbol, $rendered);
+        // Matches the suit letter (case-insensitive) when it precedes a number or rank (S4, SK, SA)
+        $rendered = preg_replace("/" . $letter . "([0-9TJQKA])/i", $symbol . "$1", $rendered);
     }
 @endphp
 
