@@ -48,16 +48,18 @@ jobs:
         # Rename public to public_html for DirectAdmin compatibility
         mv public public_html
         
-        # Create ZIP excluding the extract script (we'll upload it separately with the token)
+        # Create ZIP excluding the extract script (we'll upload it separately)
         zip -r ../deploy.zip . -x "node_modules/*" "tests/*" ".git/*" ".env*" "storage/logs/*" "storage/framework/cache/*" "storage/framework/sessions/*" "storage/framework/views/*" "package.json" "package-lock.json" "phpunit.xml" "tailwind.config.js" "vite.config.js" "postcss.config.js" "README.md" ".editorconfig" ".gitattributes" "public_html/extract.php"
         cd ..
         
-        mkdir deploy_ready
+        mkdir -p deploy_ready/public_html
         mv deploy.zip deploy_ready/
         
-        # Prepare the extract script with the cleaned secret injected
+        # Prepare the extract script with robust token injection
+        # We put it in both the root and public_html to handle different FTP_SERVER_DIR settings
         cp bridgevojvodina-laravel/public_html/extract.php deploy_ready/extract.php
-        sed -i "s|DEPLOY_TOKEN_PLACEHOLDER|$CLEAN_TOKEN|g" deploy_ready/extract.php
+        CLEAN_TOKEN=$CLEAN_TOKEN php -r '$t=getenv("CLEAN_TOKEN"); $c=file_get_contents("deploy_ready/extract.php"); file_put_contents("deploy_ready/extract.php", str_replace(chr(39)."DEPLOY_TOKEN_PLACEHOLDER".chr(39), var_export($t, true), $c));'
+        cp deploy_ready/extract.php deploy_ready/public_html/extract.php
         
     - name: Sync files
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
@@ -74,4 +76,6 @@ jobs:
         DEPLOY_TOKEN: ${{ secrets.DEPLOY_TOKEN }}
       run: |
         CLEAN_TOKEN=$(echo -n "$DEPLOY_TOKEN" | tr -d '\r\n ' )
-        curl -L -f -v --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/extract.php"
+        # Try both common locations just in case
+        curl -L -f -v --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/extract.php" || \
+        curl -L -f -v --get --data-urlencode "token=$CLEAN_TOKEN" "https://bridgevojvodina.rs/public_html/extract.php"
