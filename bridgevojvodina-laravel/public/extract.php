@@ -1,3 +1,4 @@
+<?php
 /**
  * Automated extraction script for GitHub Actions deployment.
  */
