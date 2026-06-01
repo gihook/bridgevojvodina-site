@@ -43,22 +43,33 @@ if ($zip->open($zipPath) === TRUE) {
     
     // Run migrations and optimize
     $artisanPath = $extractPath . '/artisan';
+    echo "Checking for Artisan at: $artisanPath\n";
     if (file_exists($artisanPath)) {
         try {
+            echo "Bootstrapping Laravel...\n";
             // Bootstrap Laravel
             require $extractPath . '/vendor/autoload.php';
             $app = require_once $extractPath . '/bootstrap/app.php';
             $kernel = $app->make(Illuminate\Contracts\Console\Kernel::class);
             
             echo "\n--- Running migrations ---\n";
-            $kernel->call('migrate', ['--force' => true]);
-            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+            $exitCode = $kernel->call('migrate', ['--force' => true]);
+            echo "Migration Exit Code: $exitCode\n";
+            echo "Migration Output:\n" . \Illuminate\Support\Facades\Artisan::output() . "\n";
             
             echo "\n--- Optimizing ---\n";
-            $kernel->call('optimize');
-            echo \Illuminate\Support\Facades\Artisan::output() . "\n";
+            $exitCode = $kernel->call('optimize');
+            echo "Optimize Exit Code: $exitCode\n";
+            echo "Optimize Output:\n" . \Illuminate\Support\Facades\Artisan::output() . "\n";
+
+            if ($exitCode === 0) {
+                echo "\nDeployment completed successfully.\n";
+            } else {
+                echo "\nDeployment failed during Artisan tasks.\n";
+            }
         } catch (\Exception $e) {
             echo "\nError during Laravel tasks: " . $e->getMessage() . "\n";
+            echo "Stack trace:\n" . $e->getTraceAsString() . "\n";
         }
     } else {
         echo "Artisan not found at $artisanPath\n";
