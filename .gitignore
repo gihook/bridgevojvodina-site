@@ -13,5 +13,3 @@ Thumbs.db
 
 # config.php
 # admin/connectdb.php
-.env
-.env.*
