@@ -19,7 +19,16 @@
                         @csrf
                         @method('PATCH')
                         @include('tournaments.form')
-                        <div class="mt-6 flex justify-end">
+                        <div class="mt-6 flex justify-end gap-4">
+                            @if($tournament instanceof \App\Models\RunningTournament)
+                                <form method="POST" action="{{ route('tournaments.publish', $tournament) }}" id="publish-form" class="inline">
+                                    @csrf
+                                    <x-secondary-button type="submit" onclick="return confirm('{{ __('Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.') }}')" class="!bg-green-600 !text-white hover:!bg-green-700">
+                                        {{ __('Publish Tournament') }}
+                                    </x-secondary-button>
+                                </form>
+                            @endif
+                            
                             <x-primary-button>
                                 {{ __('Update Tournament') }}
                             </x-primary-button>

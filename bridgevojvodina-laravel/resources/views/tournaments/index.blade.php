@@ -25,7 +25,11 @@
                                             <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
-                                            @if($tournament->is_completed)
+                                            @if($tournament instanceof \App\Models\RunningTournament)
+                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                    {{ __('Draft') }}
+                                                </span>
+                                            @elseif($tournament->is_completed)
                                                 <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
                                                     {{ __('Completed') }}
                                                 </span>
@@ -35,7 +39,7 @@
                                                 </span>
                                             @endif
                                         </h3>
-                                        <p class="text-gray-600">{{ $tournament->description }}</p>
+                                        <p class="text-gray-600">{{ $tournament->description ?? __('Active tournament draft.') }}</p>
                                     </div>
                                     <div class="flex space-x-2">
                                         @can('update', $tournament)
@@ -56,9 +60,7 @@
                         @endforeach
                     </div>
 
-                    <div class="mt-6">
-                        {{ $tournaments->links() }}
-                    </div>
+                    {{-- Pagination removed for merged collection --}}
                 </div>
             </div>
         </div>

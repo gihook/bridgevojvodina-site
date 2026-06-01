@@ -240,5 +240,10 @@
     "Victory Points awarded for a \"bye\" round, and default number of boards per round.": "Victory Poeni koji se dodeljuju za slobodno kolo i podrazumevani broj bordova po kolu.",
     "Preview Deals": "Pregled bordova",
     "Previous": "Prethodni",
-    "Next": "Sledeći"
+    "Next": "Sledeći",
+    "Draft": "Nacrt",
+    "Active tournament draft.": "Aktivni nacrt turnira.",
+    "Publish Tournament": "Objavi turnir",
+    "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.": "Da li ste sigurni da želite da objavite ovaj turnir? Ovo će prepisati sve postojeće objavljene podatke za ovaj turnir.",
+    "Tournament published successfully.": "Turnir je uspešno objavljen."
 }
