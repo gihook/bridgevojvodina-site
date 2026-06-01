@@ -31,7 +31,16 @@ class TournamentController extends Controller
 
     protected function resolveTournament(string $id)
     {
-        return TournamentConfiguration::find($id) ?? Tournament::findOrFail($id);
+        $draft = TournamentConfiguration::find($id);
+        $published = Tournament::find($id);
+
+        if ($draft && auth()->check()) {
+            if (auth()->user()->isAdmin() || auth()->id() === $draft->user_id) {
+                return $draft;
+            }
+        }
+
+        return $published ?? Tournament::findOrFail($id);
     }
 
     protected function authorizeTournament(\Illuminate\Database\Eloquent\Model $tournament)
@@ -51,6 +60,7 @@ class TournamentController extends Controller
     public function index(): View
     {
         $published = Tournament::latest()->get();
+        $publishedIds = $published->pluck('id')->toArray();
         $drafts = collect();
         
         if (auth()->check()) {
@@ -58,6 +68,8 @@ class TournamentController extends Controller
             if (!auth()->user()->isAdmin()) {
                 $query->where('user_id', auth()->id());
             }
+            // Exclude drafts that are already published
+            $query->whereNotIn('id', $publishedIds);
             $drafts = $query->get();
         }
         

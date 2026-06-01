@@ -175,5 +175,53 @@ class TournamentTest extends TestCase
 
         $tournament->refresh();
         $this->assertEquals('inProgress', $tournament->team_results->rounds[0]->status);
-        }
-        }
+    }
+
+    public function test_admin_sees_each_tournament_only_once_even_if_published()
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+
+        // Create a configuration
+        $config = new \App\Models\TournamentConfiguration();
+        $config->id = $uuid;
+        $config->title = 'Published Tournament';
+        $config->user_id = $admin->id;
+        $config->team_results = ['teams' => [], 'rounds' => []];
+        $config->save();
+
+        // Publish it (creates a Tournament record with same ID)
+        $tournament = new Tournament();
+        $tournament->id = $uuid;
+        $tournament->title = 'Published Tournament';
+        $tournament->description = 'Published description';
+        $tournament->details = 'Published details';
+        $tournament->user_id = $admin->id;
+        $tournament->team_results = ['teams' => [], 'rounds' => []];
+        $tournament->save();
+
+        // Create another configuration that is NOT published
+        $draft = new \App\Models\TournamentConfiguration();
+        $draft->id = (string) \Illuminate\Support\Str::uuid();
+        $draft->title = 'Real Draft';
+        $draft->user_id = $admin->id;
+        $draft->team_results = ['teams' => [], 'rounds' => []];
+        $draft->save();
+
+        $response = $this->actingAs($admin)->get(route('tournaments.index'));
+
+        $response->assertStatus(200);
+        
+        $content = $response->getContent();
+        
+        // Should see two tournament entries in total
+        $this->assertEquals(2, substr_count($content, '<h3 class="text-lg font-bold">'), "Should see two tournament entries (one published, one draft)");
+        $response->assertSee('Published Tournament');
+        $response->assertSee('Real Draft');
+        
+        // Verify only one is marked as Draft
+        $response->assertSee('Draft');
+        // Count occurrences of the draft badge class
+        $this->assertEquals(1, substr_count($content, 'bg-yellow-100 text-yellow-800'), "Should see only one 'Draft' badge");
+    }
+}
