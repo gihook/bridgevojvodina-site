@@ -6,12 +6,24 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <div>
+            <div class="flex flex-col">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     {{ __($isOpen ? 'Open Room' : 'Closed Room') }}: {{ $nsTeam->name }} vs {{ $ewTeam->name }}
                 </h2>
-                <div class="text-xs text-gray-500 mt-1">
-                    {{ $homeTeam->name }} vs {{ $awayTeam->name }} ({{ $round->name }})
+                <div class="flex items-center gap-4 mt-2">
+                    <div class="flex p-0.5 bg-gray-100 rounded-lg shadow-inner">
+                        <a href="{{ route('tournaments.match.room.edit', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" 
+                            class="px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {{ $isOpen ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600' }}">
+                            {{ __('Open') }}
+                        </a>
+                        <a href="{{ route('tournaments.match.room.edit', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" 
+                            class="px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {{ !$isOpen ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600' }}">
+                            {{ __('Closed') }}
+                        </a>
+                    </div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                        {{ $homeTeam->name }} vs {{ $awayTeam->name }} ({{ $round->name }})
+                    </div>
                 </div>
             </div>
             <div class="flex items-center gap-4">
@@ -162,6 +174,13 @@
                     this.boards[idx].away_lead = data.board.away_lead;
                     this.boards[idx].home_imp = data.board.home_imp;
                     this.boards[idx].away_imp = data.board.away_imp;
+
+                    // Sync current room helper fields
+                    this.boards[idx].current_room_contract_level = this.editingBoard.current_room_contract_level;
+                    this.boards[idx].current_room_tricks = this.editingBoard.current_room_tricks;
+                    this.boards[idx].current_room_score = this.editingBoard.current_room_score;
+                    this.boards[idx].current_room_lead = this.editingBoard.current_room_lead;
+                    this.boards[idx].current_room_contract_base = this.editingBoard.current_room_contract_base;
                 }
 
                 // Update match totals
@@ -373,12 +392,17 @@
                         <table class="min-w-full text-sm text-center border-collapse">
                             <thead class="bg-gray-50 font-bold text-gray-700">
                                 <tr>
-                                    <th class="py-3 border px-4">#</th>
-                                    <th class="py-3 border">{{ __('Contract') }}</th>
-                                    <th class="py-3 border">{{ __('Declarer') }}</th>
-                                    <th class="py-3 border">{{ __('Lead') }}</th>
-                                    <th class="py-3 border">{{ __('Tricks') }}</th>
-                                    <th class="py-3 border">{{ __('Score') }} (NS)</th>
+                                    <th class="py-3 border px-4" rowspan="2">#</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Contract') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Declarer') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Lead') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Tricks') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Score') }} (NS)</th>
+                                    <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                </tr>
+                                <tr class="text-[10px] uppercase bg-gray-100">
+                                    <th class="py-1 border">H</th>
+                                    <th class="py-1 border">A</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -388,13 +412,22 @@
                                         <td class="py-3 border italic text-gray-600" x-text="(room === 'open' ? board.home_contract : board.away_contract) || '-'"></td>
                                         <td class="py-3 border" x-text="(room === 'open' ? board.home_declarer : board.away_declarer) || '-'"></td>
                                         <td class="py-3 border font-mono text-xs" x-text="(room === 'open' ? board.home_lead : board.away_lead) || '-'"></td>
-                                        <td class="py-3 border text-xs" x-text="formatTricks(room === 'open' ? board.current_room_contract_level : board.current_room_contract_level, room === 'open' ? board.home_tricks : board.away_tricks)"></td>
+                                        <td class="py-3 border text-xs" x-text="formatTricks(board.current_room_contract_level, room === 'open' ? board.home_tricks : board.away_tricks)"></td>
                                         <td class="py-3 border font-mono font-bold" :class="(room === 'open' ? board.home_score : board.away_score) > 0 ? 'text-green-600' : ((room === 'open' ? board.home_score : board.away_score) < 0 ? 'text-red-600' : '')">
                                             <span x-text="(room === 'open' ? board.home_score : board.away_score) !== null ? ((room === 'open' ? board.home_score : board.away_score) > 0 ? '+' : '') + (room === 'open' ? board.home_score : board.away_score) : '-'"></span>
                                         </td>
+                                        <td class="py-3 border font-bold text-green-700" x-text="board.home_imp || ''"></td>
+                                        <td class="py-3 border font-bold text-red-700" x-text="board.away_imp || ''"></td>
                                     </tr>
                                 </template>
                             </tbody>
+                            <tfoot class="bg-gray-50 font-black">
+                                <tr>
+                                    <td colspan="6" class="py-4 border text-right px-6 uppercase tracking-widest text-gray-400 text-xs">{{ __('Total') }}</td>
+                                    <td class="py-4 border text-xl text-green-700" x-text="homeImp"></td>
+                                    <td class="py-4 border text-xl text-red-700" x-text="awayImp"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
