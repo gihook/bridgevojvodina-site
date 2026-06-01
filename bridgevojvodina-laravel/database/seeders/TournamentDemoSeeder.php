@@ -56,6 +56,7 @@ class TournamentDemoSeeder extends Seeder
             [
                 'id' => 'round_1',
                 'name' => '1. KOLO',
+                'status' => 'complete',
                 'matches' => [
                     [
                         'id' => 'match_1_1',
@@ -123,6 +124,7 @@ class TournamentDemoSeeder extends Seeder
             [
                 'id' => 'round_2',
                 'name' => '2. KOLO',
+                'status' => 'complete',
                 'matches' => [
                     [
                         'id' => 'match_2_1',
