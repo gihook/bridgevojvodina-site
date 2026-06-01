@@ -140,7 +140,7 @@
                                                         </td>
                                                         <td class="py-4 border px-3 text-gray-600 font-medium">{{ $res['ns_names'] }}</td>
                                                         <td class="py-4 border px-3 text-gray-600 font-medium">{{ $res['ew_names'] }}</td>
-                                                        <td class="py-4 border font-bold italic">{{ $res['contract'] ?: '-' }}</td>
+                                                        <td class="py-4 border font-bold italic"><x-bridge-contract :contract="$res['contract']" /></td>
                                                         <td class="py-4 border font-mono font-black text-sm {{ $res['score'] > 0 ? 'text-green-600' : ($res['score'] < 0 ? 'text-red-600' : '') }}">
                                                             {{ $res['score'] !== null ? ($res['score'] > 0 ? '+' : '') . $res['score'] : '-' }}
                                                         </td>

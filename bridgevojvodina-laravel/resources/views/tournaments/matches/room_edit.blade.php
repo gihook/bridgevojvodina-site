@@ -268,6 +268,20 @@
             let diff = tricks - required;
             if (diff === 0) return '=';
             return (diff > 0 ? '+' : '') + diff;
+        },
+
+        formatContract(str) {
+            if (!str || String(str).trim() === '-' || String(str).trim() === 'Pass') return str || '-';
+            let res = String(str).trim();
+            res = res.replace(/(10|[0-9TJQKA])S/i, '$1<span class=\'text-gray-900\'>&spades;</span>');
+            res = res.replace(/S(10|[0-9TJQKA])/i, '<span class=\'text-gray-900\'>&spades;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])H/i, '$1<span class=\'text-red-600\'>&hearts;</span>');
+            res = res.replace(/H(10|[0-9TJQKA])/i, '<span class=\'text-red-600\'>&hearts;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])D/i, '$1<span class=\'text-orange-500\'>&diams;</span>');
+            res = res.replace(/D(10|[0-9TJQKA])/i, '<span class=\'text-orange-500\'>&diams;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])C/i, '$1<span class=\'text-green-700\'>&clubs;</span>');
+            res = res.replace(/C(10|[0-9TJQKA])/i, '<span class=\'text-green-700\'>&clubs;</span>$1');
+            return res;
         }
     }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -414,9 +428,9 @@
                                 <template x-for="board in boards" :key="board.board_number">
                                     <tr @click="openBoardEditor(board)" class="hover:bg-indigo-50 cursor-pointer transition-colors border-b">
                                         <td class="py-3 border font-bold" x-text="board.board_number"></td>
-                                        <td class="py-3 border italic text-gray-600" x-text="(room === 'open' ? board.home_contract : board.away_contract) || '-'"></td>
+                                        <td class="py-3 border italic text-gray-600" x-html="formatContract((room === 'open' ? board.home_contract : board.away_contract) || '-')"></td>
                                         <td class="py-3 border" x-text="(room === 'open' ? board.home_declarer : board.away_declarer) || '-'"></td>
-                                        <td class="py-3 border font-mono text-xs" x-text="(room === 'open' ? board.home_lead : board.away_lead) || '-'"></td>
+                                        <td class="py-3 border font-mono text-xs" x-html="formatContract((room === 'open' ? board.home_lead : board.away_lead) || '-')"></td>
                                         <td class="py-3 border text-xs" x-text="formatTricks(board.current_room_contract_level, room === 'open' ? board.home_tricks : board.away_tricks)"></td>
                                         <td class="py-3 border font-mono font-bold" :class="(room === 'open' ? board.home_score : board.away_score) > 0 ? 'text-green-600' : ((room === 'open' ? board.home_score : board.away_score) < 0 ? 'text-red-600' : '')">
                                             <span x-text="(room === 'open' ? board.home_score : board.away_score) !== null ? ((room === 'open' ? board.home_score : board.away_score) > 0 ? '+' : '') + (room === 'open' ? board.home_score : board.away_score) : '-'"></span>

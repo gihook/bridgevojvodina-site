@@ -201,7 +201,17 @@ class TournamentController extends Controller
             $datum = array_sum($nsScores) / count($nsScores);
         }
 
-        return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard'));
+        $playerIds = collect($round->matches)->flatMap(fn($m) => array_merge($m->open_ns_ids, $m->open_ew_ids, $m->closed_ns_ids, $m->closed_ew_ids))->unique()->filter();
+        $players = \App\Models\Player::whereIn('id', $playerIds)->get()->keyBy('id');
+
+        return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard', 'players'));
+    }
+
+    public function formatTricksFromLevel($level, $tricks): string
+    {
+        if (!$level || $tricks === null || !is_numeric($level)) return '';
+        $diff = (int)$tricks - (6 + (int)$level);
+        return $diff === 0 ? '=' : ($diff > 0 ? '+' . $diff : (string)$diff);
     }
 
     public function edit(Request $request, string $id): View
@@ -357,6 +367,8 @@ class TournamentController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'details' => 'nullable|string',
+            'bye_vp' => 'nullable|numeric|min:0|max:20',
+            'boards_per_round' => 'nullable|integer|min:1|max:128',
         ];
         
         if ($tournament instanceof Tournament) {
@@ -365,11 +377,23 @@ class TournamentController extends Controller
 
         $validated = $request->validate($rules);
 
+        $results = $tournament->team_results;
+        if ($results) {
+            if (isset($validated['bye_vp'])) {
+                $results->bye_vp = (float)$validated['bye_vp'];
+            }
+            if (isset($validated['boards_per_round'])) {
+                $results->boards_per_round = (int)$validated['boards_per_round'];
+            }
+            $tournament->team_results = $results;
+            $this->recalculateStandings($results);
+        }
+
         if ($tournament instanceof Tournament) {
             $validated['is_completed'] = $request->has('is_completed');
         }
 
-        $tournament->update($validated);
+        $tournament->update(collect($validated)->only(['title', 'description', 'details', 'is_completed'])->toArray());
 
         return redirect()->route($tournament instanceof TournamentConfiguration ? 'tournament-configurations.index' : 'tournaments.index')
             ->with('success', __('Tournament updated successfully.'));
@@ -773,17 +797,24 @@ class TournamentController extends Controller
             $boards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
             
             foreach ($round->matches as $match) {
-                // If it's a bye, update the VP based on current tournament setting
-                if (!$match->home_team_id || !$match->away_team_id) {
-                    if ($match->home_team_id) {
-                        $match->home_vp = $results->bye_vp;
+                // Determine if it's a bye and award configured bye VP
+                $isHomeBye = empty($match->home_team_id) || $match->home_team_id === 'bye';
+                $isAwayBye = empty($match->away_team_id) || $match->away_team_id === 'bye';
+
+                if ($isHomeBye || $isAwayBye) {
+                    if (!$isHomeBye) {
+                        $match->home_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->home_imp = 0;
                         $match->away_vp = 0;
-                    } else {
-                        $match->away_vp = $results->bye_vp;
+                        $match->away_imp = 0;
+                    } elseif (!$isAwayBye) {
+                        $match->away_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->away_imp = 0;
                         $match->home_vp = 0;
+                        $match->home_imp = 0;
                     }
                 } else {
-                    // Automatically calculate VP based on IMPs
+                    // Automatically calculate VP based on IMPs for normal matches
                     if ($match->home_imp !== 0 || $match->away_imp !== 0) {
                         list($hVp, $aVp) = $this->vpService->calculateVp($match->home_imp, $match->away_imp, $boards);
                         $match->home_vp = $hVp;
@@ -792,13 +823,13 @@ class TournamentController extends Controller
                 }
 
                 // Add VPs to teams
-                if ($match->home_team_id) {
+                if (!$isHomeBye) {
                     $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
-                    if ($team) $team->total_vp += $match->home_vp;
+                    if ($team) $team->total_vp += (float)$match->home_vp;
                 }
-                if ($match->away_team_id) {
+                if (!$isAwayBye) {
                     $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
-                    if ($team) $team->total_vp += $match->away_vp;
+                    if ($team) $team->total_vp += (float)$match->away_vp;
                 }
             }
         }

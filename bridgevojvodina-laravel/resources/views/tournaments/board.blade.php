@@ -99,74 +99,103 @@
                         <table class="min-w-full text-sm text-center border-collapse">
                             <thead class="bg-gray-50 font-bold text-gray-700">
                                 <tr>
-                                    <th class="py-3 border-x border-t px-2" rowspan="2">{{ __('NS Team') }}</th>
-                                    <th class="py-3 border-x border-t px-2" rowspan="2">{{ __('EW Team') }}</th>
-                                    <th class="py-3 border bg-blue-50 text-blue-800" colspan="5">{{ __('Open Room') }}</th>
-                                    <th class="py-3 border bg-red-50 text-red-800" colspan="5">{{ __('Closed Room') }}</th>
-                                    <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
-                                    <th class="py-3 border bg-green-50 text-green-800" colspan="2">{{ __('Butler') }}</th>
-                                </tr>
-                                <tr>
-                                    <th class="py-2 border bg-blue-50 text-[10px] uppercase tracking-tighter">{{ __('Contr.') }}</th>
-                                    <th class="py-2 border bg-blue-50 text-[10px] uppercase tracking-tighter">{{ __('Decl.') }}</th>
-                                    <th class="py-2 border bg-blue-50 text-[10px] uppercase tracking-tighter">{{ __('Lead') }}</th>
-                                    <th class="py-2 border bg-blue-50 text-[10px] uppercase tracking-tighter">{{ __('Tr.') }}</th>
-                                    <th class="py-2 border bg-blue-50 text-[10px] uppercase tracking-tighter">{{ __('Score') }}</th>
-                                    <th class="py-2 border bg-red-50 text-[10px] uppercase tracking-tighter">{{ __('Contr.') }}</th>
-                                    <th class="py-2 border bg-red-50 text-[10px] uppercase tracking-tighter">{{ __('Decl.') }}</th>
-                                    <th class="py-2 border bg-red-50 text-[10px] uppercase tracking-tighter">{{ __('Lead') }}</th>
-                                    <th class="py-2 border bg-red-50 text-[10px] uppercase tracking-tighter">{{ __('Tr.') }}</th>
-                                    <th class="py-2 border bg-red-50 text-[10px] uppercase tracking-tighter">{{ __('Score') }}</th>
-                                    <th class="py-2 border text-[10px] uppercase tracking-tighter">{{ __('H') }}</th>
-                                    <th class="py-2 border text-[10px] uppercase tracking-tighter">{{ __('A') }}</th>
-                                    <th class="py-2 border bg-green-50 text-[10px] uppercase tracking-tighter">NS</th>
-                                    <th class="py-2 border bg-green-50 text-[10px] uppercase tracking-tighter">EW</th>
+                                    <th class="py-3 border px-2">{{ __('Room') }}</th>
+                                    <th class="py-3 border px-2">{{ __('NS Team') }}</th>
+                                    <th class="py-3 border px-2">{{ __('NS Players') }}</th>
+                                    <th class="py-3 border px-2">{{ __('EW Team') }}</th>
+                                    <th class="py-3 border px-2">{{ __('EW Players') }}</th>
+                                    <th class="py-3 border">{{ __('Contr.') }}</th>
+                                    <th class="py-3 border">{{ __('Decl.') }}</th>
+                                    <th class="py-3 border">{{ __('Lead') }}</th>
+                                    <th class="py-3 border">{{ __('Tr.') }}</th>
+                                    <th class="py-3 border">{{ __('Score') }}</th>
+                                    <th class="py-3 border">{{ __('IMP') }}</th>
+                                    <th class="py-3 border bg-green-50 text-green-800">{{ __('Butler') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @foreach ($boardResults as $res)
                                     @php
-                                        $openButler = $datum !== null && $res['board']->home_score !== null 
-                                            ? app(\App\Services\TournamentHydrationService::class)->scoreToImp($res['board']->home_score - $datum) 
-                                            : null;
-                                        $closedButler = $datum !== null && $res['board']->away_score !== null 
-                                            ? app(\App\Services\TournamentHydrationService::class)->scoreToImp($datum - $res['board']->away_score) 
-                                            : null;
-                                    @endphp
-                                    <tr class="hover:bg-gray-50 transition-colors border-b">
-                                        <td class="py-3 border-x font-semibold px-2 text-left">{{ $res['home_team']->name ?? __('bye') }}</td>
-                                        <td class="py-3 border-x font-semibold px-2 text-left">{{ $res['away_team']->name ?? __('bye') }}</td>
+                                        $match = $res['match'];
+                                        $board = $res['board'];
+                                        $homeTeam = $res['home_team'];
+                                        $awayTeam = $res['away_team'];
                                         
-                                        <td class="py-3 border-x bg-blue-50/30"><x-bridge-contract :contract="$res['board']->home_contract" /></td>
-                                        <td class="py-3 border-x bg-blue-50/30">{{ $res['board']->home_declarer }}</td>
-                                        <td class="py-3 border-x bg-blue-50/30"><x-bridge-contract :contract="$res['board']->home_lead" /></td>
-                                        <td class="py-3 border-x bg-blue-50/30">{{ $res['board']->home_tricks }}</td>
-                                        <td class="py-3 border-x bg-blue-50/30 font-mono">{{ $res['board']->home_score }}</td>
+                                        $hydration = app(\App\Services\TournamentHydrationService::class);
                                         
-                                        <td class="py-3 border-x bg-red-50/30"><x-bridge-contract :contract="$res['board']->away_contract" /></td>
-                                        <td class="py-3 border-x bg-red-50/30">{{ $res['board']->away_declarer }}</td>
-                                        <td class="py-3 border-x bg-red-50/30"><x-bridge-contract :contract="$res['board']->away_lead" /></td>
-                                        <td class="py-3 border-x bg-red-50/30">{{ $res['board']->away_tricks }}</td>
-                                        <td class="py-3 border-x bg-red-50/30 font-mono">{{ $res['board']->away_score }}</td>
-                                        
-                                        <td class="py-3 border-x font-bold text-green-700">{{ $res['board']->home_imp ?: '' }}</td>
-                                        <td class="py-3 border-x font-bold text-red-700">{{ $res['board']->away_imp ?: '' }}</td>
+                                        // Open Room Data
+                                        $openData = [
+                                            'room' => __('Open'),
+                                            'ns_team' => $homeTeam,
+                                            'ew_team' => $awayTeam,
+                                            'n' => $players[$match->open_ns_ids[0] ?? null] ?? null,
+                                            's' => $players[$match->open_ns_ids[1] ?? null] ?? null,
+                                            'e' => $players[$match->open_ew_ids[0] ?? null] ?? null,
+                                            'w' => $players[$match->open_ew_ids[1] ?? null] ?? null,
+                                            'contract' => $board->home_contract,
+                                            'declarer' => $board->home_declarer,
+                                            'lead' => $board->home_lead,
+                                            'tricks' => $board->home_tricks,
+                                            'score' => $board->home_score,
+                                            'imp' => $board->home_imp,
+                                            'butler' => ($datum !== null && $board->home_score !== null) ? $hydration->scoreToImp($board->home_score - $datum) : null,
+                                            'bg' => 'bg-blue-50/20'
+                                        ];
 
-                                        <td class="py-3 border-x bg-green-50/30 font-bold @if($openButler > 0) text-green-600 @elseif($openButler < 0) text-red-600 @endif">
-                                            {{ $openButler > 0 ? '+' : '' }}{{ $openButler }}
-                                        </td>
-                                        <td class="py-3 border-x bg-green-50/30 font-bold @if($closedButler > 0) text-green-600 @elseif($closedButler < 0) text-red-600 @endif">
-                                            {{ $closedButler > 0 ? '+' : '' }}{{ $closedButler }}
-                                        </td>
-                                    </tr>
+                                        // Closed Room Data
+                                        $closedData = [
+                                            'room' => __('Closed'),
+                                            'ns_team' => $awayTeam,
+                                            'ew_team' => $homeTeam,
+                                            'n' => $players[$match->closed_ns_ids[0] ?? null] ?? null,
+                                            's' => $players[$match->closed_ns_ids[1] ?? null] ?? null,
+                                            'e' => $players[$match->closed_ew_ids[0] ?? null] ?? null,
+                                            'w' => $players[$match->closed_ew_ids[1] ?? null] ?? null,
+                                            'contract' => $board->away_contract,
+                                            'declarer' => $board->away_declarer,
+                                            'lead' => $board->away_lead,
+                                            'tricks' => $board->away_tricks,
+                                            'score' => $board->away_score,
+                                            'imp' => $board->away_imp,
+                                            'butler' => ($datum !== null && $board->away_score !== null) ? $hydration->scoreToImp($board->away_score - $datum) : null,
+                                            'bg' => 'bg-red-50/20'
+                                        ];
+                                    @endphp
+
+                                    @foreach([$openData, $closedData] as $roomData)
+                                        <tr class="hover:bg-gray-50 transition-colors border-b {{ $roomData['bg'] }}">
+                                            <td class="py-2 border font-bold text-[10px] uppercase tracking-tighter text-gray-400">{{ $roomData['room'] }}</td>
+                                            <td class="py-2 border font-semibold px-2 text-left text-xs">{{ $roomData['ns_team']->name ?? __('bye') }}</td>
+                                            <td class="py-2 border px-2 text-left text-[10px] leading-tight">
+                                                @if($roomData['n']) <div>{{ $roomData['n']->first_name }} {{ $roomData['n']->last_name }}</div> @endif
+                                                @if($roomData['s']) <div>{{ $roomData['s']->first_name }} {{ $roomData['s']->last_name }}</div> @endif
+                                            </td>
+                                            <td class="py-2 border font-semibold px-2 text-left text-xs">{{ $roomData['ew_team']->name ?? __('bye') }}</td>
+                                            <td class="py-2 border px-2 text-left text-[10px] leading-tight">
+                                                @if($roomData['e']) <div>{{ $roomData['e']->first_name }} {{ $roomData['e']->last_name }}</div> @endif
+                                                @if($roomData['w']) <div>{{ $roomData['w']->first_name }} {{ $roomData['w']->last_name }}</div> @endif
+                                            </td>
+                                            
+                                            <td class="py-2 border italic text-gray-600"><x-bridge-contract :contract="$roomData['contract']" /></td>
+                                            <td class="py-2 border">{{ $roomData['declarer'] }}</td>
+                                            <td class="py-2 border"><x-bridge-contract :contract="$roomData['lead']" /></td>
+                                            <td class="py-2 border text-[10px]">{{ app(\App\Http\Controllers\TournamentController::class)->formatTricksFromLevel(substr($roomData['contract'], 0, 1), $roomData['tricks']) }}</td>
+                                            <td class="py-2 border font-mono">{{ $roomData['score'] !== null ? ($roomData['score'] > 0 ? '+' . $roomData['score'] : $roomData['score']) : '' }}</td>
+                                            
+                                            <td class="py-2 border font-bold {{ $roomData['imp'] > 0 ? 'text-green-700' : '' }}">{{ $roomData['imp'] ?: '' }}</td>
+
+                                            <td class="py-2 border bg-green-50/30 font-bold @if($roomData['butler'] > 0) text-green-600 @elseif($roomData['butler'] < 0) text-red-600 @endif">
+                                                {{ $roomData['butler'] > 0 ? '+' : '' }}{{ $roomData['butler'] }}
+                                            </td>
+                                        </tr>
+                                    @endforeach
                                 @endforeach
                             </tbody>
                             @if($datum !== null)
-                                <tfoot class="bg-gray-100 font-bold border-t-2 border-gray-300">
+                                <tfoot class="bg-gray-100 font-bold border-t-2 border-gray-300 text-center">
                                     <tr>
-                                        <td colspan="2" class="py-3 px-4 text-left uppercase tracking-widest text-gray-500 text-xs">{{ __('Datum') }}</td>
-                                        <td colspan="10" class="py-3"></td>
-                                        <td colspan="2" class="py-3 text-lg font-mono text-blue-900">{{ round($datum) }}</td>
+                                        <td colspan="9" class="py-3 px-4 text-right uppercase tracking-widest text-gray-500 text-xs">{{ __('Datum') }}</td>
+                                        <td class="py-3 text-lg font-mono text-blue-900">{{ round($datum) }}</td>
                                         <td colspan="2" class="py-3"></td>
                                     </tr>
                                 </tfoot>

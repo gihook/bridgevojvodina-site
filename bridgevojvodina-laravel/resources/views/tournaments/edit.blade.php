@@ -189,8 +189,8 @@
                                                         <div class="space-y-3">
                                                             @foreach($round->matches as $match)
                                                                 @php
-                                                                    $homeName = collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('bye');
-                                                                    $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('bye');
+                                                                    $homeName = collect($tournament->team_results->teams)->firstWhere('id', $match->home_team_id)->name ?? __('BYE');
+                                                                    $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('BYE');
                                                                     $isBye = !$match->home_team_id || !$match->away_team_id || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
 
                                                                     $totalBoards = $round->boards_per_round ?? $tournament->team_results->boards_per_round ?? 16;
@@ -202,9 +202,13 @@
 
                                                                 <div class="flex flex-col gap-1">
                                                                     <div class="text-[11px] font-bold text-gray-700 flex items-center gap-2">
-                                                                        <span>{{ $homeName }}</span>
+                                                                        <span class="{{ $homeName === __('BYE') ? 'text-gray-400 italic' : '' }}">{{ $homeName }}</span>
                                                                         <span class="text-gray-300 font-normal">vs</span>
-                                                                        <span>{{ $awayName }}</span>
+                                                                        <span class="{{ $awayName === __('BYE') ? 'text-gray-400 italic' : '' }}">{{ $awayName }}</span>
+                                                                        
+                                                                        <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
+                                                                            {{ number_format($match->home_vp, 1) }} - {{ number_format($match->away_vp, 1) }}
+                                                                        </span>
                                                                     </div>
 
                                                                     @if($canEdit)
