@@ -8,9 +8,16 @@
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('Enter Results') }}: {{ $homeTeam->name }} vs {{ $awayTeam->name }}
             </h2>
-            <a href="{{ route('tournaments.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                {{ __('Back to Tournament') }}
-            </a>
+            <div class="flex items-center gap-4">
+                @if(!empty($tournament->team_results->player_butlers))
+                    <a href="{{ route('tournaments.butler', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                        {{ __('Butler') }}
+                    </a>
+                @endif
+                <a href="{{ route('tournaments.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                    {{ __('Back to Tournament') }}
+                </a>
+            </div>
         </div>
     </x-slot>
 
@@ -24,12 +31,14 @@
             $data = $b->toArray();
             $data['home_contract_level'] = $parsed[0];
             $data['home_contract_suit'] = $parsed[1];
-            $data['home_contract_risk'] = $parsed[2];
+            $data['home_contract_risk'] = $parsed[2] ?: 1;
+            $data['home_contract_base'] = $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1];
             
             $parsedAway = (new \App\Services\BridgeScoringService())->parseContract($b->away_contract ?? '');
             $data['away_contract_level'] = $parsedAway[0];
             $data['away_contract_suit'] = $parsedAway[1];
-            $data['away_contract_risk'] = $parsedAway[2];
+            $data['away_contract_risk'] = $parsedAway[2] ?: 1;
+            $data['away_contract_base'] = $parsedAway[0] === 0 ? '0' : $parsedAway[0] . $parsedAway[1];
             return $data;
         }, $match->boards)) }},
         boardsCount: {{ $boardsCount }},
@@ -167,6 +176,22 @@
 
         updateBoardScores() {
             if (!this.editingBoard) return;
+
+            // Parse home contract base
+            if (this.editingBoard.home_contract_base === '0') {
+                this.editingBoard.home_contract_level = 0;
+                this.editingBoard.home_contract_suit = '';
+                this.editingBoard.home_contract = 'Pass';
+            } else {
+                let m = this.editingBoard.home_contract_base.match(/^([1-7])(C|D|H|S|NT)$/);
+                if (m) {
+                    this.editingBoard.home_contract_level = parseInt(m[1]);
+                    this.editingBoard.home_contract_suit = m[2];
+                    
+                    let riskStr = this.editingBoard.home_contract_risk === 2 ? 'X' : (this.editingBoard.home_contract_risk === 4 ? 'XX' : '');
+                    this.editingBoard.home_contract = m[0] + riskStr;
+                }
+            }
             
             this.editingBoard.home_score = this.calculateBridgeScore(
                 this.editingBoard.home_contract_level,
@@ -176,6 +201,22 @@
                 this.editingBoard.home_declarer,
                 this.editingBoard.board_number
             );
+
+            // Parse away contract base
+            if (this.editingBoard.away_contract_base === '0') {
+                this.editingBoard.away_contract_level = 0;
+                this.editingBoard.away_contract_suit = '';
+                this.editingBoard.away_contract = 'Pass';
+            } else {
+                let m = this.editingBoard.away_contract_base.match(/^([1-7])(C|D|H|S|NT)$/);
+                if (m) {
+                    this.editingBoard.away_contract_level = parseInt(m[1]);
+                    this.editingBoard.away_contract_suit = m[2];
+                    
+                    let riskStr = this.editingBoard.away_contract_risk === 2 ? 'X' : (this.editingBoard.away_contract_risk === 4 ? 'XX' : '');
+                    this.editingBoard.away_contract = m[0] + riskStr;
+                }
+            }
 
             this.editingBoard.away_score = this.calculateBridgeScore(
                 this.editingBoard.away_contract_level,
@@ -202,9 +243,41 @@
                 options.push({ value: t, label: label + ' (' + t + ')' });
             }
             return options;
+        },
+
+        formatTricks(level, tricks) {
+            if (level === 0 || level === null || tricks === null || tricks === '') return '-';
+            let required = 6 + parseInt(level);
+            let diff = tricks - required;
+            if (diff === 0) return '=';
+            return (diff > 0 ? '+' : '') + diff;
+        },
+
+        formatContract(str) {
+            if (!str || String(str).trim() === '-' || String(str).trim() === 'Pass') return str || '-';
+            let res = String(str).trim();
+            res = res.replace(/(10|[0-9TJQKA])S/i, '$1<span class=\'text-gray-900\'>&spades;</span>');
+            res = res.replace(/S(10|[0-9TJQKA])/i, '<span class=\'text-gray-900\'>&spades;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])H/i, '$1<span class=\'text-red-600\'>&hearts;</span>');
+            res = res.replace(/H(10|[0-9TJQKA])/i, '<span class=\'text-red-600\'>&hearts;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])D/i, '$1<span class=\'text-orange-500\'>&diams;</span>');
+            res = res.replace(/D(10|[0-9TJQKA])/i, '<span class=\'text-orange-500\'>&diams;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])C/i, '$1<span class=\'text-green-700\'>&clubs;</span>');
+            res = res.replace(/C(10|[0-9TJQKA])/i, '<span class=\'text-green-700\'>&clubs;</span>$1');
+            return res;
         }
-    }">,old_string:
+    }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Hidden CSV Upload Forms -->
+            <form id="csvFormOpen" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInputOpen" name="csv_file" accept=".csv" onchange="document.getElementById('csvFormOpen').submit()">
+            </form>
+            <form id="csvFormClosed" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInputClosed" name="csv_file" accept=".csv" onchange="document.getElementById('csvFormClosed').submit()">
+            </form>
+
             <form method="POST" action="{{ route('tournaments.match.update', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}">
                 @csrf
                 @method('PATCH')
@@ -256,7 +329,17 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-12 mb-12">
                     <!-- Open Room Table -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-blue-500">
-                        <div class="text-center font-bold uppercase text-blue-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Open Room') }}</div>
+                        <div class="flex justify-between items-center mb-6 border-b pb-1">
+                            <div class="font-bold uppercase text-blue-800 text-sm tracking-widest">{{ __('Open Room') }}</div>
+                            <div class="flex gap-1">
+                                <x-secondary-button type="button" onclick="document.getElementById('csvInputOpen').click()" class="!py-0.5 !text-[9px]">
+                                    {{ __('Import') }}
+                                </x-secondary-button>
+                                <a href="{{ route('tournaments.match.room.boards.csv.download', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" class="inline-flex items-center px-2 py-0.5 bg-white border border-gray-300 rounded-md font-semibold text-[9px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('Export') }}
+                                </a>
+                            </div>
+                        </div>
                         
                         <div class="flex flex-col items-center gap-4">
                             <!-- North (Home) -->
@@ -315,7 +398,17 @@
 
                     <!-- Closed Room Table -->
                     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg p-6 border-t-4 border-red-500">
-                        <div class="text-center font-bold uppercase text-red-800 mb-6 text-sm tracking-widest border-b pb-1 w-full">{{ __('Closed Room') }}</div>
+                        <div class="flex justify-between items-center mb-6 border-b pb-1">
+                            <div class="font-bold uppercase text-red-800 text-sm tracking-widest">{{ __('Closed Room') }}</div>
+                            <div class="flex gap-1">
+                                <x-secondary-button type="button" onclick="document.getElementById('csvInputClosed').click()" class="!py-0.5 !text-[9px]">
+                                    {{ __('Import') }}
+                                </x-secondary-button>
+                                <a href="{{ route('tournaments.match.room.boards.csv.download', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" class="inline-flex items-center px-2 py-0.5 bg-white border border-gray-300 rounded-md font-semibold text-[9px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                                    {{ __('Export') }}
+                                </a>
+                            </div>
+                        </div>
                         
                         <div class="flex flex-col items-center gap-4">
                             <!-- North (Away) -->
@@ -383,16 +476,20 @@
                                 <thead class="bg-gray-50 font-bold text-gray-700">
                                     <tr>
                                         <th class="py-3 border px-2" rowspan="2">#</th>
-                                        <th class="py-3 border bg-blue-50 text-blue-800" colspan="3">{{ __('Open Room') }}</th>
-                                        <th class="py-3 border bg-red-50 text-red-800" colspan="3">{{ __('Closed Room') }}</th>
+                                        <th class="py-3 border bg-blue-50 text-blue-800" colspan="5">{{ __('Open Room') }}</th>
+                                        <th class="py-3 border bg-red-50 text-red-800" colspan="5">{{ __('Closed Room') }}</th>
                                         <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
                                     </tr>
                                     <tr>
                                         <th class="py-2 border bg-blue-50 text-[10px] uppercase">{{ __('Contr.') }}</th>
                                         <th class="py-2 border bg-blue-50 text-[10px] uppercase">{{ __('Decl.') }}</th>
+                                        <th class="py-2 border bg-blue-50 text-[10px] uppercase">{{ __('Lead') }}</th>
+                                        <th class="py-2 border bg-blue-50 text-[10px] uppercase">{{ __('Tr.') }}</th>
                                         <th class="py-2 border bg-blue-50 text-[10px] uppercase">{{ __('Score') }}</th>
                                         <th class="py-2 border bg-red-50 text-[10px] uppercase">{{ __('Contr.') }}</th>
                                         <th class="py-2 border bg-red-50 text-[10px] uppercase">{{ __('Decl.') }}</th>
+                                        <th class="py-2 border bg-red-50 text-[10px] uppercase">{{ __('Lead') }}</th>
+                                        <th class="py-2 border bg-red-50 text-[10px] uppercase">{{ __('Tr.') }}</th>
                                         <th class="py-2 border bg-red-50 text-[10px] uppercase">{{ __('Score') }}</th>
                                         <th class="py-2 border text-[10px] uppercase">H</th>
                                         <th class="py-2 border text-[10px] uppercase">A</th>
@@ -402,11 +499,15 @@
                                     <template x-for="board in boards" :key="board.board_number">
                                         <tr @click="openBoardEditor(board)" class="hover:bg-indigo-50 cursor-pointer transition-colors border-b">
                                             <td class="py-3 border font-bold" x-text="board.board_number"></td>
-                                            <td class="py-3 border italic text-gray-600" x-text="board.home_contract || '-'"></td>
+                                            <td class="py-3 border italic text-gray-600" x-html="formatContract(board.home_contract || '-')"></td>
                                             <td class="py-3 border" x-text="board.home_declarer || '-'"></td>
+                                            <td class="py-3 border font-mono text-[10px]" x-html="formatContract(board.home_lead || '-')"></td>
+                                            <td class="py-3 border text-[10px]" x-text="formatTricks(board.home_contract_level, board.home_tricks)"></td>
                                             <td class="py-3 border font-mono" x-text="board.home_score !== null ? (board.home_score > 0 ? '+' + board.home_score : board.home_score) : '-'"></td>
-                                            <td class="py-3 border italic text-gray-600" x-text="board.away_contract || '-'"></td>
+                                            <td class="py-3 border italic text-gray-600" x-html="formatContract(board.away_contract || '-')"></td>
                                             <td class="py-3 border" x-text="board.away_declarer || '-'"></td>
+                                            <td class="py-3 border font-mono text-[10px]" x-html="formatContract(board.away_lead || '-')"></td>
+                                            <td class="py-3 border text-[10px]" x-text="formatTricks(board.away_contract_level, board.away_tricks)"></td>
                                             <td class="py-3 border font-mono" x-text="board.away_score !== null ? (board.away_score > 0 ? '+' + board.away_score : board.away_score) : '-'"></td>
                                             <td class="py-3 border font-bold text-green-700" x-text="board.home_imp || ''"></td>
                                             <td class="py-3 border font-bold text-red-700" x-text="board.away_imp || ''"></td>
@@ -449,29 +550,37 @@
                                     <div class="text-sm font-black uppercase tracking-widest text-blue-600 border-b border-blue-100 pb-1">{{ __('Open Room') }}</div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div class="col-span-2 flex gap-2">
-                                            <div class="flex-1">
-                                                <x-input-label value="{{ __('Level') }}" />
-                                                <select x-model.number="editingBoard.home_contract_level" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                            <div class="flex-[2]">
+                                                <x-input-label value="{{ __('Contract') }}" />
+                                                <select x-model="editingBoard.home_contract_base" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                     <option value="0">Pass</option>
-                                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                                                    <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                                                    @foreach(['1','2','3','4','5','6','7'] as $l)
+                                                        @foreach(['C' => '♣', 'D' => '♦', 'H' => '♥', 'S' => '♠', 'NT' => 'NT'] as $s => $sym)
+                                                            <option value="{{ $l.$s }}">{{ $l }}{{ $sym }}</option>
+                                                        @endforeach
+                                                    @endforeach
                                                 </select>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.home_contract_level > 0">
-                                                <x-input-label value="{{ __('Suit') }}" />
-                                                <select x-model="editingBoard.home_contract_suit" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="">-</option>
-                                                    <option value="S">&spades; S</option><option value="H">&hearts; H</option><option value="D">&diams; D</option><option value="C">&clubs; C</option><option value="NT">NT</option>
-                                                </select>
+                                        <div class="col-span-2" x-show="editingBoard.home_contract_level > 0">
+                                            <x-input-label value="{{ __('Risk') }}" class="mb-2" />
+                                            <div class="flex p-1 bg-gray-100 rounded-lg w-full">
+                                                <button type="button" @click="editingBoard.home_contract_risk = 1; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    {{ __('None') }}
+                                                </button>
+                                                <button type="button" @click="editingBoard.home_contract_risk = 2; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 2 ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    DBL (X)
+                                                </button>
+                                                <button type="button" @click="editingBoard.home_contract_risk = 4; updateBoardScores()" 
+                                                    :class="editingBoard.home_contract_risk === 4 ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    RDBL (XX)
+                                                </button>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.home_contract_level > 0">
-                                                <x-input-label value="{{ __('Risk') }}" />
-                                                <select x-model.number="editingBoard.home_contract_risk" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="1">{{ __('None') }}</option>
-                                                    <option value="2">DBL (X)</option>
-                                                    <option value="4">RDBL (XX)</option>
-                                                </select>
-                                            </div>
+                                        </div>
                                         </div>
                                         <div x-show="editingBoard.home_contract_level > 0">
                                             <x-input-label value="{{ __('Declarer') }}" />
@@ -481,6 +590,19 @@
                                             </select>
                                         </div>
                                         <div x-show="editingBoard.home_contract_level > 0">
+                                            <x-input-label value="{{ __('Lead') }}" />
+                                            <select x-model="editingBoard.home_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitSym }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div x-show="editingBoard.home_contract_level > 0" class="col-span-2">
                                             <x-input-label value="{{ __('Tricks') }}" />
                                             <select x-model.number="editingBoard.home_tricks" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                 <template x-for="opt in getTrickOptions(editingBoard.home_contract_level)" :key="opt.value">
@@ -500,29 +622,37 @@
                                     <div class="text-sm font-black uppercase tracking-widest text-red-600 border-b border-red-100 pb-1">{{ __('Closed Room') }}</div>
                                     <div class="grid grid-cols-2 gap-4">
                                         <div class="col-span-2 flex gap-2">
-                                            <div class="flex-1">
-                                                <x-input-label value="{{ __('Level') }}" />
-                                                <select x-model.number="editingBoard.away_contract_level" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                            <div class="flex-[2]">
+                                                <x-input-label value="{{ __('Contract') }}" />
+                                                <select x-model="editingBoard.away_contract_base" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                     <option value="0">Pass</option>
-                                                    <option value="1">1</option><option value="2">2</option><option value="3">3</option>
-                                                    <option value="4">4</option><option value="5">5</option><option value="6">6</option><option value="7">7</option>
+                                                    @foreach(['1','2','3','4','5','6','7'] as $l)
+                                                        @foreach(['C' => '♣', 'D' => '♦', 'H' => '♥', 'S' => '♠', 'NT' => 'NT'] as $s => $sym)
+                                                            <option value="{{ $l.$s }}">{{ $l }}{{ $sym }}</option>
+                                                        @endforeach
+                                                    @endforeach
                                                 </select>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.away_contract_level > 0">
-                                                <x-input-label value="{{ __('Suit') }}" />
-                                                <select x-model="editingBoard.away_contract_suit" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="">-</option>
-                                                    <option value="S">&spades; S</option><option value="H">&hearts; H</option><option value="D">&diams; D</option><option value="C">&clubs; C</option><option value="NT">NT</option>
-                                                </select>
+                                        <div class="col-span-2" x-show="editingBoard.away_contract_level > 0">
+                                            <x-input-label value="{{ __('Risk') }}" class="mb-2" />
+                                            <div class="flex p-1 bg-gray-100 rounded-lg w-full">
+                                                <button type="button" @click="editingBoard.away_contract_risk = 1; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    {{ __('None') }}
+                                                </button>
+                                                <button type="button" @click="editingBoard.away_contract_risk = 2; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 2 ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    DBL (X)
+                                                </button>
+                                                <button type="button" @click="editingBoard.away_contract_risk = 4; updateBoardScores()" 
+                                                    :class="editingBoard.away_contract_risk === 4 ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    RDBL (XX)
+                                                </button>
                                             </div>
-                                            <div class="flex-1" x-show="editingBoard.away_contract_level > 0">
-                                                <x-input-label value="{{ __('Risk') }}" />
-                                                <select x-model.number="editingBoard.away_contract_risk" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                    <option value="1">{{ __('None') }}</option>
-                                                    <option value="2">DBL (X)</option>
-                                                    <option value="4">RDBL (XX)</option>
-                                                </select>
-                                            </div>
+                                        </div>
                                         </div>
                                         <div x-show="editingBoard.away_contract_level > 0">
                                             <x-input-label value="{{ __('Declarer') }}" />
@@ -532,6 +662,19 @@
                                             </select>
                                         </div>
                                         <div x-show="editingBoard.away_contract_level > 0">
+                                            <x-input-label value="{{ __('Lead') }}" />
+                                            <select x-model="editingBoard.away_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitSym }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
+                                        </div>
+                                        <div x-show="editingBoard.away_contract_level > 0" class="col-span-2">
                                             <x-input-label value="{{ __('Tricks') }}" />
                                             <select x-model.number="editingBoard.away_tricks" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                 <template x-for="opt in getTrickOptions(editingBoard.away_contract_level)" :key="opt.value">

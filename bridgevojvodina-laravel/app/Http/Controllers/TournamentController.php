@@ -3,12 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\Models\Tournament;
+use App\Models\TournamentConfiguration;
 use App\Models\BoardSet;
 use App\Models\Board;
 use App\Models\Player;
 use App\DTOs\Tournament\RoundDTO;
 use App\DTOs\Tournament\MatchDTO;
 use App\DTOs\Tournament\MatchBoardDTO;
+use App\DTOs\Tournament\TeamDTO;
 use App\DTOs\Tournament\TournamentResultsDTO;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
@@ -27,9 +29,52 @@ class TournamentController extends Controller
         protected \App\Services\BridgeScoringService $scoringService
     ) {}
 
+    protected function resolveTournament(string $id)
+    {
+        $draft = TournamentConfiguration::find($id);
+        $published = Tournament::find($id);
+
+        if ($draft && auth()->check()) {
+            if (auth()->user()->isAdmin() || auth()->id() === $draft->user_id) {
+                return $draft;
+            }
+        }
+
+        return $published ?? Tournament::findOrFail($id);
+    }
+
+    protected function authorizeTournament(\Illuminate\Database\Eloquent\Model $tournament)
+    {
+        if ($tournament instanceof Tournament) {
+            Gate::authorize('update', $tournament);
+        } else {
+            if (!auth()->check()) {
+                abort(401);
+            }
+            if (!auth()->user()->isAdmin() && auth()->id() !== $tournament->user_id) {
+                abort(403);
+            }
+        }
+    }
+
     public function index(): View
     {
-        $tournaments = Tournament::latest()->paginate(10);
+        $published = Tournament::latest()->get();
+        $publishedIds = $published->pluck('id')->toArray();
+        $drafts = collect();
+        
+        if (auth()->check()) {
+            $query = TournamentConfiguration::latest();
+            if (!auth()->user()->isAdmin()) {
+                $query->where('user_id', auth()->id());
+            }
+            // Exclude drafts that are already published
+            $query->whereNotIn('id', $publishedIds);
+            $drafts = $query->get();
+        }
+        
+        $tournaments = $published->concat($drafts)->sortByDesc('created_at');
+        
         return view('tournaments.index', compact('tournaments'));
     }
 
@@ -45,29 +90,56 @@ class TournamentController extends Controller
 
         $validated = $request->validate([
             'title' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'details' => 'required|string',
-            'is_completed' => 'boolean',
+            'description' => 'nullable|string|max:255',
+            'details' => 'nullable|string',
         ]);
 
-        $validated['is_completed'] = $request->has('is_completed');
+        $tournamentConfiguration = TournamentConfiguration::create([
+            'id' => Str::uuid(),
+            'title' => $validated['title'],
+            'description' => $validated['description'],
+            'details' => $validated['details'],
+            'user_id' => $request->user()->id,
+            'team_results' => [
+                'teams' => [],
+                'rounds' => [],
+                'bye_vp' => 12.0,
+                'boards_per_round' => 16
+            ],
+        ]);
 
-        $tournament = $request->user()->tournaments()->create($validated);
-
-        return redirect()->route('tournaments.index')
+        return redirect()->route('tournaments.edit', $tournamentConfiguration->id)
             ->with('success', __('Tournament created successfully.'));
     }
 
-    public function show(Tournament $tournament): View
+    public function show(string $id): View|RedirectResponse
     {
+        $tournament = $this->resolveTournament($id);
+
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
         }]);
+
         return view('tournaments.show', compact('tournament'));
     }
 
-    public function match(Tournament $tournament, string $roundId, string $matchId): View
+    public function butler(string $id): View
     {
+        $tournament = $this->resolveTournament($id);
+        $results = $tournament->team_results;
+        
+        $butlerPlayers = collect();
+        if ($results && !empty($results->player_butlers)) {
+            $playerIds = collect($results->player_butlers)->pluck('player_id')->unique()->toArray();
+            $butlerPlayers = \App\Models\Player::whereIn('id', $playerIds)->get()->keyBy('id');
+        }
+
+        return view('tournaments.butler', compact('tournament', 'butlerPlayers'));
+    }
+
+    public function match(string $tournamentId, string $roundId, string $matchId): View
+    {
+        $tournament = $this->resolveTournament($tournamentId);
         $results = $tournament->team_results;
         if (!$results) {
             abort(404);
@@ -90,8 +162,9 @@ class TournamentController extends Controller
         return view('tournaments.match', compact('tournament', 'round', 'match', 'results'));
     }
 
-    public function board(Tournament $tournament, string $roundId, int $boardNumber): View
+    public function board(string $tournamentId, string $roundId, int $boardNumber): View
     {
+        $tournament = $this->resolveTournament($tournamentId);
         $results = $tournament->team_results;
         if (!$results) {
             abort(404);
@@ -143,23 +216,55 @@ class TournamentController extends Controller
             $datum = array_sum($nsScores) / count($nsScores);
         }
 
-        return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard'));
+        $playerIds = collect($round->matches)->flatMap(fn($m) => array_merge($m->open_ns_ids, $m->open_ew_ids, $m->closed_ns_ids, $m->closed_ew_ids))->unique()->filter();
+        $players = \App\Models\Player::whereIn('id', $playerIds)->get()->keyBy('id');
+
+        return view('tournaments.board', compact('tournament', 'round', 'boardNumber', 'boardResults', 'boardData', 'results', 'datum', 'prevBoard', 'nextBoard', 'players'));
     }
 
-    public function edit(Request $request, Tournament $tournament): View
+    public function formatTricksFromLevel($level, $tricks): string
     {
-        Gate::authorize('update', $tournament);
-        
+        if (!$level || $tricks === null || !is_numeric($level)) return '';
+        $diff = (int)$tricks - (6 + (int)$level);
+        return $diff === 0 ? '=' : ($diff > 0 ? '+' . $diff : (string)$diff);
+    }
+
+    public function edit(Request $request, string $id): View
+    {
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
+
+        if (!$tournament->team_results) {
+            $tournament->team_results = new TournamentResultsDTO(
+                teams: [],
+                rounds: [],
+                bye_vp: 12.0,
+                boards_per_round: 16
+            );
+            $tournament->save();
+        }
+
         $boardSets = $tournament->boardSets()->get();
 
         return view('tournaments.edit', compact('tournament', 'boardSets'));
     }
 
-    public function showBoardSet(Tournament $tournament, BoardSet $boardSet): View
+    public function publish(Request $request, string $id): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournamentConfiguration = TournamentConfiguration::findOrFail($id);
+        $this->authorizeTournament($tournamentConfiguration);
+        
+        $tournament = $tournamentConfiguration->publishToTournament();
 
-        if ($boardSet->tournament_id !== $tournament->id) {
+        return redirect()->route('tournaments.show', $tournament)
+            ->with('success', __('Tournament published successfully.'));
+    }
+
+    public function showBoardSet(string $tournamentId, BoardSet $boardSet): View
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
             abort(404);
         }
 
@@ -239,11 +344,12 @@ class TournamentController extends Controller
         return view('tournaments.board-sets.show', compact('tournament', 'boardSet', 'boards', 'boardResults'));
     }
 
-    public function destroyBoardSet(Tournament $tournament, BoardSet $boardSet): RedirectResponse
+    public function destroyBoardSet(string $tournamentId, BoardSet $boardSet): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
-        if ($boardSet->tournament_id !== $tournament->id) {
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
             abort(404);
         }
 
@@ -267,28 +373,51 @@ class TournamentController extends Controller
             ->with('success', __('Board set deleted successfully.'));
     }
 
-    public function update(Request $request, Tournament $tournament): RedirectResponse
+    public function update(Request $request, string $id): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
-        $validated = $request->validate([
+        $rules = [
             'title' => 'required|string|max:255',
-            'description' => 'required|string|max:255',
-            'details' => 'required|string',
-            'is_completed' => 'boolean',
-        ]);
+            'description' => 'nullable|string|max:255',
+            'details' => 'nullable|string',
+            'bye_vp' => 'nullable|numeric|min:0|max:20',
+            'boards_per_round' => 'nullable|integer|min:1|max:128',
+        ];
+        
+        if ($tournament instanceof Tournament) {
+            $rules['is_completed'] = 'boolean';
+        }
 
-        $validated['is_completed'] = $request->has('is_completed');
+        $validated = $request->validate($rules);
 
-        $tournament->update($validated);
+        $results = $tournament->team_results;
+        if ($results) {
+            if (isset($validated['bye_vp'])) {
+                $results->bye_vp = (float)$validated['bye_vp'];
+            }
+            if (isset($validated['boards_per_round'])) {
+                $results->boards_per_round = (int)$validated['boards_per_round'];
+            }
+            $tournament->team_results = $results;
+            $this->recalculateStandings($results);
+        }
 
-        return redirect()->route('tournaments.index')
+        if ($tournament instanceof Tournament) {
+            $validated['is_completed'] = $request->has('is_completed');
+        }
+
+        $tournament->update(collect($validated)->only(['title', 'description', 'details', 'is_completed'])->toArray());
+
+        return redirect()->route($tournament instanceof TournamentConfiguration ? 'tournament-configurations.index' : 'tournaments.index')
             ->with('success', __('Tournament updated successfully.'));
     }
 
-    public function uploadBoardSet(Request $request, Tournament $tournament): RedirectResponse
+    public function uploadBoardSet(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'round_id' => 'required|string',
@@ -344,7 +473,8 @@ class TournamentController extends Controller
 
         DB::transaction(function () use ($boardsData, $eventName, $tournament, $results, $roundIndex, &$boardSetId) {
             $boardSet = BoardSet::create([
-                'tournament_id' => $tournament->id,
+                'tournament_id' => $tournament instanceof Tournament ? $tournament->id : null,
+                'tournament_configuration_id' => $tournament instanceof TournamentConfiguration ? $tournament->id : null,
                 'name' => $eventName,
             ]);
             $boardSetId = $boardSet->id;
@@ -391,9 +521,10 @@ class TournamentController extends Controller
             ->with('success', __('Board set uploaded successfully.'));
     }
 
-    public function editTeam(Tournament $tournament, string $teamId): View
+    public function editTeam(string $tournamentId, string $teamId): View
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -416,9 +547,10 @@ class TournamentController extends Controller
         return view('tournaments.teams.edit', compact('tournament', 'team', 'currentPlayers', 'availablePlayers'));
     }
 
-    public function addPlayerToTeam(Request $request, Tournament $tournament, string $teamId): RedirectResponse
+    public function addPlayerToTeam(Request $request, string $tournamentId, string $teamId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'player_id' => 'required|integer|exists:players,id',
@@ -446,9 +578,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Player added to team.'));
     }
 
-    public function removePlayerFromTeam(Tournament $tournament, string $teamId, int $playerId): RedirectResponse
+    public function removePlayerFromTeam(string $tournamentId, string $teamId, int $playerId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -470,9 +603,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Player removed from team.'));
     }
 
-    public function setTeamCaptain(Tournament $tournament, string $teamId, int $playerId): RedirectResponse
+    public function setTeamCaptain(string $tournamentId, string $teamId, int $playerId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -492,9 +626,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Team captain updated.'));
     }
 
-    public function updateRoundStatus(Request $request, Tournament $tournament, string $roundId): RedirectResponse
+    public function updateRoundStatus(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'status' => 'required|string|in:idle,inProgress,complete',
@@ -518,9 +653,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Round status updated.'));
     }
 
-    public function editTeamNumbers(Tournament $tournament): View
+    public function editTeamNumbers(string $tournamentId): View
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -532,9 +668,10 @@ class TournamentController extends Controller
         return view('tournaments.teams.numbers', compact('tournament', 'teams'));
     }
 
-    public function updateTeamNumbers(Request $request, Tournament $tournament): RedirectResponse
+    public function updateTeamNumbers(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -568,9 +705,10 @@ class TournamentController extends Controller
             ->with('success', __('Team numbers updated successfully.'));
     }
 
-    public function updateTeam(Request $request, Tournament $tournament, string $teamId): RedirectResponse
+    public function updateTeam(Request $request, string $tournamentId, string $teamId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'name' => 'required|string|max:255',
@@ -594,9 +732,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Team name updated successfully.'));
     }
 
-    public function reorderRound(Request $request, Tournament $tournament, string $roundId): RedirectResponse
+    public function reorderRound(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'direction' => 'required|string|in:up,down',
@@ -637,9 +776,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Round reordered successfully.'));
     }
 
-    public function updateSettings(Request $request, Tournament $tournament): RedirectResponse
+    public function updateSettings(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'bye_vp' => 'required|numeric|min:0|max:20',
@@ -672,17 +812,24 @@ class TournamentController extends Controller
             $boards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
             
             foreach ($round->matches as $match) {
-                // If it's a bye, update the VP based on current tournament setting
-                if (!$match->home_team_id || !$match->away_team_id) {
-                    if ($match->home_team_id) {
-                        $match->home_vp = $results->bye_vp;
+                // Determine if it's a bye and award configured bye VP
+                $isHomeBye = empty($match->home_team_id) || $match->home_team_id === 'bye';
+                $isAwayBye = empty($match->away_team_id) || $match->away_team_id === 'bye';
+
+                if ($isHomeBye || $isAwayBye) {
+                    if (!$isHomeBye) {
+                        $match->home_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->home_imp = 0;
                         $match->away_vp = 0;
-                    } else {
-                        $match->away_vp = $results->bye_vp;
+                        $match->away_imp = 0;
+                    } elseif (!$isAwayBye) {
+                        $match->away_vp = (float)($results->bye_vp ?? 12.0);
+                        $match->away_imp = 0;
                         $match->home_vp = 0;
+                        $match->home_imp = 0;
                     }
                 } else {
-                    // Automatically calculate VP based on IMPs
+                    // Automatically calculate VP based on IMPs for normal matches
                     if ($match->home_imp !== 0 || $match->away_imp !== 0) {
                         list($hVp, $aVp) = $this->vpService->calculateVp($match->home_imp, $match->away_imp, $boards);
                         $match->home_vp = $hVp;
@@ -691,21 +838,22 @@ class TournamentController extends Controller
                 }
 
                 // Add VPs to teams
-                if ($match->home_team_id) {
+                if (!$isHomeBye) {
                     $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
-                    if ($team) $team->total_vp += $match->home_vp;
+                    if ($team) $team->total_vp += (float)$match->home_vp;
                 }
-                if ($match->away_team_id) {
+                if (!$isAwayBye) {
                     $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
-                    if ($team) $team->total_vp += $match->away_vp;
+                    if ($team) $team->total_vp += (float)$match->away_vp;
                 }
             }
         }
     }
 
-    public function generateRounds(Request $request, Tournament $tournament): RedirectResponse
+    public function generateRounds(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'format' => 'required|string|in:single_round_robin,double_round_robin',
@@ -817,9 +965,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds generated successfully.'));
     }
 
-    public function uploadRoundsCsv(Request $request, Tournament $tournament): RedirectResponse
+    public function uploadRoundsCsv(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $request->validate([
             'csv_file' => 'required|file',
@@ -894,9 +1043,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds uploaded successfully.'));
     }
 
-    public function editMatchRoom(Tournament $tournament, string $roundId, string $matchId, string $room): View
+    public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -945,9 +1095,10 @@ class TournamentController extends Controller
         ));
     }
 
-    public function updateMatchLineup(Request $request, Tournament $tournament, string $roundId, string $matchId, string $room): RedirectResponse|array
+    public function updateMatchLineup(Request $request, string $id, string $roundId, string $matchId, string $room): RedirectResponse|array
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -984,9 +1135,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Lineup updated.'));
     }
 
-    public function updateMatchBoard(Request $request, Tournament $tournament, string $roundId, string $matchId, string $room, int $boardNumber): RedirectResponse|array
+    public function updateMatchBoard(Request $request, string $id, string $roundId, string $matchId, string $room, int $boardNumber): RedirectResponse|array
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) abort(404);
@@ -1037,17 +1189,23 @@ class TournamentController extends Controller
             $contract = $level . $suit . $suffix;
         }
 
+        $lead = $data['lead'] ?? null;
+
         $board = $match->boards[$boardIndex];
         if ($room === 'open') {
             $board->home_score = $score;
             $board->home_contract = $contract;
             $board->home_declarer = $decl;
             $board->home_tricks = $tricks;
+            $board->home_lead = $lead;
+            $board->home_updated_by = auth()->id();
         } else {
             $board->away_score = $score;
             $board->away_contract = $contract;
             $board->away_declarer = $decl;
             $board->away_tricks = $tricks;
+            $board->away_lead = $lead;
+            $board->away_updated_by = auth()->id();
         }
 
         // Recalculate board IMPs
@@ -1094,9 +1252,204 @@ class TournamentController extends Controller
         return back()->with('success', __('Board updated.'));
     }
 
-    public function destroyRound(Tournament $tournament, string $roundId): RedirectResponse
+    public function uploadMatchBoardsCsv(Request $request, string $id, string $roundId, string $matchId, string $room): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'csv_file' => 'required|file',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        $round = $results->rounds[$roundIndex];
+        
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+
+        $match = $round->matches[$matchIndex];
+
+        // Ensure boards are initialized
+        if (empty($match->boards)) {
+            $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+            $boards = [];
+            for ($i = 1; $i <= $numBoards; $i++) {
+                $boards[] = new MatchBoardDTO(board_number: $i);
+            }
+            $match->boards = $boards;
+        }
+
+        $file = $request->file('csv_file');
+        $handle = fopen($file->getRealPath(), 'r');
+        $header = fgetcsv($handle); // bd,contract,by,lead,result
+        
+        $importedCount = 0;
+        while (($row = fgetcsv($handle)) !== false) {
+            if (count($row) < 5) continue;
+            
+            $boardNum = (int) $row[0];
+            $contractStr = $row[1];
+            $by = strtoupper($row[2]);
+            $lead = strtoupper($row[3]);
+            $result = $row[4];
+
+            $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNum);
+            if ($boardIndex === false) continue;
+
+            $board = $match->boards[$boardIndex];
+            $parsed = $this->scoringService->parseContract($contractStr);
+            $level = $parsed[0];
+            
+            if ($level === 0) {
+                $score = 0;
+                $contract = 'Pass';
+                $decl = null;
+                $tricks = null;
+            } else {
+                $suit = $parsed[1];
+                $risk = $parsed[2];
+                $decl = $by;
+
+                // Parse result (e.g. =, +1, -2)
+                $tricks = 6 + $level;
+                if ($result !== '=') {
+                    $tricks += (int) $result;
+                }
+
+                // Standardize declarer to one of N, E, S, W
+                if (!in_array($decl, ['N', 'E', 'S', 'W'])) {
+                    // Try to normalize or skip
+                    continue;
+                }
+
+                $isVul = $this->hydrationService->calculateVulnerability($boardNum);
+                $isRoomVul = ($isVul === 'All' || $isVul === ($decl === 'N' || $decl === 'S' ? 'NS' : 'EW'));
+                $absScore = $this->scoringService->calculateScore($level, $suit, $risk, $tricks, $isRoomVul);
+                $score = ($decl === 'N' || $decl === 'S') ? $absScore : -$absScore;
+                
+                $suffix = $risk === 2 ? 'X' : ($risk === 4 ? 'XX' : '');
+                $contract = $level . $suit . $suffix;
+            }
+
+            if ($room === 'open') {
+                $board->home_score = $score;
+                $board->home_contract = $contract;
+                $board->home_declarer = $decl;
+                $board->home_tricks = $tricks;
+                $board->home_lead = $lead;
+                $board->home_updated_by = auth()->id();
+            } else {
+                $board->away_score = $score;
+                $board->away_contract = $contract;
+                $board->away_declarer = $decl;
+                $board->away_tricks = $tricks;
+                $board->away_lead = $lead;
+                $board->away_updated_by = auth()->id();
+            }
+
+            // Recalculate board IMPs
+            if ($board->home_score !== null && $board->away_score !== null) {
+                $diff = $board->home_score - $board->away_score;
+                $imp = $this->hydrationService->scoreToImp($diff);
+                $board->home_imp = $imp > 0 ? $imp : 0;
+                $board->away_imp = $imp < 0 ? abs($imp) : 0;
+            }
+            $importedCount++;
+        }
+        fclose($handle);
+
+        // Recalculate match totals
+        $totalHomeImp = 0;
+        $totalAwayImp = 0;
+        foreach ($match->boards as $b) {
+            $totalHomeImp += $b->home_imp;
+            $totalAwayImp += $b->away_imp;
+        }
+        $match->home_imp = $totalHomeImp;
+        $match->away_imp = $totalAwayImp;
+
+        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
+        $match->home_vp = $hVp;
+        $match->away_vp = $aVp;
+
+        $this->recalculateStandings($results);
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __(':count board results imported successfully.', ['count' => $importedCount]));
+    }
+
+    public function downloadMatchBoardsCsv(string $id, string $roundId, string $matchId, string $room): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $tournament = $this->resolveTournament($id);
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        $round = $results->rounds[$roundIndex];
+        
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+        $match = $round->matches[$matchIndex];
+
+        $filename = sprintf('match_%s_%s_%s.csv', $matchId, $room, now()->format('Y-m-d_H-i'));
+
+        $headers = [
+            'Content-Type' => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"$filename\"",
+        ];
+
+        return response()->stream(function () use ($match, $room) {
+            $handle = fopen('php://output', 'w');
+            fputcsv($handle, ['bd', 'contract', 'by', 'lead', 'result']);
+
+            foreach ($match->boards as $board) {
+                $contract = $room === 'open' ? $board->home_contract : $board->away_contract;
+                $decl = $room === 'open' ? $board->home_declarer : $board->away_declarer;
+                $lead = $room === 'open' ? $board->home_lead : $board->away_lead;
+                $tricks = $room === 'open' ? $board->home_tricks : $board->away_tricks;
+                
+                if (!$contract || $contract === 'Pass') {
+                    if ($contract === 'Pass') {
+                        fputcsv($handle, [$board->board_number, 'Pass', '', '', '=']);
+                    } else {
+                        // Skip unplayed boards or keep empty? Let's export empty ones too.
+                        fputcsv($handle, [$board->board_number, '', '', '', '']);
+                    }
+                    continue;
+                }
+
+                // Parse contract level to calculate relative result
+                preg_match('/^(\d)/', $contract, $m);
+                $level = isset($m[1]) ? (int)$m[1] : 0;
+                $result = '';
+                if ($level > 0 && $tricks !== null) {
+                    $diff = $tricks - (6 + $level);
+                    $result = $diff === 0 ? '=' : ($diff > 0 ? '+' . $diff : $diff);
+                }
+
+                fputcsv($handle, [
+                    $board->board_number,
+                    $contract,
+                    $decl,
+                    $lead,
+                    $result
+                ]);
+            }
+            fclose($handle);
+        }, 200, $headers);
+    }
+
+    public function destroyRound(string $tournamentId, string $roundId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -1121,9 +1474,10 @@ class TournamentController extends Controller
         return back()->with('success', __('Round deleted successfully.'));
     }
 
-    public function destroyIdleRounds(Tournament $tournament): RedirectResponse
+    public function destroyIdleRounds(string $tournamentId): RedirectResponse
     {
-        Gate::authorize('update', $tournament);
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
 
         $results = $tournament->team_results;
         if (!$results) {
@@ -1143,10 +1497,89 @@ class TournamentController extends Controller
         return back()->with('success', __('All idle rounds deleted successfully.'));
     }
 
-    public function destroy(Tournament $tournament): RedirectResponse
+    public function addTeam(Request $request, string $tournamentId): RedirectResponse
     {
-        Gate::authorize('delete', $tournament);
-        $tournament->delete();
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'name' => 'required|string|max:255',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $teamCount = count($results->teams);
+        $newTeam = new TeamDTO(
+            id: (string) Str::uuid(),
+            name: $request->input('name'),
+            captain_id: 0,
+            player_ids: [],
+            total_vp: 0,
+            number: $teamCount + 1
+        );
+
+        $results->teams[] = $newTeam;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team added successfully.'));
+    }
+
+    public function destroyTeam(string $tournamentId, string $teamId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        // Check if team is in any match
+        foreach ($results->rounds as $round) {
+            foreach ($round->matches as $match) {
+                if ($match->home_team_id === $teamId || $match->away_team_id === $teamId) {
+                    return back()->withErrors(['error' => __('Cannot delete team that is already in a schedule. Delete rounds first.')]);
+                }
+            }
+        }
+
+        $results->teams = array_values(array_filter($results->teams, fn($t) => $t->id !== $teamId));
+        
+        // Re-number teams
+        foreach ($results->teams as $index => $team) {
+            $team->number = $index + 1;
+        }
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Team deleted successfully.'));
+    }
+
+    public function destroy(string $id): RedirectResponse
+    {
+        $draft = TournamentConfiguration::find($id);
+        $published = Tournament::find($id);
+        
+        // Authorization check
+        if ($draft) {
+            if (!auth()->user()->isAdmin() && auth()->id() !== $draft->user_id) {
+                abort(403);
+            }
+        }
+        
+        if ($published) {
+            Gate::authorize('delete', $published);
+        }
+
+        DB::transaction(function () use ($draft, $published) {
+            if ($draft) {
+                $draft->delete();
+            }
+            if ($published) {
+                $published->delete();
+            }
+        });
 
         return redirect()->route('tournaments.index')
             ->with('success', __('Tournament deleted successfully.'));

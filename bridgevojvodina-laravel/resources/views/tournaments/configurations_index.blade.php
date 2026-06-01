@@ -2,7 +2,7 @@
     <x-slot name="header">
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                {{ __('Tournaments') }}
+                {{ __('Tournament Configurations') }}
             </h2>
             @can('create', App\Models\Tournament::class)
                 <a href="{{ route('tournaments.create') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
@@ -22,33 +22,25 @@
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h3 class="text-lg font-bold">
-                                            <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
+                                            <a href="{{ route('tournaments.edit', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
-                                            @if($tournament instanceof \App\Models\TournamentConfiguration)
-                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
-                                                    {{ __('Draft') }}
-                                                </span>
-                                            @elseif($tournament->is_completed)
-                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                                                    {{ __('Completed') }}
-                                                </span>
-                                            @else
-                                                <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
-                                                    {{ __('In Progress') }}
-                                                </span>
-                                            @endif
+                                            <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                                {{ __('Draft') }}
+                                            </span>
                                         </h3>
                                         <p class="text-gray-600">{{ $tournament->description ?? __('Active tournament draft.') }}</p>
                                     </div>
                                 </div>
                             </div>
                         @empty
-                            <p class="text-gray-500 text-center py-4">{{ __('No tournaments found.') }}</p>
+                            <p class="text-gray-500 italic">{{ __('No tournament configurations found.') }}</p>
                         @endforelse
                     </div>
 
-                    {{-- Pagination removed for merged collection --}}
+                    <div class="mt-6">
+                        {{ $tournaments->links() }}
+                    </div>
                 </div>
             </div>
         </div>

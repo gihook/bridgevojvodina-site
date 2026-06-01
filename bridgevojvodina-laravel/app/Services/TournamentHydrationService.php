@@ -145,4 +145,86 @@ class TournamentHydrationService
         ];
         return $vulns[($boardNumber - 1) % 16];
     }
+
+    /**
+     * Calculate Butler IMPs for each player in the tournament.
+     * @return \App\DTOs\Tournament\PlayerButlerDTO[]
+     */
+    public function calculatePlayerButlers(TournamentResultsDTO $results): array
+    {
+        $playerStats = []; // [player_id => ['total_imps' => 0, 'boards' => 0]]
+
+        // 1. Gather all boards and their NS scores to calculate datum
+        $boardScores = []; // [board_number => [score1, score2, ...]]
+
+        foreach ($results->rounds as $round) {
+            foreach ($round->matches as $match) {
+                foreach ($match->boards as $board) {
+                    if ($board->home_score !== null) {
+                        $boardScores[$board->board_number][] = $board->home_score;
+                    }
+                    if ($board->away_score !== null) {
+                        $boardScores[$board->board_number][] = $board->away_score;
+                    }
+                }
+            }
+        }
+
+        // 2. Calculate datum per board
+        $datums = [];
+        foreach ($boardScores as $boardNum => $scores) {
+            if (!empty($scores)) {
+                $datums[$boardNum] = array_sum($scores) / count($scores);
+            }
+        }
+
+        // 3. Calculate IMPs relative to datum for each seat
+        foreach ($results->rounds as $round) {
+            foreach ($round->matches as $match) {
+                foreach ($match->boards as $board) {
+                    $datum = $datums[$board->board_number] ?? null;
+                    if ($datum === null) continue;
+
+                    // Open Room
+                    if ($board->home_score !== null) {
+                        $imp = $this->scoreToImp($board->home_score - $datum);
+                        $this->assignImpsToPlayers($playerStats, $match->open_ns_ids, $imp);
+                        $this->assignImpsToPlayers($playerStats, $match->open_ew_ids, -$imp);
+                    }
+
+                    // Closed Room
+                    if ($board->away_score !== null) {
+                        $imp = $this->scoreToImp($board->away_score - $datum);
+                        $this->assignImpsToPlayers($playerStats, $match->closed_ns_ids, $imp);
+                        $this->assignImpsToPlayers($playerStats, $match->closed_ew_ids, -$imp);
+                    }
+                }
+            }
+        }
+
+        // 4. Convert to DTOs
+        $butlers = [];
+        foreach ($playerStats as $playerId => $data) {
+            $butlers[] = new \App\DTOs\Tournament\PlayerButlerDTO(
+                player_id: $playerId,
+                boards_played: $data['boards'],
+                total_imps: (float) $data['total_imps'],
+                imps_per_board: $data['boards'] > 0 ? (float) ($data['total_imps'] / $data['boards']) : 0.0
+            );
+        }
+
+        return $butlers;
+    }
+
+    protected function assignImpsToPlayers(array &$stats, array $playerIds, int $imp): void
+    {
+        foreach ($playerIds as $id) {
+            if (!$id) continue;
+            if (!isset($stats[$id])) {
+                $stats[$id] = ['total_imps' => 0, 'boards' => 0];
+            }
+            $stats[$id]['total_imps'] += $imp;
+            $stats[$id]['boards'] += 1;
+        }
+    }
 }

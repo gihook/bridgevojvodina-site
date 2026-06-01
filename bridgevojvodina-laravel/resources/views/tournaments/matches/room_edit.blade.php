@@ -6,18 +6,46 @@
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
-            <div>
+            <div class="flex flex-col">
                 <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                     {{ __($isOpen ? 'Open Room' : 'Closed Room') }}: {{ $nsTeam->name }} vs {{ $ewTeam->name }}
                 </h2>
-                <div class="text-xs text-gray-500 mt-1">
-                    {{ $homeTeam->name }} vs {{ $awayTeam->name }} ({{ $round->name }})
+                <div class="flex items-center gap-4 mt-2">
+                    <div class="flex p-0.5 bg-gray-100 rounded-lg shadow-inner">
+                        <a href="{{ route('tournaments.match.room.edit', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'open']) }}" 
+                            class="px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {{ $isOpen ? 'bg-white text-blue-600 shadow-sm' : 'text-gray-400 hover:text-gray-600' }}">
+                            {{ __('Open') }}
+                        </a>
+                        <a href="{{ route('tournaments.match.room.edit', [$tournament, $round->id, ($match->id ?: $match->home_team_id), 'closed']) }}" 
+                            class="px-4 py-1 text-[10px] font-black uppercase tracking-widest rounded-md transition-all {{ !$isOpen ? 'bg-white text-red-600 shadow-sm' : 'text-gray-400 hover:text-gray-600' }}">
+                            {{ __('Closed') }}
+                        </a>
+                    </div>
+                    <div class="text-[10px] text-gray-400 font-bold uppercase tracking-tighter">
+                        {{ $homeTeam->name }} vs {{ $awayTeam->name }} ({{ $round->name }})
+                    </div>
                 </div>
             </div>
             <div class="flex items-center gap-4">
                 <div id="save-indicator" class="hidden text-xs font-bold text-green-600 bg-green-50 px-3 py-1 rounded-full animate-pulse">
                     {{ __('Saving...') }}
                 </div>
+                
+                <div class="flex gap-2">
+                    @if($match->boards && !empty($tournament->team_results->player_butlers))
+                        <a href="{{ route('tournaments.butler', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-indigo-600 border border-transparent rounded-md font-semibold text-[10px] text-white uppercase tracking-widest hover:bg-indigo-700 active:bg-indigo-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                            {{ __('Butler') }}
+                        </a>
+                    @endif
+
+                    <x-secondary-button type="button" onclick="document.getElementById('csvInput').click()" class="!text-[10px]">
+                        {{ __('Upload CSV') }}
+                    </x-secondary-button>
+                    <a href="{{ route('tournaments.match.room.boards.csv.download', [$tournament, $round->id, ($match->id ?: $match->home_team_id), $room]) }}" class="inline-flex items-center px-4 py-2 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 disabled:opacity-25 transition ease-in-out duration-150">
+                        {{ __('Export CSV') }}
+                    </a>
+                </div>
+
                 <a href="{{ route('tournaments.edit', $tournament) }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700 focus:bg-gray-700 active:bg-gray-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                     {{ __('Back to Tournament') }}
                 </a>
@@ -37,10 +65,12 @@
             $data = $b->toArray();
             $data['current_room_contract_level'] = $parsed[0];
             $data['current_room_contract_suit'] = $parsed[1];
-            $data['current_room_contract_risk'] = $parsed[2];
+            $data['current_room_contract_risk'] = $parsed[2] ?: 1;
+            $data['current_room_contract_base'] = $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1];
             $data['current_room_declarer'] = $isOpen ? $b->home_declarer : $b->away_declarer;
             $data['current_room_tricks'] = $isOpen ? $b->home_tricks : $b->away_tricks;
             $data['current_room_score'] = $isOpen ? $b->home_score : $b->away_score;
+            $data['current_room_lead'] = $isOpen ? $b->home_lead : $b->away_lead;
             
             return $data;
         }, $match->boards)) }},
@@ -132,7 +162,8 @@
                         contract_suit: this.editingBoard.current_room_contract_suit,
                         contract_risk: this.editingBoard.current_room_contract_risk,
                         declarer: this.editingBoard.current_room_declarer,
-                        tricks: this.editingBoard.current_room_tricks
+                        tricks: this.editingBoard.current_room_tricks,
+                        lead: this.editingBoard.current_room_lead
                     })
                 });
 
@@ -150,8 +181,17 @@
                     this.boards[idx].away_declarer = data.board.away_declarer;
                     this.boards[idx].home_tricks = data.board.home_tricks;
                     this.boards[idx].away_tricks = data.board.away_tricks;
+                    this.boards[idx].home_lead = data.board.home_lead;
+                    this.boards[idx].away_lead = data.board.away_lead;
                     this.boards[idx].home_imp = data.board.home_imp;
                     this.boards[idx].away_imp = data.board.away_imp;
+
+                    // Sync current room helper fields
+                    this.boards[idx].current_room_contract_level = this.editingBoard.current_room_contract_level;
+                    this.boards[idx].current_room_tricks = this.editingBoard.current_room_tricks;
+                    this.boards[idx].current_room_score = this.editingBoard.current_room_score;
+                    this.boards[idx].current_room_lead = this.editingBoard.current_room_lead;
+                    this.boards[idx].current_room_contract_base = this.editingBoard.current_room_contract_base;
                 }
 
                 // Update match totals
@@ -190,6 +230,18 @@
 
         updateBoardScores() {
             if (!this.editingBoard) return;
+
+            // Parse contract base
+            if (this.editingBoard.current_room_contract_base === '0') {
+                this.editingBoard.current_room_contract_level = 0;
+                this.editingBoard.current_room_contract_suit = '';
+            } else {
+                let m = this.editingBoard.current_room_contract_base.match(/^([1-7])(C|D|H|S|NT)$/);
+                if (m) {
+                    this.editingBoard.current_room_contract_level = parseInt(m[1]);
+                    this.editingBoard.current_room_contract_suit = m[2];
+                }
+            }
             
             this.editingBoard.current_room_score = this.calculateBridgeScore(
                 this.editingBoard.current_room_contract_level,
@@ -214,9 +266,37 @@
                 options.push({ value: t, label: label + ' (' + t + ')' });
             }
             return options;
+        },
+
+        formatTricks(level, tricks) {
+            if (level === 0 || level === null || tricks === null || tricks === '') return '-';
+            let required = 6 + parseInt(level);
+            let diff = tricks - required;
+            if (diff === 0) return '=';
+            return (diff > 0 ? '+' : '') + diff;
+        },
+
+        formatContract(str) {
+            if (!str || String(str).trim() === '-' || String(str).trim() === 'Pass') return str || '-';
+            let res = String(str).trim();
+            res = res.replace(/(10|[0-9TJQKA])S/i, '$1<span class=\'text-gray-900\'>&spades;</span>');
+            res = res.replace(/S(10|[0-9TJQKA])/i, '<span class=\'text-gray-900\'>&spades;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])H/i, '$1<span class=\'text-red-600\'>&hearts;</span>');
+            res = res.replace(/H(10|[0-9TJQKA])/i, '<span class=\'text-red-600\'>&hearts;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])D/i, '$1<span class=\'text-orange-500\'>&diams;</span>');
+            res = res.replace(/D(10|[0-9TJQKA])/i, '<span class=\'text-orange-500\'>&diams;</span>$1');
+            res = res.replace(/(10|[0-9TJQKA])C/i, '$1<span class=\'text-green-700\'>&clubs;</span>');
+            res = res.replace(/C(10|[0-9TJQKA])/i, '<span class=\'text-green-700\'>&clubs;</span>$1');
+            return res;
         }
     }">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Hidden CSV Upload Form -->
+            <form id="csvForm" method="POST" action="{{ route('tournaments.match.room.boards.csv.upload', [$tournament, $round->id, ($match->id ?: $match->home_team_id), $room]) }}" enctype="multipart/form-data" class="hidden">
+                @csrf
+                <input type="file" id="csvInput" name="csv_file" accept=".csv" onchange="document.getElementById('csvForm').submit()">
+            </form>
+
             <!-- Match Score (TOP) -->
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-8 border-b-4 border-indigo-500">
                 <div class="p-6">
@@ -337,26 +417,42 @@
                         <table class="min-w-full text-sm text-center border-collapse">
                             <thead class="bg-gray-50 font-bold text-gray-700">
                                 <tr>
-                                    <th class="py-3 border px-4">#</th>
-                                    <th class="py-3 border">{{ __('Contract') }}</th>
-                                    <th class="py-3 border">{{ __('Declarer') }}</th>
-                                    <th class="py-3 border">{{ __('Tricks') }}</th>
-                                    <th class="py-3 border">{{ __('Score') }} (NS)</th>
+                                    <th class="py-3 border px-4" rowspan="2">#</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Contract') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Declarer') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Lead') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Tricks') }}</th>
+                                    <th class="py-3 border" rowspan="2">{{ __('Score') }} (NS)</th>
+                                    <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                </tr>
+                                <tr class="text-[10px] uppercase bg-gray-100">
+                                    <th class="py-1 border">H</th>
+                                    <th class="py-1 border">A</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-for="board in boards" :key="board.board_number">
                                     <tr @click="openBoardEditor(board)" class="hover:bg-indigo-50 cursor-pointer transition-colors border-b">
                                         <td class="py-3 border font-bold" x-text="board.board_number"></td>
-                                        <td class="py-3 border italic text-gray-600" x-text="(room === 'open' ? board.home_contract : board.away_contract) || '-'"></td>
+                                        <td class="py-3 border italic text-gray-600" x-html="formatContract((room === 'open' ? board.home_contract : board.away_contract) || '-')"></td>
                                         <td class="py-3 border" x-text="(room === 'open' ? board.home_declarer : board.away_declarer) || '-'"></td>
-                                        <td class="py-3 border" x-text="(room === 'open' ? board.home_tricks : board.away_tricks) ?? '-'"></td>
+                                        <td class="py-3 border font-mono text-xs" x-html="formatContract((room === 'open' ? board.home_lead : board.away_lead) || '-')"></td>
+                                        <td class="py-3 border text-xs" x-text="formatTricks(board.current_room_contract_level, room === 'open' ? board.home_tricks : board.away_tricks)"></td>
                                         <td class="py-3 border font-mono font-bold" :class="(room === 'open' ? board.home_score : board.away_score) > 0 ? 'text-green-600' : ((room === 'open' ? board.home_score : board.away_score) < 0 ? 'text-red-600' : '')">
                                             <span x-text="(room === 'open' ? board.home_score : board.away_score) !== null ? ((room === 'open' ? board.home_score : board.away_score) > 0 ? '+' : '') + (room === 'open' ? board.home_score : board.away_score) : '-'"></span>
                                         </td>
+                                        <td class="py-3 border font-bold text-green-700" x-text="board.home_imp || ''"></td>
+                                        <td class="py-3 border font-bold text-red-700" x-text="board.away_imp || ''"></td>
                                     </tr>
                                 </template>
                             </tbody>
+                            <tfoot class="bg-gray-50 font-black">
+                                <tr>
+                                    <td colspan="6" class="py-4 border text-right px-6 uppercase tracking-widest text-gray-400 text-xs">{{ __('Total') }}</td>
+                                    <td class="py-4 border text-xl text-green-700" x-text="homeImp"></td>
+                                    <td class="py-4 border text-xl text-red-700" x-text="awayImp"></td>
+                                </tr>
+                            </tfoot>
                         </table>
                     </div>
                 </div>
@@ -382,40 +478,63 @@
                             
                             <div class="space-y-8">
                                 <div class="grid grid-cols-1 gap-6">
-                                    <div class="flex gap-2">
-                                        <div class="flex-1">
-                                            <x-input-label value="{{ __('Level') }}" />
-                                            <select x-model.number="editingBoard.current_room_contract_level" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                    <div class="grid grid-cols-2 gap-4">
+                                        <div class="col-span-2">
+                                            <x-input-label value="{{ __('Contract') }}" />
+                                            <select x-model="editingBoard.current_room_contract_base" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                 <option value="0">Pass</option>
-                                                @for($i=1; $i<=7; $i++) <option value="{{ $i }}">{{ $i }}</option> @endfor
+                                                @foreach(['1','2','3','4','5','6','7'] as $l)
+                                                    @foreach(['C' => '♣', 'D' => '♦', 'H' => '♥', 'S' => '♠', 'NT' => 'NT'] as $s => $sym)
+                                                        <option value="{{ $l.$s }}">{{ $l }}{{ $sym }}</option>
+                                                    @endforeach
+                                                @endforeach
                                             </select>
                                         </div>
-                                        <div class="flex-1" x-show="editingBoard.current_room_contract_level > 0">
-                                            <x-input-label value="{{ __('Suit') }}" />
-                                            <select x-model="editingBoard.current_room_contract_suit" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                <option value="">-</option>
-                                                <option value="S">&spades; S</option><option value="H">&hearts; H</option><option value="D">&diams; D</option><option value="C">&clubs; C</option><option value="NT">NT</option>
-                                            </select>
+
+                                        <div class="col-span-2" x-show="editingBoard.current_room_contract_level > 0">
+                                            <x-input-label value="{{ __('Risk') }}" class="mb-2" />
+                                            <div class="flex p-1 bg-gray-100 rounded-lg w-full">
+                                                <button type="button" @click="editingBoard.current_room_contract_risk = 1; updateBoardScores()" 
+                                                    :class="editingBoard.current_room_contract_risk === 1 ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    {{ __('None') }}
+                                                </button>
+                                                <button type="button" @click="editingBoard.current_room_contract_risk = 2; updateBoardScores()" 
+                                                    :class="editingBoard.current_room_contract_risk === 2 ? 'bg-orange-500 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    DBL (X)
+                                                </button>
+                                                <button type="button" @click="editingBoard.current_room_contract_risk = 4; updateBoardScores()" 
+                                                    :class="editingBoard.current_room_contract_risk === 4 ? 'bg-red-600 text-white shadow-sm' : 'text-gray-500 hover:text-gray-700'"
+                                                    class="flex-1 py-2 text-xs font-bold rounded-md transition-all duration-200">
+                                                    RDBL (XX)
+                                                </button>
+                                            </div>
                                         </div>
-                                        <div class="flex-1" x-show="editingBoard.current_room_contract_level > 0">
-                                            <x-input-label value="{{ __('Risk') }}" />
-                                            <select x-model.number="editingBoard.current_room_contract_risk" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
-                                                <option value="1">{{ __('None') }}</option>
-                                                <option value="2">DBL (X)</option>
-                                                <option value="4">RDBL (XX)</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    
-                                    <div class="grid grid-cols-2 gap-4" x-show="editingBoard.current_room_contract_level > 0">
-                                        <div>
+
+                                        <div x-show="editingBoard.current_room_contract_level > 0">
                                             <x-input-label value="{{ __('Declarer') }}" />
                                             <select x-model="editingBoard.current_room_declarer" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                 <option value="">-</option>
                                                 <option value="N">N</option><option value="E">E</option><option value="S">S</option><option value="W">W</option>
                                             </select>
                                         </div>
-                                        <div>
+                                        
+                                        <div x-show="editingBoard.current_room_contract_level > 0">
+                                            <x-input-label value="{{ __('Lead') }}" />
+                                            <select x-model="editingBoard.current_room_lead" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
+                                                <option value="">-</option>
+                                                @foreach(['S' => '♠', 'H' => '♥', 'D' => '♦', 'C' => '♣'] as $suitCode => $suitSym)
+                                                    <optgroup label="{{ $suitSym }} {{ $suitCode }}">
+                                                        @foreach(['A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'] as $val)
+                                                            <option value="{{ $val }}{{ $suitCode }}">{{ $val }}{{ $suitSym }}</option>
+                                                        @endforeach
+                                                    </optgroup>
+                                                @endforeach
+                                            </select>
+                                        </div>
+
+                                        <div class="col-span-2" x-show="editingBoard.current_room_contract_level > 0">
                                             <x-input-label value="{{ __('Tricks') }}" />
                                             <select x-model.number="editingBoard.current_room_tricks" @change="updateBoardScores()" class="block w-full border-gray-300 rounded-md shadow-sm text-sm">
                                                 <template x-for="opt in getTrickOptions(editingBoard.current_room_contract_level)" :key="opt.value">

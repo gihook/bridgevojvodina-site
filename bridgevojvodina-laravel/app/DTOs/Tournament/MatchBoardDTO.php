@@ -17,7 +17,9 @@ class MatchBoardDTO
         public ?int $away_tricks = null,
         public ?int $away_score = null,
         public int $home_imp = 0,
-        public int $away_imp = 0
+        public int $away_imp = 0,
+        public ?int $home_updated_by = null,
+        public ?int $away_updated_by = null
     ) {}
 
     public static function fromArray(array $data): self
@@ -36,6 +38,8 @@ class MatchBoardDTO
             away_score: $data['away_score'] ?? null,
             home_imp: $data['home_imp'] ?? 0,
             away_imp: $data['away_imp'] ?? 0,
+            home_updated_by: $data['home_updated_by'] ?? null,
+            away_updated_by: $data['away_updated_by'] ?? null,
         );
     }
 
@@ -55,6 +59,8 @@ class MatchBoardDTO
             'away_score' => $this->away_score,
             'home_imp' => $this->home_imp,
             'away_imp' => $this->away_imp,
+            'home_updated_by' => $this->home_updated_by,
+            'away_updated_by' => $this->away_updated_by,
         ];
     }
 }
