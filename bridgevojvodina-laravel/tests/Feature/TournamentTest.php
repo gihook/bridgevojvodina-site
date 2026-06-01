@@ -274,4 +274,69 @@ class TournamentTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee(__('No tournaments found.'));
     }
+
+    public function test_standings_only_sum_vps_for_completed_rounds()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        
+        $teamResults = [
+            'teams' => [
+                ['id' => 't1', 'name' => 'Team 1', 'number' => 1, 'total_vp' => 0, 'captain_id' => 0, 'player_ids' => []],
+                ['id' => 't2', 'name' => 'Team 2', 'number' => 2, 'total_vp' => 0, 'captain_id' => 0, 'player_ids' => []],
+            ],
+            'rounds' => [
+                [
+                    'id' => 'r1', 'name' => 'Round 1', 'status' => 'complete', 'boards_per_round' => 16,
+                    'matches' => [
+                        [
+                            'id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 
+                            'home_imp' => 40, 'away_imp' => 0, 'home_vp' => 18.09, 'away_vp' => 1.91,
+                            'boards' => []
+                        ]
+                    ]
+                ],
+                [
+                    'id' => 'r2', 'name' => 'Round 2', 'status' => 'inProgress', 'boards_per_round' => 16,
+                    'matches' => [
+                        [
+                            'id' => 'm2', 'home_team_id' => 't1', 'away_team_id' => 't2', 
+                            'home_imp' => 50, 'away_imp' => 0, 'home_vp' => 19.16, 'away_vp' => 0.84,
+                            'boards' => []
+                        ]
+                    ]
+                ]
+            ],
+            'bye_vp' => 12.0,
+            'boards_per_round' => 16
+        ];
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => $teamResults,
+        ]);
+
+        // Trigger recalculateStandings by updating settings
+        $this->actingAs($director)->patch(route('tournaments.settings.update', $tournament), [
+            'bye_vp' => 12.0,
+            'boards_per_round' => 16,
+        ]);
+
+        $tournament->refresh();
+        $teams = collect($tournament->team_results->teams)->keyBy('id');
+        
+        $this->assertEquals(18.09, $teams['t1']->total_vp, 'Team 1 VP should only include completed rounds');
+        $this->assertEquals(1.91, $teams['t2']->total_vp, 'Team 2 VP should only include completed rounds');
+
+        // Now mark Round 2 as complete
+        $this->actingAs($director)->patch(route('tournaments.rounds.status.update', [$tournament, 'r2']), [
+            'status' => 'complete',
+        ]);
+
+        $tournament->refresh();
+        $teams = collect($tournament->team_results->teams)->keyBy('id');
+
+        // Now both rounds should be summed
+        $this->assertEquals(37.25, $teams['t1']->total_vp, 'Team 1 VP should include both rounds after R2 is complete');
+        $this->assertEquals(2.75, $teams['t2']->total_vp, 'Team 2 VP should include both rounds after R2 is complete');
+    }
 }

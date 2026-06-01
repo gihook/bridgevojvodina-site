@@ -647,6 +647,8 @@ class TournamentController extends Controller
 
         $results->rounds[$roundIndex]->status = $request->status;
 
+        $this->recalculateStandings($results);
+
         $tournament->team_results = $results;
         $tournament->save();
 
@@ -838,13 +840,15 @@ class TournamentController extends Controller
                 }
 
                 // Add VPs to teams
-                if (!$isHomeBye) {
-                    $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
-                    if ($team) $team->total_vp += (float)$match->home_vp;
-                }
-                if (!$isAwayBye) {
-                    $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
-                    if ($team) $team->total_vp += (float)$match->away_vp;
+                if ($round->status === 'complete') {
+                    if (!$isHomeBye) {
+                        $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
+                        if ($team) $team->total_vp += (float)$match->home_vp;
+                    }
+                    if (!$isAwayBye) {
+                        $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
+                        if ($team) $team->total_vp += (float)$match->away_vp;
+                    }
                 }
             }
         }
