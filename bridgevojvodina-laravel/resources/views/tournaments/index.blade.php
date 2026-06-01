@@ -17,7 +17,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="space-y-4">
-                        @foreach ($tournaments as $tournament)
+                        @forelse ($tournaments as $tournament)
                             <div class="border-b pb-4 last:border-0 last:pb-0">
                                 <div class="flex justify-between items-start">
                                     <div>
@@ -41,23 +41,11 @@
                                         </h3>
                                         <p class="text-gray-600">{{ $tournament->description ?? __('Active tournament draft.') }}</p>
                                     </div>
-                                    <div class="flex space-x-2">
-                                        @can('update', $tournament)
-                                            <a href="{{ route('tournaments.edit', $tournament) }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Edit') }}</a>
-                                        @endcan
-                                        @can('delete', $tournament)
-                                            <form method="POST" action="{{ route('tournaments.destroy', $tournament) }}" class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-sm text-red-600 hover:text-red-900" onclick="return confirm('{{ __('Are you sure?') }}')">
-                                                    {{ __('Delete') }}
-                                                </button>
-                                            </form>
-                                        @endcan
-                                    </div>
                                 </div>
                             </div>
-                        @endforeach
+                        @empty
+                            <p class="text-gray-500 text-center py-4">{{ __('No tournaments found.') }}</p>
+                        @endforelse
                     </div>
 
                     {{-- Pagination removed for merged collection --}}

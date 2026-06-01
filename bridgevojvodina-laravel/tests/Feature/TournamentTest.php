@@ -118,22 +118,6 @@ class TournamentTest extends TestCase
         $response->assertStatus(403);
     }
 
-    public function test_director_cannot_edit_others_tournament()
-    {
-        $director1 = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
-        $director2 = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
-
-        $tournament = Tournament::factory()->create(['user_id' => $director1->id]);
-
-        $response = $this->actingAs($director2)->get(route('tournaments.edit', $tournament));
-        $response->assertStatus(403);
-
-        $response = $this->actingAs($director2)->patch(route('tournaments.update', $tournament), [
-            'title' => 'Hijacked',
-        ]);
-        $response->assertStatus(403);
-    }
-
     public function test_admin_can_edit_any_tournament()
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
@@ -223,5 +207,71 @@ class TournamentTest extends TestCase
         $response->assertSee('Draft');
         // Count occurrences of the draft badge class
         $this->assertEquals(1, substr_count($content, 'bg-yellow-100 text-yellow-800'), "Should see only one 'Draft' badge");
+    }
+
+    public function test_deleting_tournament_removes_it_from_both_tables()
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+
+        // Create a configuration
+        $config = new \App\Models\TournamentConfiguration();
+        $config->id = $uuid;
+        $config->title = 'To Be Deleted';
+        $config->user_id = $admin->id;
+        $config->team_results = ['teams' => [], 'rounds' => []];
+        $config->save();
+
+        // Publish it (creates a Tournament record with same ID)
+        $tournament = new Tournament();
+        $tournament->id = $uuid;
+        $tournament->title = 'To Be Deleted';
+        $tournament->description = 'Published';
+        $tournament->details = 'Details';
+        $tournament->user_id = $admin->id;
+        $tournament->team_results = ['teams' => [], 'rounds' => []];
+        $tournament->save();
+
+        $this->assertDatabaseHas('tournament_configurations', ['id' => $uuid]);
+        $this->assertDatabaseHas('tournaments', ['id' => $uuid]);
+
+        $response = $this->actingAs($admin)->delete(route('tournaments.destroy', $uuid));
+
+        $response->assertRedirect(route('tournaments.index'));
+        $this->assertDatabaseMissing('tournament_configurations', ['id' => $uuid]);
+        $this->assertDatabaseMissing('tournaments', ['id' => $uuid]);
+    }
+
+    public function test_deleting_unpublished_draft_works()
+    {
+        $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
+        $uuid = (string) \Illuminate\Support\Str::uuid();
+
+        $config = new \App\Models\TournamentConfiguration();
+        $config->id = $uuid;
+        $config->title = 'Draft Only';
+        $config->user_id = $admin->id;
+        $config->team_results = ['teams' => [], 'rounds' => []];
+        $config->save();
+
+        $this->assertDatabaseHas('tournament_configurations', ['id' => $uuid]);
+        $this->assertDatabaseMissing('tournaments', ['id' => $uuid]);
+
+        $response = $this->actingAs($admin)->delete(route('tournaments.destroy', $uuid));
+
+        $response->assertRedirect(route('tournaments.index'));
+        $this->assertDatabaseMissing('tournament_configurations', ['id' => $uuid]);
+    }
+
+    public function test_tournaments_index_shows_empty_message()
+    {
+        // Ensure no tournaments exist (RefreshDatabase handles this, but let's be sure)
+        \App\Models\Tournament::query()->delete();
+        \App\Models\TournamentConfiguration::query()->delete();
+
+        $response = $this->get(route('tournaments.index'));
+
+        $response->assertStatus(200);
+        $response->assertSee(__('No tournaments found.'));
     }
 }

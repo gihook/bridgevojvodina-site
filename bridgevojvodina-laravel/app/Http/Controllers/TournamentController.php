@@ -1312,13 +1312,28 @@ class TournamentController extends Controller
 
     public function destroy(string $id): RedirectResponse
     {
-        $tournament = $this->resolveTournament($id);
+        $draft = TournamentConfiguration::find($id);
+        $published = Tournament::find($id);
         
-        if ($tournament instanceof Tournament) {
-            Gate::authorize('delete', $tournament);
+        // Authorization check
+        if ($draft) {
+            if (!auth()->user()->isAdmin() && auth()->id() !== $draft->user_id) {
+                abort(403);
+            }
         }
         
-        $tournament->delete();
+        if ($published) {
+            Gate::authorize('delete', $published);
+        }
+
+        DB::transaction(function () use ($draft, $published) {
+            if ($draft) {
+                $draft->delete();
+            }
+            if ($published) {
+                $published->delete();
+            }
+        });
 
         return redirect()->route('tournaments.index')
             ->with('success', __('Tournament deleted successfully.'));

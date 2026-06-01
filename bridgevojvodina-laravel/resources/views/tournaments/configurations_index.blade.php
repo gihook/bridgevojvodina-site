@@ -22,7 +22,7 @@
                                 <div class="flex justify-between items-start">
                                     <div>
                                         <h3 class="text-lg font-bold">
-                                            <a href="{{ route('tournaments.show', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
+                                            <a href="{{ route('tournaments.edit', $tournament) }}" class="text-indigo-600 hover:text-indigo-900">
                                                 {{ $tournament->title }}
                                             </a>
                                             <span class="ms-2 inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
@@ -30,20 +30,6 @@
                                             </span>
                                         </h3>
                                         <p class="text-gray-600">{{ $tournament->description ?? __('Active tournament draft.') }}</p>
-                                    </div>
-                                    <div class="flex space-x-2">
-                                        @can('update', $tournament)
-                                            <a href="{{ route('tournaments.edit', $tournament) }}" class="text-sm text-gray-600 hover:text-gray-900">{{ __('Edit') }}</a>
-                                        @endcan
-                                        @can('delete', $tournament)
-                                            <form method="POST" action="{{ route('tournaments.destroy', $tournament) }}" class="inline">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-sm text-red-600 hover:text-red-900" onclick="return confirm('{{ __('Are you sure?') }}')">
-                                                    {{ __('Delete') }}
-                                                </button>
-                                            </form>
-                                        @endcan
                                     </div>
                                 </div>
                             </div>

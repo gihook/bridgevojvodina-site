@@ -247,5 +247,7 @@
     "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.": "Da li ste sigurni da želite da objavite ovaj turnir? Ovo će prepisati sve postojeće objavljene podatke za ovaj turnir.",
     "Tournament published successfully.": "Turnir je uspešno objavljen.",
     "Tournament Configurations": "Konfiguracije turnira",
-    "No tournament configurations found.": "Nema pronađenih konfiguracija turnira."
+    "No tournament configurations found.": "Nema pronađenih konfiguracija turnira.",
+    "No tournaments found.": "Turniri nisu pronađeni.",
+    "Delete Tournament": "Obriši turnir"
 }

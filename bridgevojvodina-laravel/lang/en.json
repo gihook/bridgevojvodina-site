@@ -188,5 +188,7 @@
     "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.": "Are you sure you want to publish this tournament? This will overwrite any existing published data for this tournament.",
     "Tournament published successfully.": "Tournament published successfully.",
     "Tournament Configurations": "Tournament Configurations",
-    "No tournament configurations found.": "No tournament configurations found."
+    "No tournament configurations found.": "No tournament configurations found.",
+    "No tournaments found.": "No tournaments found.",
+    "Delete Tournament": "Delete Tournament"
 }
