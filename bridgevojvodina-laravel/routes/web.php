@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
+    Route::post('tournaments/{tournament}/rounds/{roundId}/renumber', [TournamentController::class, 'renumberBoards'])->name('tournaments.rounds.renumber');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/reorder', [TournamentController::class, 'reorderRound'])->name('tournaments.rounds.reorder');
     Route::delete('tournaments/{tournament}/rounds/idle', [TournamentController::class, 'destroyIdleRounds'])->name('tournaments.rounds.idle.destroy');
     Route::delete('tournaments/{tournament}/rounds/{roundId}', [TournamentController::class, 'destroyRound'])->name('tournaments.rounds.destroy');
@@ -58,6 +59,12 @@ Route::middleware('auth')->group(function () {
     Route::post('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/boards/csv', [TournamentController::class, 'uploadMatchBoardsCsv'])->name('tournaments.match.room.boards.csv.upload');
     Route::get('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/boards/csv', [TournamentController::class, 'downloadMatchBoardsCsv'])->name('tournaments.match.room.boards.csv.download');
     Route::post('tournaments/{tournament}/publish', [TournamentController::class, 'publish'])->name('tournaments.publish');
+
+    Route::prefix('scoring')->name('scoring.')->group(function () {
+        Route::get('/', [\App\Http\Controllers\PlayerScoringController::class, 'index'])->name('index');
+        Route::get('/{tournament}/round/{roundId}/match/{matchId}/room/{room}', [\App\Http\Controllers\PlayerScoringController::class, 'showRoom'])->name('room.show');
+        Route::patch('/{tournament}/round/{roundId}/match/{matchId}/room/{room}/board/{boardNumber}', [\App\Http\Controllers\PlayerScoringController::class, 'updateBoard'])->name('board.update');
+    });
 });
 
 Route::resource('tournaments', TournamentController::class)->only(['index', 'show']);

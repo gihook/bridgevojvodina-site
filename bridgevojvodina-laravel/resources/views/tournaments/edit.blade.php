@@ -18,6 +18,10 @@
         uploadModalOpen: false, 
         uploadRoundId: '', 
         uploadRoundName: '',
+        renumberModalOpen: false,
+        renumberRoundId: '',
+        renumberRoundName: '',
+        renumberStartingNumber: 1,
         generateRoundsModalOpen: false,
         uploadCsvModalOpen: false
     }">
@@ -260,27 +264,37 @@
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                                        @if($round->board_set_id)
-                                                            @php
-                                                                $set = $boardSets->firstWhere('id', $round->board_set_id);
-                                                            @endphp
-                                                            @if($set)
-                                                                <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="group flex flex-col">
-                                                                    <span class="font-bold text-indigo-600 group-hover:text-indigo-900 group-hover:underline">{{ $set->name }}</span>
-                                                                    <span class="text-[10px] text-gray-400">{{ $set->created_at->format('d.m.Y H:i') }}</span>
-                                                                </a>
+                                                        <div class="flex flex-col gap-2">
+                                                            @if($round->board_set_id)
+                                                                @php
+                                                                    $set = $boardSets->firstWhere('id', $round->board_set_id);
+                                                                @endphp
+                                                                @if($set)
+                                                                    <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="group flex flex-col">
+                                                                        <span class="font-bold text-indigo-600 group-hover:text-indigo-900 group-hover:underline">{{ $set->name }}</span>
+                                                                        <span class="text-[10px] text-gray-400">{{ $set->created_at->format('d.m.Y H:i') }}</span>
+                                                                    </a>
+                                                                @else
+                                                                    <span class="text-red-400 italic text-xs">{{ __('Set not found') }}</span>
+                                                                @endif
                                                             @else
-                                                                <span class="text-red-400 italic text-xs">{{ __('Set not found') }}</span>
+                                                                <button 
+                                                                    type="button" 
+                                                                    @click="uploadModalOpen = true; uploadRoundId = '{{ $round->id }}'; uploadRoundName = '{{ $round->name }}'"
+                                                                    class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                                >
+                                                                    {{ __('Upload Boards') }}
+                                                                </button>
                                                             @endif
-                                                        @else
+
                                                             <button 
                                                                 type="button" 
-                                                                @click="uploadModalOpen = true; uploadRoundId = '{{ $round->id }}'; uploadRoundName = '{{ $round->name }}'"
+                                                                @click="renumberModalOpen = true; renumberRoundId = '{{ $round->id }}'; renumberRoundName = '{{ $round->name }}'; renumberStartingNumber = {{ (isset($round->matches[0]) && !empty($round->matches[0]->boards)) ? $round->matches[0]->boards[0]->board_number : 1 }}"
                                                                 class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                                             >
-                                                                {{ __('Upload Boards') }}
+                                                                {{ __('Renumber') }}
                                                             </button>
-                                                        @endif
+                                                        </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
                                                         <div class="flex flex-col items-end gap-2">
@@ -431,6 +445,37 @@
                 </div>
             </div>
         </div>
+        <!-- Renumber Boards Modal -->
+        <div x-show="renumberModalOpen" class="fixed inset-0 z-50 overflow-y-auto" x-cloak>
+            <div class="flex items-center justify-center min-h-screen px-4 pt-4 pb-20 text-center sm:block sm:p-0">
+                <div x-show="renumberModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0" x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0" class="fixed inset-0 transition-opacity" @click="renumberModalOpen = false">
+                    <div class="absolute inset-0 bg-gray-500 opacity-75"></div>
+                </div>
+                <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
+                <div x-show="renumberModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
+                    <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Renumber Boards for') }} <span x-text="renumberRoundName"></span></h3>
+                        <form method="POST" :action="`{{ route('tournaments.rounds.renumber', ['tournament' => $tournament, 'roundId' => 'ROUND_ID']) }}`.replace('ROUND_ID', renumberRoundId)">
+                            @csrf
+                            <div class="space-y-4">
+                                <div>
+                                    <x-input-label for="starting_board_number" :value="__('Starting Board Number')" />
+                                    <x-text-input id="starting_board_number" name="starting_board_number" type="number" class="mt-1 block w-full" x-model="renumberStartingNumber" required />
+                                    <p class="mt-2 text-xs text-gray-500">
+                                        {{ __('This will sequentially renumber all boards in this round starting from this value.') }}
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="mt-6 flex justify-end gap-3">
+                                <x-secondary-button type="button" @click="renumberModalOpen = false">{{ __('Cancel') }}</x-secondary-button>
+                                <x-primary-button type="submit">{{ __('Update') }}</x-primary-button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
     </div>
     <style>
         [x-cloak] { display: none !important; }
