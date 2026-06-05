@@ -995,6 +995,55 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds uploaded successfully.'));
     }
 
+    public function renumberBoards(Request $request, string $id, string $roundId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'starting_board_number' => 'required|integer|min:1|max:1000',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+
+        $round = $results->rounds[$roundIndex];
+        $startFrom = (int) $request->starting_board_number;
+
+        DB::transaction(function () use ($round, $startFrom, $tournament, $results) {
+            foreach ($round->matches as $match) {
+                if (empty($match->boards)) continue;
+                
+                $boards = collect($match->boards)->sortBy('board_number')->values();
+                foreach ($boards as $i => $board) {
+                    $board->board_number = $startFrom + $i;
+                }
+                $match->boards = $boards->toArray();
+            }
+
+            // Also update physical board set if it exists
+            if ($round->board_set_id) {
+                $boards = Board::where('board_set_id', $round->board_set_id)
+                    ->orderBy('board_number')
+                    ->get();
+                    
+                foreach ($boards as $i => $board) {
+                    $board->board_number = $startFrom + $i;
+                    $board->vulnerability = $this->hydrationService->calculateVulnerability($board->board_number);
+                    $board->save();
+                }
+            }
+
+            $tournament->team_results = $results;
+            $tournament->save();
+        });
+
+        return back()->with('success', __('Boards renumbered successfully.'));
+    }
+
     public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View
     {
         $tournament = $this->resolveTournament($id);

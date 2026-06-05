@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
+    Route::post('tournaments/{tournament}/rounds/{roundId}/renumber', [TournamentController::class, 'renumberBoards'])->name('tournaments.rounds.renumber');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/reorder', [TournamentController::class, 'reorderRound'])->name('tournaments.rounds.reorder');
     Route::delete('tournaments/{tournament}/rounds/idle', [TournamentController::class, 'destroyIdleRounds'])->name('tournaments.rounds.idle.destroy');
     Route::delete('tournaments/{tournament}/rounds/{roundId}', [TournamentController::class, 'destroyRound'])->name('tournaments.rounds.destroy');
