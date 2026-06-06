@@ -272,6 +272,10 @@ class TournamentController extends Controller
         $tournament = $this->resolveTournament($id);
         $this->authorizeTournament($tournament);
 
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
+
         if (!$tournament->team_results) {
             $tournament->team_results = new TournamentResultsDTO(
                 teams: [],
