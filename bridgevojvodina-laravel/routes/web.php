@@ -69,6 +69,8 @@ Route::middleware('auth')->group(function () {
 
 Route::resource('tournaments', TournamentController::class)->only(['index', 'show']);
 Route::get('tournaments/{tournament}/butler', [TournamentController::class, 'butler'])->name('tournaments.butler');
+Route::get('tournaments/{tournament}/details', [TournamentController::class, 'details'])->name('tournaments.details');
+Route::get('tournaments/{tournament}/teams/{team}', [TournamentController::class, 'showTeam'])->name('tournaments.teams.show');
 Route::get('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'showBoardSet'])->name('tournaments.board-sets.show');
 Route::get('tournaments/{tournament}/round/{round}/match/{match}', [TournamentController::class, 'match'])->name('tournaments.match');
 Route::get('tournaments/{tournament}/round/{round}/board/{board_number}', [TournamentController::class, 'board'])->name('tournaments.board');

@@ -127,7 +127,7 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
         $results = $tournament->team_results;
-        
+
         $butlerPlayers = collect();
         if ($results && !empty($results->player_butlers)) {
             $playerIds = collect($results->player_butlers)->pluck('player_id')->unique()->toArray();
@@ -135,6 +135,31 @@ class TournamentController extends Controller
         }
 
         return view('tournaments.butler', compact('tournament', 'butlerPlayers'));
+    }
+
+    public function details(string $id): View
+    {
+        $tournament = $this->resolveTournament($id);
+        return view('tournaments.details', compact('tournament'));
+    }
+
+    public function showTeam(string $tournamentId, string $teamId): View
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $results = $tournament->team_results;
+
+        if (!$results) {
+            abort(404);
+        }
+
+        $team = collect($results->teams)->firstWhere('id', $teamId);
+        if (!$team) {
+            abort(404);
+        }
+
+        $players = Player::whereIn('id', $team->player_ids)->orderBy('last_name')->get();
+
+        return view('tournaments.teams.show', compact('tournament', 'team', 'players'));
     }
 
     public function match(string $tournamentId, string $roundId, string $matchId): View

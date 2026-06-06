@@ -16,7 +16,11 @@
                 @foreach ($sortedTeams as $index => $team)
                     <tr>
                         <td class="px-6 py-4 whitespace-nowrap">{{ $loop->iteration }}</td>
-                        <td class="px-6 py-4 whitespace-nowrap font-semibold">{{ $team->name }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap font-semibold">
+                            <a href="{{ route('tournaments.teams.show', ['tournament' => $tournament, 'team' => $team->id]) }}" class="text-indigo-600 hover:text-indigo-900">
+                                {{ $team->name }}
+                            </a>
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-right">{{ number_format($team->total_vp, 2) }}</td>
                     </tr>
                 @endforeach

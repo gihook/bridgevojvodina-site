@@ -145,4 +145,41 @@ class TournamentShowTest extends TestCase
         $response->assertSee('&spades;', false);
         $response->assertSee('3NT');
     }
+
+    public function test_tournament_details_page_is_accessible()
+    {
+        $tournament = $this->createTournamentWithResults();
+
+        $response = $this->get("/tournaments/{$tournament->id}/details");
+
+        $response->assertStatus(200);
+        $response->assertSee('Tournament Details');
+        $response->assertSee('Details'); // from createTournamentWithResults
+    }
+
+    public function test_team_details_page_is_accessible_and_shows_players()
+    {
+        $tournament = $this->createTournamentWithResults();
+
+        $response = $this->get("/tournaments/{$tournament->id}/teams/t1");
+
+        $response->assertStatus(200);
+        $response->assertSee('Team: Team A');
+        $response->assertSee('Slobodan');
+        $response->assertSee('Guzvica');
+        $response->assertSee('Captain');
+    }
+
+    public function test_tournament_show_page_links_to_details_and_teams()
+    {
+        $tournament = $this->createTournamentWithResults();
+
+        $response = $this->get("/tournaments/{$tournament->id}");
+
+        $response->assertStatus(200);
+        $response->assertSee('Tournament details');
+        $response->assertSee("/tournaments/{$tournament->id}/details");
+        $response->assertSee("/tournaments/{$tournament->id}/teams/t1");
+        $response->assertSee("/tournaments/{$tournament->id}/teams/t2");
+    }
 }

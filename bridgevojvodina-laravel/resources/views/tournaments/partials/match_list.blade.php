@@ -25,7 +25,13 @@
                         <div class="p-4">
                             <div class="flex justify-between items-center">
                                 <div class="flex-1 text-center font-bold text-lg">
-                                    {{ $homeTeam->name ?? __('BYE') }}
+                                    @if($homeTeam)
+                                        <a href="{{ route('tournaments.teams.show', ['tournament' => $tournament, 'team' => $homeTeam->id]) }}" class="text-indigo-600 hover:text-indigo-900">
+                                            {{ $homeTeam->name }}
+                                        </a>
+                                    @else
+                                        {{ __('BYE') }}
+                                    @endif
                                 </div>
                                 <div class="px-4 py-2 {{ $isBye ? 'bg-gray-400' : 'bg-blue-600' }} text-white rounded font-mono text-xl flex flex-col items-center">
                                     @if($isBye)
@@ -38,7 +44,13 @@
                                     </span>
                                 </div>
                                 <div class="flex-1 text-center font-bold text-lg">
-                                    {{ $awayTeam->name ?? __('BYE') }}
+                                    @if($awayTeam)
+                                        <a href="{{ route('tournaments.teams.show', ['tournament' => $tournament, 'team' => $awayTeam->id]) }}" class="text-indigo-600 hover:text-indigo-900">
+                                            {{ $awayTeam->name }}
+                                        </a>
+                                    @else
+                                        {{ __('BYE') }}
+                                    @endif
                                 </div>
                             </div>
                             @if (!$isBye)
