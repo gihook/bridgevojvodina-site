@@ -36,6 +36,10 @@ class TournamentTest extends TestCase
 
         $response->assertStatus(200);
         $response->assertSee('Detailed Tournament');
+        $response->assertDontSee('<h1>Markdown Title</h1>', false);
+
+        $response = $this->get(route('tournaments.details', $tournament));
+        $response->assertStatus(200);
         $response->assertSee('<h1>Markdown Title</h1>', false);
     }
 

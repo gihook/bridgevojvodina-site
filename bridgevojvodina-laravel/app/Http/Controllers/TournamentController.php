@@ -35,7 +35,7 @@ class TournamentController extends Controller
         $published = Tournament::find($id);
 
         if ($draft && auth()->check()) {
-            if (auth()->user()->isAdmin() || auth()->id() === $draft->user_id) {
+            if (auth()->user()->isAdmin() || auth()->user()->isDirector() || auth()->id() === $draft->user_id) {
                 return $draft;
             }
         }
@@ -51,7 +51,7 @@ class TournamentController extends Controller
             if (!auth()->check()) {
                 abort(401);
             }
-            if (!auth()->user()->isAdmin() && auth()->id() !== $tournament->user_id) {
+            if (!auth()->user()->isAdmin() && !auth()->user()->isDirector() && auth()->id() !== $tournament->user_id) {
                 abort(403);
             }
         }
@@ -116,6 +116,10 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
 
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
+
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
         }]);
@@ -127,7 +131,11 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
         $results = $tournament->team_results;
-        
+
+        if ($tournament instanceof TournamentConfiguration && $results) {
+            $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+        }
+
         $butlerPlayers = collect();
         if ($results && !empty($results->player_butlers)) {
             $playerIds = collect($results->player_butlers)->pluck('player_id')->unique()->toArray();
@@ -135,6 +143,36 @@ class TournamentController extends Controller
         }
 
         return view('tournaments.butler', compact('tournament', 'butlerPlayers'));
+    }
+
+    public function details(string $id): View
+    {
+        $tournament = $this->resolveTournament($id);
+
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
+
+        return view('tournaments.details', compact('tournament'));
+    }
+
+    public function showTeam(string $tournamentId, string $teamId): View
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $results = $tournament->team_results;
+
+        if (!$results) {
+            abort(404);
+        }
+
+        $team = collect($results->teams)->firstWhere('id', $teamId);
+        if (!$team) {
+            abort(404);
+        }
+
+        $players = Player::whereIn('id', $team->player_ids)->orderBy('last_name')->get();
+
+        return view('tournaments.teams.show', compact('tournament', 'team', 'players'));
     }
 
     public function match(string $tournamentId, string $roundId, string $matchId): View
@@ -233,6 +271,10 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
         $this->authorizeTournament($tournament);
+
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
 
         if (!$tournament->team_results) {
             $tournament->team_results = new TournamentResultsDTO(
