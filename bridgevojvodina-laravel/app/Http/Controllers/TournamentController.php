@@ -35,7 +35,7 @@ class TournamentController extends Controller
         $published = Tournament::find($id);
 
         if ($draft && auth()->check()) {
-            if (auth()->user()->isAdmin() || auth()->id() === $draft->user_id) {
+            if (auth()->user()->isAdmin() || auth()->user()->isDirector() || auth()->id() === $draft->user_id) {
                 return $draft;
             }
         }
@@ -51,7 +51,7 @@ class TournamentController extends Controller
             if (!auth()->check()) {
                 abort(401);
             }
-            if (!auth()->user()->isAdmin() && auth()->id() !== $tournament->user_id) {
+            if (!auth()->user()->isAdmin() && !auth()->user()->isDirector() && auth()->id() !== $tournament->user_id) {
                 abort(403);
             }
         }
@@ -116,6 +116,10 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
 
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
+
         $tournament->load(['boardSets' => function($q) {
             $q->withCount('boards');
         }]);
@@ -127,6 +131,10 @@ class TournamentController extends Controller
     {
         $tournament = $this->resolveTournament($id);
         $results = $tournament->team_results;
+
+        if ($tournament instanceof TournamentConfiguration && $results) {
+            $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+        }
 
         $butlerPlayers = collect();
         if ($results && !empty($results->player_butlers)) {
@@ -140,6 +148,11 @@ class TournamentController extends Controller
     public function details(string $id): View
     {
         $tournament = $this->resolveTournament($id);
+
+        if ($tournament instanceof TournamentConfiguration && $tournament->team_results) {
+            $tournament->team_results->player_butlers = $this->hydrationService->calculatePlayerButlers($tournament->team_results);
+        }
+
         return view('tournaments.details', compact('tournament'));
     }
 
