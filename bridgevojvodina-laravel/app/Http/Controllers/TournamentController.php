@@ -12,6 +12,7 @@ use App\DTOs\Tournament\MatchDTO;
 use App\DTOs\Tournament\MatchBoardDTO;
 use App\DTOs\Tournament\TeamDTO;
 use App\DTOs\Tournament\TournamentResultsDTO;
+use App\Services\DoubleDummyAnalysisService;
 use App\Services\TournamentHydrationService;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -26,7 +27,8 @@ class TournamentController extends Controller
     public function __construct(
         protected TournamentHydrationService $hydrationService,
         protected \App\Services\VpCalculationService $vpService,
-        protected \App\Services\BridgeScoringService $scoringService
+        protected \App\Services\BridgeScoringService $scoringService,
+        protected DoubleDummyAnalysisService $doubleDummyAnalysisService
     ) {}
 
     protected function resolveTournament(string $id)
@@ -413,6 +415,185 @@ class TournamentController extends Controller
 
         return redirect()->route('tournaments.edit', $tournament)
             ->with('success', __('Board set deleted successfully.'));
+    }
+
+    public function analyzeBoardDoubleDummy(string $tournamentId, BoardSet $boardSet, Board $board): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
+            abort(404);
+        }
+
+        if ($board->board_set_id !== $boardSet->id) {
+            abort(404);
+        }
+
+        try {
+            $board->update([
+                'double_dummy_analysis' => $this->doubleDummyAnalysisService->analyze($board),
+            ]);
+        } catch (\Throwable $exception) {
+            return back()->withErrors([
+                'double_dummy_analysis' => $exception->getMessage(),
+            ]);
+        }
+
+        return back()->with('success', __('Double dummy analysis added successfully.'));
+    }
+
+    public function updateBoard(Request $request, string $tournamentId, BoardSet $boardSet, Board $board): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
+            abort(404);
+        }
+
+        if ($board->board_set_id !== $boardSet->id) {
+            abort(404);
+        }
+
+        $validated = $request->validate([
+            'board_number' => 'required|integer|min:1|max:256',
+            'vulnerability' => 'required|string|in:None,NS,EW,All',
+            'cards' => 'required|array',
+            'cards.N' => 'required|array',
+            'cards.S' => 'required|array',
+            'cards.E' => 'required|array',
+            'cards.W' => 'required|array',
+            'cards.*.S' => 'nullable|string',
+            'cards.*.H' => 'nullable|string',
+            'cards.*.D' => 'nullable|string',
+            'cards.*.C' => 'nullable|string',
+        ]);
+
+        if ($boardSet->boards()
+            ->where('board_number', (int) $validated['board_number'])
+            ->whereKeyNot($board->id)
+            ->exists()) {
+            return back()->withErrors([
+                'board_edit' => __('Board number must be unique within this board set.'),
+            ])->withInput();
+        }
+
+        try {
+            $hands = $this->normalizeAndValidateBoardHands($validated['cards']);
+        } catch (\InvalidArgumentException $exception) {
+            return back()->withErrors([
+                'board_edit' => $exception->getMessage(),
+            ])->withInput();
+        }
+
+        $board->update([
+            'board_number' => (int) $validated['board_number'],
+            'vulnerability' => $validated['vulnerability'],
+            'cards_north' => $hands['N'],
+            'cards_south' => $hands['S'],
+            'cards_east' => $hands['E'],
+            'cards_west' => $hands['W'],
+            'double_dummy_analysis' => null,
+        ]);
+
+        return back()->with('success', __('Board updated successfully. Double dummy analysis was cleared.'));
+    }
+
+    public function analyzeBoardSetDoubleDummy(string $tournamentId, BoardSet $boardSet): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        if ($boardSet->tournament_id !== $tournament->id && $boardSet->tournament_configuration_id !== $tournament->id) {
+            abort(404);
+        }
+
+        @set_time_limit(0);
+
+        $boards = $boardSet->boards()->orderBy('board_number')->get();
+        if ($boards->isEmpty()) {
+            return back()->withErrors([
+                'double_dummy_analysis' => __('No boards found in this board set.'),
+            ]);
+        }
+
+        $analyzed = 0;
+        $currentBoardNumber = null;
+
+        try {
+            foreach ($boards as $board) {
+                $currentBoardNumber = $board->board_number;
+                $board->update([
+                    'double_dummy_analysis' => $this->doubleDummyAnalysisService->analyze($board),
+                ]);
+                $analyzed++;
+            }
+        } catch (\Throwable $exception) {
+            return back()->withErrors([
+                'double_dummy_analysis' => __('Board :board: :message', [
+                    'board' => $currentBoardNumber ?? '?',
+                    'message' => $exception->getMessage(),
+                ]),
+            ]);
+        }
+
+        return back()->with('success', __('Double dummy analysis added for :count boards.', [
+            'count' => $analyzed,
+        ]));
+    }
+
+    private function normalizeAndValidateBoardHands(array $cards): array
+    {
+        $seats = ['N' => 'North', 'S' => 'South', 'E' => 'East', 'W' => 'West'];
+        $suits = ['S', 'H', 'D', 'C'];
+        $rankOrder = 'AKQJT98765432';
+        $seen = [];
+        $normalizedHands = [];
+
+        foreach ($seats as $seat => $seatName) {
+            $normalizedHands[$seat] = [];
+            $handCount = 0;
+
+            foreach ($suits as $suit) {
+                $holding = strtoupper(str_replace('10', 'T', preg_replace('/\s+/', '', (string) ($cards[$seat][$suit] ?? '')) ?? ''));
+                $holdingRanks = str_split($holding);
+                $normalizedHolding = '';
+
+                foreach ($holdingRanks as $rank) {
+                    if (! str_contains($rankOrder, $rank)) {
+                        throw new \InvalidArgumentException(__('Invalid card ":card" in :seat.', [
+                            'card' => $suit . $rank,
+                            'seat' => $seatName,
+                        ]));
+                    }
+
+                    $card = $suit . $rank;
+                    if (isset($seen[$card])) {
+                        throw new \InvalidArgumentException(__('Duplicate card: :card.', ['card' => $card]));
+                    }
+
+                    $seen[$card] = true;
+                    $normalizedHolding .= $rank;
+                    $handCount++;
+                }
+
+                $normalizedHands[$seat][$suit] = $normalizedHolding;
+            }
+
+            if ($handCount !== 13) {
+                throw new \InvalidArgumentException(__('Each hand must contain exactly 13 cards. :seat has :count.', [
+                    'seat' => $seatName,
+                    'count' => $handCount,
+                ]));
+            }
+        }
+
+        if (count($seen) !== 52) {
+            throw new \InvalidArgumentException(__('A board must contain exactly 52 unique cards.'));
+        }
+
+        return $normalizedHands;
     }
 
     public function update(Request $request, string $id): RedirectResponse
