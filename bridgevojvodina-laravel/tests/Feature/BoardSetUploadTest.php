@@ -112,6 +112,174 @@ EOD;
         $response->assertSee('Board');
     }
 
+    public function test_director_can_add_double_dummy_analysis_to_board()
+    {
+        config([
+            'services.dds_analyzer.command' => [
+                PHP_BINARY,
+                base_path('tests/Fixtures/dds_analyzer_fake.php'),
+            ],
+        ]);
+
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create(['user_id' => $director->id]);
+        $boardSet = BoardSet::create(['tournament_id' => $tournament->id, 'name' => 'DDS Set']);
+        $board = Board::create([
+            'board_set_id' => $boardSet->id,
+            'board_number' => 1,
+            'vulnerability' => 'None',
+            'cards_north' => ['S' => 'AKQJ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQ'],
+            'cards_east' => ['S' => 'T987', 'H' => 'T98', 'D' => 'T98', 'C' => 'T98'],
+            'cards_south' => ['S' => '6543', 'H' => '765', 'D' => '765', 'C' => '765'],
+            'cards_west' => ['S' => '2', 'H' => 'J432', 'D' => 'J432', 'C' => 'J432'],
+        ]);
+
+        $response = $this->actingAs($director)->post(
+            route('tournaments.board-sets.boards.double-dummy', [$tournament, $boardSet, $board])
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $board->refresh();
+        $this->assertEquals('dds-test', $board->double_dummy_analysis['engine']);
+        $this->assertEquals(10, $board->double_dummy_analysis['table']['N']['strains']['S']);
+        $this->assertEquals('4S', $board->double_dummy_analysis['best_contract']['contract']);
+        $this->assertEquals('4 Spades by North. 420 points.', $board->double_dummy_analysis['best_contract']['description']);
+
+        $this->actingAs($director)
+            ->get(route('tournaments.board-sets.show', [$tournament, $boardSet]))
+            ->assertSee('Double Dummy Analysis')
+            ->assertSee('4 Spades by North. 420 points.')
+            ->assertSee('Recalculate Double Dummy');
+    }
+
+    public function test_director_can_add_double_dummy_analysis_to_all_boards_in_set()
+    {
+        config([
+            'services.dds_analyzer.command' => [
+                PHP_BINARY,
+                base_path('tests/Fixtures/dds_analyzer_fake.php'),
+            ],
+        ]);
+
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create(['user_id' => $director->id]);
+        $boardSet = BoardSet::create(['tournament_id' => $tournament->id, 'name' => 'DDS Set']);
+
+        foreach ([1, 2] as $boardNumber) {
+            Board::create([
+                'board_set_id' => $boardSet->id,
+                'board_number' => $boardNumber,
+                'vulnerability' => 'None',
+                'cards_north' => ['S' => 'AKQJ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQ'],
+                'cards_east' => ['S' => 'T987', 'H' => 'T98', 'D' => 'T98', 'C' => 'T98'],
+                'cards_south' => ['S' => '6543', 'H' => '765', 'D' => '765', 'C' => '765'],
+                'cards_west' => ['S' => '2', 'H' => 'J432', 'D' => 'J432', 'C' => 'J432'],
+            ]);
+        }
+
+        $response = $this->actingAs($director)->post(
+            route('tournaments.board-sets.double-dummy', [$tournament, $boardSet])
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $this->assertEquals(
+            2,
+            Board::where('board_set_id', $boardSet->id)
+                ->whereNotNull('double_dummy_analysis')
+                ->count()
+        );
+
+        $this->actingAs($director)
+            ->get(route('tournaments.board-sets.show', [$tournament, $boardSet]))
+            ->assertSee('Analyze All Boards')
+            ->assertSee('4 Spades by North. 420 points.');
+    }
+
+    public function test_director_can_edit_board_cards()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create(['user_id' => $director->id]);
+        $boardSet = BoardSet::create(['tournament_id' => $tournament->id, 'name' => 'Editable Set']);
+        $board = Board::create([
+            'board_set_id' => $boardSet->id,
+            'board_number' => 1,
+            'vulnerability' => 'None',
+            'cards_north' => ['S' => 'AKQJ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQ'],
+            'cards_east' => ['S' => 'T987', 'H' => 'T98', 'D' => 'T98', 'C' => 'T98'],
+            'cards_south' => ['S' => '6543', 'H' => '765', 'D' => '765', 'C' => '765'],
+            'cards_west' => ['S' => '2', 'H' => 'J432', 'D' => 'J432', 'C' => 'J432'],
+            'double_dummy_analysis' => ['engine' => 'old'],
+        ]);
+
+        $response = $this->actingAs($director)->patch(
+            route('tournaments.board-sets.boards.update', [$tournament, $boardSet, $board]),
+            [
+                'board_number' => 2,
+                'vulnerability' => 'NS',
+                'cards' => [
+                    'N' => ['S' => 'QJ6', 'H' => 'K652', 'D' => 'J85', 'C' => 'T98'],
+                    'E' => ['S' => '873', 'H' => 'J97', 'D' => 'AT764', 'C' => 'Q4'],
+                    'S' => ['S' => 'K5', 'H' => 'T83', 'D' => 'KQ9', 'C' => 'A7652'],
+                    'W' => ['S' => 'AT942', 'H' => 'AQ4', 'D' => '32', 'C' => 'KJ3'],
+                ],
+            ]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $board->refresh();
+        $this->assertEquals(2, $board->board_number);
+        $this->assertEquals('NS', $board->vulnerability);
+        $this->assertEquals('QJ6', $board->cards_north['S']);
+        $this->assertEquals('A7652', $board->cards_south['C']);
+        $this->assertNull($board->double_dummy_analysis);
+
+        $this->actingAs($director)
+            ->get(route('tournaments.board-sets.show', [$tournament, $boardSet]))
+            ->assertSee('Edit Board')
+            ->assertSee('Save Board');
+    }
+
+    public function test_board_edit_rejects_duplicate_cards()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create(['user_id' => $director->id]);
+        $boardSet = BoardSet::create(['tournament_id' => $tournament->id, 'name' => 'Editable Set']);
+        $board = Board::create([
+            'board_set_id' => $boardSet->id,
+            'board_number' => 1,
+            'vulnerability' => 'None',
+            'cards_north' => ['S' => 'AKQJ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQ'],
+            'cards_east' => ['S' => 'T987', 'H' => 'T98', 'D' => 'T98', 'C' => 'T98'],
+            'cards_south' => ['S' => '6543', 'H' => '765', 'D' => '765', 'C' => '765'],
+            'cards_west' => ['S' => '2', 'H' => 'J432', 'D' => 'J432', 'C' => 'J432'],
+        ]);
+
+        $response = $this->actingAs($director)->patch(
+            route('tournaments.board-sets.boards.update', [$tournament, $boardSet, $board]),
+            [
+                'board_number' => 1,
+                'vulnerability' => 'None',
+                'cards' => [
+                    'N' => ['S' => 'AKQJ', 'H' => 'AKQ', 'D' => 'AKQ', 'C' => 'AKQ'],
+                    'E' => ['S' => 'A987', 'H' => 'T98', 'D' => 'T98', 'C' => 'T98'],
+                    'S' => ['S' => '6543', 'H' => '765', 'D' => '765', 'C' => '765'],
+                    'W' => ['S' => '2', 'H' => 'J432', 'D' => 'J432', 'C' => 'J432'],
+                ],
+            ]
+        );
+
+        $response->assertSessionHasErrors('board_edit');
+
+        $board->refresh();
+        $this->assertEquals('T987', $board->cards_east['S']);
+    }
+
     public function test_director_can_delete_board_set()
     {
         $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);

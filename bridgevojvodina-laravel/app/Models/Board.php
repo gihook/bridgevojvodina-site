@@ -19,6 +19,7 @@ class Board extends Model
         'cards_south',
         'cards_east',
         'cards_west',
+        'double_dummy_analysis',
     ];
 
     protected $casts = [
@@ -26,6 +27,7 @@ class Board extends Model
         'cards_south' => 'array',
         'cards_east' => 'array',
         'cards_west' => 'array',
+        'double_dummy_analysis' => 'array',
     ];
 
     public function boardSet(): BelongsTo

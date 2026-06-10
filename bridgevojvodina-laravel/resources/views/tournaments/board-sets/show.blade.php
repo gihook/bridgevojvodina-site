@@ -10,6 +10,12 @@
                         {{ __('Butler') }}
                     </a>
                 @endif
+                <form method="POST" action="{{ route('tournaments.board-sets.double-dummy', [$tournament, $boardSet]) }}" onsubmit="return confirm('{{ __('Analyze all boards in this set? This can take a moment.') }}')">
+                    @csrf
+                    <x-primary-button type="submit">
+                        {{ __('Analyze All Boards') }}
+                    </x-primary-button>
+                </form>
                 <form method="POST" action="{{ route('tournaments.board-sets.destroy', [$tournament, $boardSet]) }}" onsubmit="return confirm('{{ __('Are you sure?') }}')">
                     @csrf
                     @method('DELETE')
@@ -30,10 +36,22 @@
                  x-data="{ 
                     currentIdx: 0, 
                     total: {{ $boards->count() }},
+                    editingBoard: false,
                     next() { if (this.currentIdx < this.total - 1) this.currentIdx++; },
                     prev() { if (this.currentIdx > 0) this.currentIdx--; }
                  }">
                 <div class="p-6 text-gray-900">
+                    @if($errors->has('double_dummy_analysis'))
+                        <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                            {{ $errors->first('double_dummy_analysis') }}
+                        </div>
+                    @endif
+                    @if($errors->has('board_edit'))
+                        <div class="mb-6 rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-700">
+                            {{ $errors->first('board_edit') }}
+                        </div>
+                    @endif
+
                     <div class="flex items-center justify-between mb-8 bg-gray-50 p-4 rounded-lg border border-gray-200">
                         <div class="flex items-center gap-6">
                             <h3 class="text-2xl font-bold text-gray-800">{{ __('Board') }} <span x-text="document.querySelectorAll('.board-container')[currentIdx].dataset.number"></span></h3>
@@ -53,6 +71,9 @@
                             <div class="text-sm text-gray-500 mr-4 font-mono">
                                 <span x-text="currentIdx + 1"></span> / <span x-text="total"></span>
                             </div>
+                            <x-secondary-button type="button" @click="editingBoard = !editingBoard">
+                                {{ __('Edit Board') }}
+                            </x-secondary-button>
                             <x-secondary-button @click="prev()" x-bind:disabled="currentIdx === 0">
                                 {{ __('Previous') }}
                             </x-secondary-button>
@@ -70,6 +91,19 @@
                                  data-number="{{ $board->board_number }}"
                                  data-vuln="{{ $board->vulnerability }}"
                                  data-vuln_trans="{{ __($board->vulnerability) }}">
+                                @php
+                                    $analysis = $board->double_dummy_analysis;
+                                    $analysisTable = $analysis['table'] ?? null;
+                                    $bestContract = $analysis['best_contract'] ?? null;
+                                    $displayHands = ['N' => __('N'), 'S' => __('S'), 'E' => __('E'), 'W' => __('W')];
+                                    $displayStrains = [
+                                        'NT' => __('NT'),
+                                        'S' => '&spades;',
+                                        'H' => '&hearts;',
+                                        'D' => '&diams;',
+                                        'C' => '&clubs;',
+                                    ];
+                                @endphp
                                 
                                 <div class="flex flex-col items-center justify-center gap-8 py-8">
                                     <!-- North -->
@@ -104,6 +138,146 @@
                                             <x-bridge-hand :hand="$board->cards_south" />
                                         </div>
                                     </div>
+                                </div>
+
+                                <div x-show="editingBoard" x-cloak class="mx-auto mb-8 max-w-4xl rounded-xl border border-gray-200 bg-gray-50 p-5 shadow-sm">
+                                    <form method="POST" action="{{ route('tournaments.board-sets.boards.update', [$tournament, $boardSet, $board]) }}">
+                                        @csrf
+                                        @method('PATCH')
+
+                                        <div class="mb-5 flex flex-col gap-4 sm:flex-row">
+                                            <div class="sm:w-40">
+                                                <x-input-label for="board_number_{{ $board->id }}" :value="__('Board Number')" />
+                                                <x-text-input id="board_number_{{ $board->id }}" name="board_number" type="number" min="1" class="mt-1 block w-full" :value="old('board_number', $board->board_number)" required />
+                                            </div>
+                                            <div class="sm:w-48">
+                                                <x-input-label for="vulnerability_{{ $board->id }}" :value="__('Vulnerability')" />
+                                                <select id="vulnerability_{{ $board->id }}" name="vulnerability" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                                                    @foreach(['None', 'NS', 'EW', 'All'] as $vulnerability)
+                                                        <option value="{{ $vulnerability }}" @selected(old('vulnerability', $board->vulnerability) === $vulnerability)>
+                                                            {{ __($vulnerability) }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div class="overflow-x-auto rounded-lg border border-gray-200 bg-white">
+                                            <table class="min-w-full border-collapse text-sm">
+                                                <thead class="bg-gray-50 text-xs font-black uppercase tracking-widest text-gray-500">
+                                                    <tr>
+                                                        <th class="border px-3 py-2 text-left">{{ __('Hand') }}</th>
+                                                        <th class="border px-3 py-2 text-left">{{ __('Spades') }}</th>
+                                                        <th class="border px-3 py-2 text-left">{{ __('Hearts') }}</th>
+                                                        <th class="border px-3 py-2 text-left">{{ __('Diamonds') }}</th>
+                                                        <th class="border px-3 py-2 text-left">{{ __('Clubs') }}</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach([
+                                                        'N' => ['label' => __('North'), 'cards' => $board->cards_north],
+                                                        'S' => ['label' => __('South'), 'cards' => $board->cards_south],
+                                                        'E' => ['label' => __('East'), 'cards' => $board->cards_east],
+                                                        'W' => ['label' => __('West'), 'cards' => $board->cards_west],
+                                                    ] as $seat => $hand)
+                                                        <tr>
+                                                            <th class="border bg-gray-50 px-3 py-2 text-left text-xs font-black uppercase tracking-widest text-gray-500">
+                                                                {{ $hand['label'] }}
+                                                            </th>
+                                                            @foreach(['S', 'H', 'D', 'C'] as $suit)
+                                                                <td class="border px-2 py-2">
+                                                                    <input
+                                                                        name="cards[{{ $seat }}][{{ $suit }}]"
+                                                                        type="text"
+                                                                        value="{{ old("cards.$seat.$suit", $hand['cards'][$suit] ?? '') }}"
+                                                                        class="block w-full rounded-md border-gray-300 text-sm uppercase shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                                                                        autocomplete="off"
+                                                                    />
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+
+                                        <div class="mt-5 flex justify-end gap-3">
+                                            <x-secondary-button type="button" @click="editingBoard = false">
+                                                {{ __('Cancel') }}
+                                            </x-secondary-button>
+                                            <x-primary-button type="submit">
+                                                {{ __('Save Board') }}
+                                            </x-primary-button>
+                                        </div>
+                                    </form>
+                                </div>
+
+                                <div class="mx-auto max-w-xl rounded-xl border border-gray-200 bg-white shadow-sm">
+                                    <div class="flex flex-col gap-4 border-b border-gray-200 p-4 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h4 class="text-sm font-black uppercase tracking-widest text-gray-500">
+                                                {{ __('Double Dummy Analysis') }}
+                                            </h4>
+                                            @if($bestContract)
+                                                <p class="mt-1 text-sm font-bold text-gray-800">
+                                                    {{ $bestContract['description'] }}
+                                                </p>
+                                            @else
+                                                <p class="mt-1 text-sm font-semibold text-gray-400">
+                                                    {{ __('No double dummy analysis yet.') }}
+                                                </p>
+                                            @endif
+                                        </div>
+
+                                        <form method="POST" action="{{ route('tournaments.board-sets.boards.double-dummy', [$tournament, $boardSet, $board]) }}">
+                                            @csrf
+                                            <x-primary-button type="submit">
+                                                {{ $analysis ? __('Recalculate Double Dummy') : __('Add Double Dummy Analyze') }}
+                                            </x-primary-button>
+                                        </form>
+                                    </div>
+
+                                    @if($analysisTable)
+                                        <div class="overflow-x-auto p-4">
+                                            <table class="mx-auto border-collapse text-center text-lg">
+                                                <thead>
+                                                    <tr class="text-gray-500">
+                                                        <th class="w-12 border-b border-gray-300 px-3 py-1"></th>
+                                                        @foreach($displayStrains as $strain => $label)
+                                                            <th class="w-16 border-b border-gray-300 px-3 py-1 font-semibold {{ in_array($strain, ['H', 'D'], true) ? 'text-red-600' : 'text-gray-700' }}">
+                                                                {!! $label !!}
+                                                            </th>
+                                                        @endforeach
+                                                    </tr>
+                                                </thead>
+                                                <tbody>
+                                                    @foreach($displayHands as $hand => $label)
+                                                        <tr>
+                                                            <th class="border-r border-gray-300 px-3 py-1 font-semibold text-amber-900">
+                                                                {{ $label }}
+                                                            </th>
+                                                            @foreach(array_keys($displayStrains) as $strain)
+                                                                @php
+                                                                    $isBestCell = $bestContract
+                                                                        && ($bestContract['declarer'] ?? null) === $hand
+                                                                        && ($bestContract['strain'] ?? null) === $strain;
+                                                                @endphp
+                                                                <td class="border border-gray-200 px-3 py-1 font-semibold {{ $isBestCell ? 'bg-emerald-300 text-emerald-950' : 'text-gray-700' }}">
+                                                                    {{ $analysisTable[$hand]['strains'][$strain] ?? '-' }}
+                                                                </td>
+                                                            @endforeach
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+
+                                            @if(!empty($analysis['computed_at']))
+                                                <p class="mt-3 text-center text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                                                    {{ __('Computed') }} {{ \Illuminate\Support\Carbon::parse($analysis['computed_at'])->diffForHumans() }}
+                                                </p>
+                                            @endif
+                                        </div>
+                                    @endif
                                 </div>
                             </div>
                         @endforeach
