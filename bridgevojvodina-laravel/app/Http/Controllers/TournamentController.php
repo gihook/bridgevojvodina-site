@@ -969,6 +969,36 @@ class TournamentController extends Controller
         return back()->with('success', __('Round status updated.'));
     }
 
+    public function updateRoundButlerExclusion(Request $request, string $tournamentId, string $roundId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $validated = $request->validate([
+            'exclude_from_butler' => 'required|boolean',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        $results->rounds[$roundIndex]->exclude_from_butler = (bool) $validated['exclude_from_butler'];
+        $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', $results->rounds[$roundIndex]->exclude_from_butler
+            ? __('Round excluded from Butler.')
+            : __('Round included in Butler.'));
+    }
+
     public function editTeamNumbers(string $tournamentId): View
     {
         $tournament = $this->resolveTournament($tournamentId);

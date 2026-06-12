@@ -162,6 +162,10 @@ class TournamentHydrationService
         $boardScores = []; // [board_number => [score1, score2, ...]]
 
         foreach ($results->rounds as $round) {
+            if ($round->exclude_from_butler) {
+                continue;
+            }
+
             foreach ($round->matches as $match) {
                 foreach ($match->boards as $board) {
                     if ($board->home_score !== null) {
@@ -184,6 +188,10 @@ class TournamentHydrationService
 
         // 3. Calculate IMPs relative to datum for each seat
         foreach ($results->rounds as $round) {
+            if ($round->exclude_from_butler) {
+                continue;
+            }
+
             foreach ($round->matches as $match) {
                 foreach ($match->boards as $board) {
                     $datum = $datums[$board->board_number] ?? null;

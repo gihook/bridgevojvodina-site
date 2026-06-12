@@ -13,7 +13,8 @@ class RoundDTO
         public ?int $board_set_id = null,
         public array $matches = [],
         public string $status = 'idle',
-        public ?int $boards_per_round = null
+        public ?int $boards_per_round = null,
+        public bool $exclude_from_butler = false
     ) {}
 
     public static function fromArray(array $data): self
@@ -25,6 +26,7 @@ class RoundDTO
             matches: array_map(fn($m) => MatchDTO::fromArray($m), $data['matches'] ?? []),
             status: $data['status'] ?? 'idle',
             boards_per_round: isset($data['boards_per_round']) ? (int) $data['boards_per_round'] : null,
+            exclude_from_butler: (bool) ($data['exclude_from_butler'] ?? false),
         );
     }
 
@@ -37,6 +39,7 @@ class RoundDTO
             'matches' => array_map(fn($m) => $m->toArray(), $this->matches),
             'status' => $this->status,
             'boards_per_round' => $this->boards_per_round,
+            'exclude_from_butler' => $this->exclude_from_butler,
         ];
     }
 }
