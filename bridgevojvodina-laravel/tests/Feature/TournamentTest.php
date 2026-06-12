@@ -165,6 +165,81 @@ class TournamentTest extends TestCase
         $this->assertEquals('inProgress', $tournament->team_results->rounds[0]->status);
     }
 
+    public function test_director_can_exclude_round_from_butler()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'Team 1', 'captain_id' => 1, 'player_ids' => [1, 2]],
+                    ['id' => 't2', 'name' => 'Team 2', 'captain_id' => 3, 'player_ids' => [3, 4]],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'Round 1',
+                        'status' => 'complete',
+                        'matches' => [[
+                            'id' => 'm1',
+                            'home_team_id' => 't1',
+                            'away_team_id' => 't2',
+                            'boards' => [['board_number' => 1, 'home_score' => 420, 'away_score' => 420]],
+                            'open_ns_ids' => [1, 2],
+                            'open_ew_ids' => [3, 4],
+                            'closed_ns_ids' => [3, 4],
+                            'closed_ew_ids' => [1, 2],
+                        ]],
+                    ],
+                    [
+                        'id' => 'r2',
+                        'name' => 'Round 2',
+                        'status' => 'complete',
+                        'matches' => [[
+                            'id' => 'm2',
+                            'home_team_id' => 't1',
+                            'away_team_id' => 't2',
+                            'boards' => [['board_number' => 1, 'home_score' => 420, 'away_score' => 420]],
+                            'open_ns_ids' => [1, 2],
+                            'open_ew_ids' => [3, 4],
+                            'closed_ns_ids' => [3, 4],
+                            'closed_ew_ids' => [1, 2],
+                        ]],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($director)
+            ->get(route('tournaments.edit', $tournament))
+            ->assertSee('Exclude from Butler');
+
+        $response = $this->actingAs($director)->patch(
+            route('tournaments.rounds.butler-exclusion.update', [$tournament, 'r2']),
+            ['exclude_from_butler' => 1]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $this->assertTrue($tournament->team_results->rounds[1]->exclude_from_butler);
+        $butlers = collect($tournament->team_results->player_butlers)->keyBy('player_id');
+        $this->assertEquals(2, $butlers[1]->boards_played);
+        $this->assertEquals(2, $butlers[3]->boards_played);
+
+        $this->actingAs($director)->patch(
+            route('tournaments.rounds.butler-exclusion.update', [$tournament, 'r2']),
+            ['exclude_from_butler' => 0]
+        );
+
+        $tournament->refresh();
+        $this->assertFalse($tournament->team_results->rounds[1]->exclude_from_butler);
+        $butlers = collect($tournament->team_results->player_butlers)->keyBy('player_id');
+        $this->assertEquals(4, $butlers[1]->boards_played);
+        $this->assertEquals(4, $butlers[3]->boards_played);
+    }
+
     public function test_admin_sees_each_tournament_only_once_even_if_published()
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

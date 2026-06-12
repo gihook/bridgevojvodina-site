@@ -194,6 +194,7 @@
                                             @foreach($tournament->team_results->rounds as $round)
                                                 @php
                                                     $roundStatus = $round->status ?? 'idle';
+                                                    $excludedFromButler = $round->exclude_from_butler ?? false;
                                                 @endphp
                                                 <tr class="align-top">
                                                     <td class="px-6 py-4">
@@ -261,6 +262,22 @@
                                                                     <option value="complete" {{ $roundStatus === 'complete' ? 'selected' : '' }}>{{ __('complete') }}</option>
                                                                 </select>
                                                             </form>
+                                                            <form method="POST" action="{{ route('tournaments.rounds.butler-exclusion.update', [$tournament, $round->id]) }}">
+                                                                @csrf
+                                                                @method('PATCH')
+                                                                <input type="hidden" name="exclude_from_butler" value="{{ $excludedFromButler ? 0 : 1 }}">
+                                                                <button
+                                                                    type="submit"
+                                                                    class="inline-flex w-fit items-center px-3 py-1 border rounded-md font-semibold text-[10px] uppercase tracking-widest shadow-sm transition ease-in-out duration-150 {{ $excludedFromButler ? 'bg-amber-50 border-amber-300 text-amber-800 hover:bg-amber-100' : 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50' }}"
+                                                                >
+                                                                    {{ $excludedFromButler ? __('Include in Butler') : __('Exclude from Butler') }}
+                                                                </button>
+                                                            </form>
+                                                            @if($excludedFromButler)
+                                                                <span class="text-[10px] font-semibold text-amber-700">
+                                                                    {{ __('Not counted in Butler') }}
+                                                                </span>
+                                                            @endif
                                                         </div>
                                                     </td>
                                                     <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
@@ -273,6 +290,9 @@
                                                                     <a href="{{ route('tournaments.board-sets.show', [$tournament, $set]) }}" class="group flex flex-col">
                                                                         <span class="font-bold text-indigo-600 group-hover:text-indigo-900 group-hover:underline">{{ $set->name }}</span>
                                                                         <span class="text-[10px] text-gray-400">{{ $set->created_at->format('d.m.Y H:i') }}</span>
+                                                                    </a>
+                                                                    <a href="{{ route('tournaments.board-sets.export-pbn', [$tournament, $set]) }}" class="inline-flex w-fit items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                                                        {{ __('Export PBN') }}
                                                                     </a>
                                                                 @else
                                                                     <span class="text-red-400 italic text-xs">{{ __('Set not found') }}</span>

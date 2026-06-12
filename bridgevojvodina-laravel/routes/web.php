@@ -35,6 +35,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('tournaments', TournamentController::class)->except(['index', 'show']);
     Route::get('tournament-configurations', [TournamentConfigurationController::class, 'index'])->name('tournament-configurations.index');
     Route::post('tournaments/{tournament}/board-sets', [TournamentController::class, 'uploadBoardSet'])->name('tournaments.board-sets.upload');
+    Route::get('tournaments/{tournament}/board-sets/{boardSet}/export-pbn', [TournamentController::class, 'exportBoardSetPbn'])->name('tournaments.board-sets.export-pbn');
     Route::delete('tournaments/{tournament}/board-sets/{boardSet}', [TournamentController::class, 'destroyBoardSet'])->name('tournaments.board-sets.destroy');
     Route::patch('tournaments/{tournament}/board-sets/{boardSet}/boards/{board}', [TournamentController::class, 'updateBoard'])->name('tournaments.board-sets.boards.update');
     Route::get('tournaments/{tournament}/teams/numbers', [TournamentController::class, 'editTeamNumbers'])->name('tournaments.teams.numbers.edit');
@@ -44,6 +45,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'updateTeam'])->name('tournaments.teams.update');
     Route::delete('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'destroyTeam'])->name('tournaments.teams.destroy');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
+    Route::patch('tournaments/{tournament}/rounds/{roundId}/butler-exclusion', [TournamentController::class, 'updateRoundButlerExclusion'])->name('tournaments.rounds.butler-exclusion.update');
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
