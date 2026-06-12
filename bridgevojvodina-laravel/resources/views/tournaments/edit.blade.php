@@ -18,6 +18,7 @@
         uploadModalOpen: false, 
         uploadRoundId: '', 
         uploadRoundName: '',
+        uploadReplacing: false,
         renumberModalOpen: false,
         renumberRoundId: '',
         renumberRoundName: '',
@@ -294,13 +295,20 @@
                                                                     <a href="{{ route('tournaments.board-sets.export-pbn', [$tournament, $set]) }}" class="inline-flex w-fit items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
                                                                         {{ __('Export PBN') }}
                                                                     </a>
+                                                                    <button
+                                                                        type="button"
+                                                                        @click="uploadModalOpen = true; uploadRoundId = '{{ $round->id }}'; uploadRoundName = '{{ $round->name }}'; uploadReplacing = true"
+                                                                        class="inline-flex w-fit items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                                                    >
+                                                                        {{ __('Reupload Boards') }}
+                                                                    </button>
                                                                 @else
                                                                     <span class="text-red-400 italic text-xs">{{ __('Set not found') }}</span>
                                                                 @endif
                                                             @else
                                                                 <button 
                                                                     type="button" 
-                                                                    @click="uploadModalOpen = true; uploadRoundId = '{{ $round->id }}'; uploadRoundName = '{{ $round->name }}'"
+                                                                    @click="uploadModalOpen = true; uploadRoundId = '{{ $round->id }}'; uploadRoundName = '{{ $round->name }}'; uploadReplacing = false"
                                                                     class="inline-flex items-center px-3 py-1 bg-white border border-gray-300 rounded-md font-semibold text-[10px] text-gray-700 uppercase tracking-widest shadow-sm hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
                                                                 >
                                                                     {{ __('Upload Boards') }}
@@ -378,11 +386,17 @@
                 <span class="hidden sm:inline-block sm:align-middle sm:h-screen">&#8203;</span>
                 <div x-show="uploadModalOpen" x-transition:enter="ease-out duration-300" x-transition:enter-start="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" x-transition:enter-end="opacity-100 translate-y-0 sm:scale-100" x-transition:leave="ease-in duration-200" x-transition:leave-start="opacity-100 translate-y-0 sm:scale-100" x-transition:leave-end="opacity-0 translate-y-4 sm:translate-y-0 sm:scale-95" class="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
                     <div class="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                        <h3 class="text-lg font-medium text-gray-900 mb-4">{{ __('Upload Board Set for') }} <span x-text="uploadRoundName"></span></h3>
-                        <form method="POST" action="{{ route('tournaments.board-sets.upload', $tournament) }}" enctype="multipart/form-data">
+                        <h3 class="text-lg font-medium text-gray-900 mb-4">
+                            <span x-text="uploadReplacing ? '{{ __('Reupload Board Set for') }}' : '{{ __('Upload Board Set for') }}'"></span>
+                            <span x-text="uploadRoundName"></span>
+                        </h3>
+                        <form method="POST" action="{{ route('tournaments.board-sets.upload', $tournament) }}" enctype="multipart/form-data" @submit="if (uploadReplacing && !confirm('{{ __('This will replace the current board set for this round. Continue?') }}')) $event.preventDefault()">
                             @csrf
                             <input type="hidden" name="round_id" :value="uploadRoundId">
                             <div class="space-y-4">
+                                <div x-show="uploadReplacing" x-cloak class="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm font-semibold text-amber-800">
+                                    {{ __('The uploaded PBN will replace the current board set for this round.') }}
+                                </div>
                                 <div>
                                     <x-input-label for="board_set_file_modal" :value="__('Board Set PBN File')" />
                                     <input type="file" id="board_set_file_modal" name="board_set_file" accept=".pbn" class="mt-1 block w-full border border-gray-300 rounded-md p-2" required>
@@ -390,7 +404,9 @@
                             </div>
                             <div class="mt-6 flex justify-end gap-3">
                                 <x-secondary-button type="button" @click="uploadModalOpen = false">{{ __('Cancel') }}</x-secondary-button>
-                                <x-primary-button type="submit">{{ __('Upload') }}</x-primary-button>
+                                <x-primary-button type="submit">
+                                    <span x-text="uploadReplacing ? '{{ __('Reupload') }}' : '{{ __('Upload') }}'"></span>
+                                </x-primary-button>
                             </div>
                         </form>
                     </div>

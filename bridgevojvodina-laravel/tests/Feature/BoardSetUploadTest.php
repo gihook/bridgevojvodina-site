@@ -180,6 +180,68 @@ EOD;
             ->assertDontSee('Recalculate Double Dummy');
     }
 
+    public function test_director_can_reupload_board_set_for_round()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [['id' => 'team1', 'name' => 'Team 1', 'captain_id' => 1, 'player_ids' => []]],
+                'rounds' => [['id' => 'round1', 'name' => 'Round 1', 'board_set_id' => 1, 'matches' => []]],
+            ],
+        ]);
+        $oldBoardSet = BoardSet::create([
+            'id' => 1,
+            'tournament_id' => $tournament->id,
+            'name' => 'Old Boards',
+        ]);
+        Board::create([
+            'board_set_id' => $oldBoardSet->id,
+            'board_number' => 1,
+            'vulnerability' => 'None',
+            'cards_north' => ['S' => 'AKQJ', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_south' => ['S' => '32', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_east' => ['S' => '54', 'H' => '', 'D' => '', 'C' => ''],
+            'cards_west' => ['S' => '76', 'H' => '', 'D' => '', 'C' => ''],
+        ]);
+
+        $this->actingAs($director)
+            ->get(route('tournaments.edit', $tournament))
+            ->assertSee('Old Boards')
+            ->assertSee('Reupload Boards');
+
+        $pbnContent = <<<EOD
+[Event "Replacement Boards"]
+[Board "7"]
+[Dealer "S"]
+[Vulnerable "All"]
+[Deal "S:AKQJ.AKQ.AKQ.AK T987.T98.T98.T98 6543.765.765.765 2.J432.J432.J432"]
+EOD;
+
+        $file = UploadedFile::fake()->createWithContent('replacement.pbn', $pbnContent);
+
+        $response = $this->actingAs($director)->post(route('tournaments.board-sets.upload', $tournament), [
+            'round_id' => 'round1',
+            'board_set_file' => $file,
+        ]);
+
+        $response->assertRedirect(route('tournaments.edit', $tournament));
+        $response->assertSessionHas('success');
+
+        $tournament->refresh();
+        $newBoardSetId = $tournament->team_results->rounds[0]->board_set_id;
+        $this->assertNotEquals($oldBoardSet->id, $newBoardSetId);
+        $this->assertDatabaseMissing('board_sets', ['id' => $oldBoardSet->id]);
+        $this->assertDatabaseHas('board_sets', [
+            'id' => $newBoardSetId,
+            'name' => 'Replacement Boards',
+        ]);
+        $this->assertDatabaseHas('boards', [
+            'board_set_id' => $newBoardSetId,
+            'board_number' => 7,
+        ]);
+    }
+
     public function test_director_can_edit_board_cards()
     {
         $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
