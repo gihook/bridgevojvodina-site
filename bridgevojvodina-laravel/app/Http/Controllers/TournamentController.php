@@ -710,6 +710,7 @@ class TournamentController extends Controller
         if ($roundIndex === false) {
             return back()->withErrors(['round_id' => __('Invalid round selected.')]);
         }
+        $previousBoardSetId = $results->rounds[$roundIndex]->board_set_id ?? null;
 
         $file = $request->file('board_set_file');
         $content = file_get_contents($file->getRealPath());
@@ -773,7 +774,7 @@ class TournamentController extends Controller
 
         $boardSetId = null;
 
-        DB::transaction(function () use ($boardsData, $eventName, $tournament, $results, $roundIndex, &$boardSetId) {
+        DB::transaction(function () use ($boardsData, $eventName, $tournament, $results, $roundIndex, $previousBoardSetId, &$boardSetId) {
             $boardSet = BoardSet::create([
                 'tournament_id' => $tournament instanceof Tournament ? $tournament->id : null,
                 'tournament_configuration_id' => $tournament instanceof TournamentConfiguration ? $tournament->id : null,
@@ -829,10 +830,21 @@ class TournamentController extends Controller
             $results->rounds[$roundIndex]->board_set_id = $boardSet->id;
             $tournament->team_results = $results;
             $tournament->save();
+
+            if ($previousBoardSetId && $previousBoardSetId !== $boardSet->id) {
+                $stillUsed = collect($results->rounds)
+                    ->contains(fn($round): bool => (int) ($round->board_set_id ?? 0) === (int) $previousBoardSetId);
+
+                if (! $stillUsed) {
+                    BoardSet::whereKey($previousBoardSetId)->delete();
+                }
+            }
         });
 
         return redirect()->route('tournaments.edit', $tournament)
-            ->with('success', __('Board set uploaded successfully.'));
+            ->with('success', $previousBoardSetId
+                ? __('Board set reuploaded successfully.')
+                : __('Board set uploaded successfully.'));
     }
 
     public function editTeam(string $tournamentId, string $teamId): View
