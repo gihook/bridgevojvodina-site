@@ -211,8 +211,10 @@
                                                                     $totalBoards = $round->boards_per_round ?? $tournament->team_results->boards_per_round ?? 16;
                                                                     $openCount = count(array_filter($match->boards, fn($b) => ($b->home_score !== null && $b->home_score !== '')));
                                                                     $closedCount = count(array_filter($match->boards, fn($b) => ($b->away_score !== null && $b->away_score !== '')));
+                                                                    $matchStatus = $match->status ?? 'pending';
+                                                                    $matchFinished = $matchStatus === 'complete';
 
-                                                                    $canEdit = $roundStatus === 'inProgress' && !$isBye;
+                                                                    $canEdit = $roundStatus === 'inProgress' && $matchStatus === 'inProgress' && !$isBye;
                                                                 @endphp
 
                                                                 <div class="flex flex-col gap-1">
@@ -221,10 +223,41 @@
                                                                         <span class="text-gray-300 font-normal">vs</span>
                                                                         <span class="{{ $awayName === __('BYE') ? 'text-gray-400 italic' : '' }}">{{ $awayName }}</span>
                                                                         
+                                                                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border {{ $matchStatus === 'complete' ? 'bg-green-50 text-green-700 border-green-100' : ($matchStatus === 'inProgress' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100') }}">
+                                                                            {{ __($matchStatus) }}
+                                                                        </span>
+
                                                                         <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                                                            {{ number_format($match->home_vp, 1) }} - {{ number_format($match->away_vp, 1) }}
+                                                                            {{ $matchFinished ? number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1) : __('Hidden') }}
                                                                         </span>
                                                                     </div>
+
+                                                                    @if(!$isBye)
+                                                                        <div class="ml-4 flex flex-col gap-1">
+                                                                            <div class="flex flex-wrap gap-2">
+                                                                                @if($matchStatus !== 'inProgress')
+                                                                                    <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
+                                                                                        @csrf
+                                                                                        @method('PATCH')
+                                                                                        <input type="hidden" name="status" value="inProgress">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-900">
+                                                                                            {{ $matchStatus === 'complete' ? __('Reopen Match') : __('Start Match') }}
+                                                                                        </button>
+                                                                                    </form>
+                                                                                @endif
+                                                                                @if($matchStatus === 'inProgress')
+                                                                                    <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" onsubmit="return confirm('{{ __('Finish this match and reveal IMPs?') }}')">
+                                                                                        @csrf
+                                                                                        @method('PATCH')
+                                                                                        <input type="hidden" name="status" value="complete">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-green-600 hover:text-green-900">
+                                                                                            {{ __('Finish Match') }}
+                                                                                        </button>
+                                                                                    </form>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif
 
                                                                     @if($canEdit)
                                                                         <div class="ml-4 flex flex-col gap-0.5">
@@ -233,7 +266,7 @@
                                                                                 {{ __('Open Room') }}: {{ $openCount }}/{{ $totalBoards }}
                                                                             </a>
                                                                             <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']) }}" class="text-[10px] text-red-600 hover:text-red-900 hover:underline flex items-center gap-1">
-                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $openCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
+                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $closedCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
                                                                                 {{ __('Closed Room') }}: {{ $closedCount }}/{{ $totalBoards }}
                                                                             </a>
                                                                         </div>

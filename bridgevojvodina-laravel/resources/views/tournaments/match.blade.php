@@ -1,3 +1,7 @@
+@php
+    $matchFinished = ($match->status ?? 'pending') === 'complete';
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
@@ -27,10 +31,15 @@
                         </div>
                         <div class="flex flex-col items-center gap-4">
                             <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
-                                <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
-                                <span class="text-sm mt-1">
-                                    ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
-                                </span>
+                                @if($matchFinished)
+                                    <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                    <span class="text-sm mt-1">
+                                        ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
+                                    </span>
+                                @else
+                                    <span class="text-base uppercase tracking-widest">{{ __('IMPs hidden') }}</span>
+                                    <span class="text-xs mt-1">{{ __('Visible when match is finished') }}</span>
+                                @endif
                             </div>
                         </div>
                         <div class="flex-1 text-center font-bold text-2xl">
@@ -126,7 +135,9 @@
                                         <th class="py-3 border" rowspan="2">{{ __('Board') }}</th>
                                         <th class="py-3 border bg-blue-50" colspan="5">{{ __('Open Room') }}</th>
                                         <th class="py-3 border bg-red-50" colspan="5">{{ __('Closed Room') }}</th>
-                                        <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                        @if($matchFinished)
+                                            <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                        @endif
                                     </tr>
                                     <tr>
                                         <th class="py-2 border bg-blue-50 text-xs">{{ __('Contr.') }}</th>
@@ -139,8 +150,10 @@
                                         <th class="py-2 border bg-red-50 text-xs">{{ __('Lead') }}</th>
                                         <th class="py-2 border bg-red-50 text-xs">{{ __('Tr.') }}</th>
                                         <th class="py-2 border bg-red-50 text-xs">{{ __('Score') }}</th>
-                                        <th class="py-2 border text-xs">{{ __('H') }}</th>
-                                        <th class="py-2 border text-xs">{{ __('A') }}</th>
+                                        @if($matchFinished)
+                                            <th class="py-2 border text-xs">{{ __('H') }}</th>
+                                            <th class="py-2 border text-xs">{{ __('A') }}</th>
+                                        @endif
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -161,8 +174,10 @@
                                             <td class="py-3 border"><x-bridge-contract :contract="$board->away_lead" /></td>
                                             <td class="py-3 border">{{ $board->away_tricks }}</td>
                                             <td class="py-3 border font-mono">{{ $board->away_score }}</td>
-                                            <td class="py-3 border font-bold text-green-700">{{ $board->home_imp ?: '' }}</td>
-                                            <td class="py-3 border font-bold text-red-700">{{ $board->away_imp ?: '' }}</td>
+                                            @if($matchFinished)
+                                                <td class="py-3 border font-bold text-green-700">{{ $board->home_imp ?: '' }}</td>
+                                                <td class="py-3 border font-bold text-red-700">{{ $board->away_imp ?: '' }}</td>
+                                            @endif
                                         </tr>
                                     @endforeach
                                 </tbody>

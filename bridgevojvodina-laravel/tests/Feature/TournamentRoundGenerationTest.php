@@ -262,9 +262,9 @@ class TournamentRoundGenerationTest extends TestCase
             ],
             'rounds' => [
                 [
-                    'id' => 'r1', 'name' => 'R1', 'status' => 'idle', 'board_set_id' => null,
+                    'id' => 'r1', 'name' => 'R1', 'status' => 'complete', 'board_set_id' => null,
                     'matches' => [
-                        ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => null, 'home_vp' => 12, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'boards' => []]
+                        ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => null, 'home_vp' => 12, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'status' => 'complete', 'boards' => []]
                     ]
                 ]
             ],
@@ -309,7 +309,7 @@ class TournamentRoundGenerationTest extends TestCase
                     [
                         'id' => 'r1', 'name' => 'R1', 'status' => 'inProgress', 'boards_per_round' => 16,
                         'matches' => [
-                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_vp' => 0, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'boards' => [], 'open_ns_ids' => [], 'open_ew_ids' => [], 'closed_ns_ids' => [], 'closed_ew_ids' => []]
+                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_vp' => 0, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'status' => 'inProgress', 'boards' => [], 'open_ns_ids' => [], 'open_ew_ids' => [], 'closed_ns_ids' => [], 'closed_ew_ids' => []]
                         ]
                     ]
                 ]

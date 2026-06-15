@@ -20,6 +20,7 @@
                         $isBye = empty($match->home_team_id) || empty($match->away_team_id) || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
                         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
                         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
+                        $matchFinished = ($match->status ?? 'pending') === 'complete';
                     @endphp
                     <div class="border rounded-lg bg-gray-50 overflow-hidden">
                         <div class="p-4">
@@ -36,11 +37,17 @@
                                 <div class="px-4 py-2 {{ $isBye ? 'bg-gray-400' : 'bg-blue-600' }} text-white rounded font-mono text-xl flex flex-col items-center">
                                     @if($isBye)
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Bye') }}</span>
-                                    @else
+                                    @elseif($matchFinished)
                                         <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                    @else
+                                        <span class="text-xs uppercase font-black tracking-widest">{{ __('Hidden') }}</span>
                                     @endif
                                     <span class="text-xs">
-                                        ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }})
+                                        @if($isBye || $matchFinished)
+                                            ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }})
+                                        @else
+                                            {{ __('Until finished') }}
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="flex-1 text-center font-bold text-lg">

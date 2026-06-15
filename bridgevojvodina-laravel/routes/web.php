@@ -46,6 +46,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'destroyTeam'])->name('tournaments.teams.destroy');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/butler-exclusion', [TournamentController::class, 'updateRoundButlerExclusion'])->name('tournaments.rounds.butler-exclusion.update');
+    Route::patch('tournaments/{tournament}/rounds/{roundId}/matches/{matchId}/status', [TournamentController::class, 'updateMatchStatus'])->name('tournaments.rounds.matches.status.update');
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
@@ -65,6 +66,7 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('scoring')->name('scoring.')->group(function () {
         Route::get('/', [\App\Http\Controllers\PlayerScoringController::class, 'index'])->name('index');
+        Route::post('/link-player', [\App\Http\Controllers\PlayerScoringController::class, 'linkPlayer'])->name('player.link');
         Route::get('/{tournament}/round/{roundId}/match/{matchId}/room/{room}', [\App\Http\Controllers\PlayerScoringController::class, 'showRoom'])->name('room.show');
         Route::patch('/{tournament}/round/{roundId}/match/{matchId}/room/{room}/board/{boardNumber}', [\App\Http\Controllers\PlayerScoringController::class, 'updateBoard'])->name('board.update');
     });

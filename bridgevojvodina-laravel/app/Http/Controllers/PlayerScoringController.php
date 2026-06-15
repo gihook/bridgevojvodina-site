@@ -35,12 +35,9 @@ class PlayerScoringController extends Controller
             if (!$results) continue;
 
             foreach ($results->rounds as $round) {
-                if ($round->status === 'complete') continue;
+                if (($round->status ?? 'idle') !== 'inProgress') continue;
                 foreach ($round->matches as $match) {
-                    if (in_array($user->player_id, $match->open_ns_ids) || 
-                        in_array($user->player_id, $match->open_ew_ids) ||
-                        in_array($user->player_id, $match->closed_ns_ids) || 
-                        in_array($user->player_id, $match->closed_ew_ids)) {
+                    if (($match->status ?? 'pending') === 'inProgress' && self::playerIsInMatch((int) $user->player_id, $match)) {
                         return true;
                     }
                 }
@@ -56,7 +53,11 @@ class PlayerScoringController extends Controller
     {
         $user = Auth::user();
         if (!$user->player_id) {
-            return view('scoring.index', ['matches' => [], 'error' => __('You must be linked to a player to enter scores.')]);
+            return view('scoring.index', [
+                'matches' => [],
+                'players' => $this->availablePlayers(),
+                'error' => __('You must be linked to a player to enter scores.'),
+            ]);
         }
 
         $activeTournaments = Tournament::where('is_completed', false)->get();
@@ -67,16 +68,16 @@ class PlayerScoringController extends Controller
             if (!$results) continue;
 
             foreach ($results->rounds as $round) {
-                // We only show matches for rounds that are 'in_progress' or 'idle'
-                // Usually players score during in_progress.
-                if ($round->status === 'complete') continue;
+                if (($round->status ?? 'idle') !== 'inProgress') continue;
 
                 foreach ($round->matches as $match) {
+                    if (($match->status ?? 'pending') !== 'inProgress') continue;
+
                     $rooms = [];
-                    if (in_array($user->player_id, $match->open_ns_ids) || in_array($user->player_id, $match->open_ew_ids)) {
+                    if (self::playerIsInMatch((int) $user->player_id, $match, 'open')) {
                         $rooms[] = 'open';
                     }
-                    if (in_array($user->player_id, $match->closed_ns_ids) || in_array($user->player_id, $match->closed_ew_ids)) {
+                    if (self::playerIsInMatch((int) $user->player_id, $match, 'closed')) {
                         $rooms[] = 'closed';
                     }
 
@@ -97,7 +98,33 @@ class PlayerScoringController extends Controller
             }
         }
 
-        return view('scoring.index', ['matches' => $myMatches]);
+        return view('scoring.index', [
+            'matches' => $myMatches,
+            'linkedPlayer' => $user->player,
+        ]);
+    }
+
+    public function linkPlayer(Request $request): RedirectResponse
+    {
+        $data = $request->validate([
+            'player_id' => 'required|integer|exists:players,id',
+        ]);
+
+        $user = Auth::user();
+        $playerId = (int) $data['player_id'];
+
+        $alreadyLinked = \App\Models\User::where('player_id', $playerId)
+            ->where('id', '!=', $user->id)
+            ->exists();
+
+        if ($alreadyLinked) {
+            return back()->withErrors(['player_id' => __('This player is already connected to another account.')]);
+        }
+
+        $user->player_id = $playerId;
+        $user->save();
+
+        return redirect()->route('scoring.index')->with('success', __('Player connected successfully.'));
     }
 
     /**
@@ -117,15 +144,11 @@ class PlayerScoringController extends Controller
         if ($matchIndex === false) abort(404);
         $match = $round->matches[$matchIndex];
 
-        // Authorization check
-        $isAuthorized = false;
-        if ($room === 'open') {
-            $isAuthorized = in_array($user->player_id, $match->open_ns_ids) || in_array($user->player_id, $match->open_ew_ids);
-        } else {
-            $isAuthorized = in_array($user->player_id, $match->closed_ns_ids) || in_array($user->player_id, $match->closed_ew_ids);
+        if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
+            abort(403, __('This match is not open for scoring.'));
         }
 
-        if (!$isAuthorized) abort(403);
+        if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
 
         // Robust Board Initialization
         $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
@@ -182,14 +205,10 @@ class PlayerScoringController extends Controller
         if ($matchIndex === false) abort(404);
         $match = $round->matches[$matchIndex];
 
-        // Authorization check
-        $isAuthorized = false;
-        if ($room === 'open') {
-            $isAuthorized = in_array($user->player_id, $match->open_ns_ids) || in_array($user->player_id, $match->open_ew_ids);
-        } else {
-            $isAuthorized = in_array($user->player_id, $match->closed_ns_ids) || in_array($user->player_id, $match->closed_ew_ids);
+        if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
+            abort(403, __('This match is not open for scoring.'));
         }
-        if (!$isAuthorized) abort(403);
+        if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
 
         // Robust Board Resolution
         $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
@@ -298,10 +317,33 @@ class PlayerScoringController extends Controller
         return [
             'success' => true,
             'board' => $sanitizedBoard,
-            'match_home_imp' => $match->home_imp,
-            'match_away_imp' => $match->away_imp,
-            'match_home_vp' => $match->home_vp,
-            'match_away_vp' => $match->away_vp,
         ];
+    }
+
+    protected function availablePlayers()
+    {
+        return Player::with('club')
+            ->whereDoesntHave('user')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+    }
+
+    protected static function playerIsInMatch(int $playerId, object $match, ?string $room = null): bool
+    {
+        $openIds = array_merge($match->open_ns_ids ?? [], $match->open_ew_ids ?? []);
+        $closedIds = array_merge($match->closed_ns_ids ?? [], $match->closed_ew_ids ?? []);
+
+        $normalize = fn(array $ids) => array_map('intval', $ids);
+
+        if ($room === 'open') {
+            return in_array($playerId, $normalize($openIds), true);
+        }
+
+        if ($room === 'closed') {
+            return in_array($playerId, $normalize($closedIds), true);
+        }
+
+        return in_array($playerId, $normalize(array_merge($openIds, $closedIds)), true);
     }
 }

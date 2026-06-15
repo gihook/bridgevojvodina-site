@@ -246,6 +246,9 @@ class TournamentController extends Controller
         // Calculate Datum
         $nsScores = [];
         foreach ($boardResults as $res) {
+            if (($res['match']->status ?? 'pending') !== 'complete') {
+                continue;
+            }
             if ($res['board']->home_score !== null) $nsScores[] = $res['board']->home_score;
             if ($res['board']->away_score !== null) $nsScores[] = $res['board']->away_score;
         }
@@ -355,6 +358,7 @@ class TournamentController extends Controller
                                     'home_team' => $homeTeam->name ?? 'Unknown',
                                     'away_team' => $awayTeam->name ?? 'Unknown',
                                     'room' => 'Open',
+                                    'match_finished' => ($match->status ?? 'pending') === 'complete',
                                     'ns_names' => $openNs,
                                     'ew_names' => $openEw,
                                     'contract' => $boardData->home_contract,
@@ -371,6 +375,7 @@ class TournamentController extends Controller
                                     'home_team' => $homeTeam->name ?? 'Unknown',
                                     'away_team' => $awayTeam->name ?? 'Unknown',
                                     'room' => 'Closed',
+                                    'match_finished' => ($match->status ?? 'pending') === 'complete',
                                     'ns_names' => $closedNs,
                                     'ew_names' => $closedEw,
                                     'contract' => $boardData->away_contract,
@@ -981,6 +986,53 @@ class TournamentController extends Controller
         return back()->with('success', __('Round status updated.'));
     }
 
+    public function updateMatchStatus(Request $request, string $tournamentId, string $roundId, string $matchId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $request->validate([
+            'status' => 'required|string|in:pending,inProgress,complete',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        $round = $results->rounds[$roundIndex];
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) {
+            abort(404);
+        }
+
+        $status = $request->status;
+        $round->matches[$matchIndex]->status = $status;
+
+        if ($status === 'inProgress' && ($round->status ?? 'idle') !== 'inProgress') {
+            $round->status = 'inProgress';
+        }
+
+        $this->hydrationService->recalculateStandings($results);
+        $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $messages = [
+            'pending' => __('Match scoring closed.'),
+            'inProgress' => __('Match started. Players can now enter scores.'),
+            'complete' => __('Match finished. IMPs are now visible.'),
+        ];
+
+        return back()->with('success', $messages[$status]);
+    }
+
     public function updateRoundButlerExclusion(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
@@ -1420,6 +1472,10 @@ class TournamentController extends Controller
             
         if (!$match) abort(404);
 
+        if (($match->status ?? 'pending') !== 'inProgress') {
+            abort(403, __('This match is not open for score entry.'));
+        }
+
         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
 
@@ -1509,6 +1565,10 @@ class TournamentController extends Controller
 
         $match = $round->matches[$matchIndex];
 
+        if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
+            abort(403, __('This match is not open for score entry.'));
+        }
+
         // Ensure boards are initialized
         if (empty($match->boards)) {
             $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
@@ -1596,14 +1656,24 @@ class TournamentController extends Controller
         $tournament->save();
 
         if ($request->wantsJson()) {
-            return [
+            $boardData = $board->toArray();
+            if (($match->status ?? 'pending') !== 'complete') {
+                unset($boardData['home_imp'], $boardData['away_imp']);
+            }
+
+            $payload = [
                 'success' => true,
-                'board' => $board->toArray(),
-                'match_home_imp' => $match->home_imp,
-                'match_away_imp' => $match->away_imp,
-                'match_home_vp' => $match->home_vp,
-                'match_away_vp' => $match->away_vp
+                'board' => $boardData,
             ];
+
+            if (($match->status ?? 'pending') === 'complete') {
+                $payload['match_home_imp'] = $match->home_imp;
+                $payload['match_away_imp'] = $match->away_imp;
+                $payload['match_home_vp'] = $match->home_vp;
+                $payload['match_away_vp'] = $match->away_vp;
+            }
+
+            return $payload;
         }
 
         return back()->with('success', __('Board updated.'));
@@ -1629,6 +1699,10 @@ class TournamentController extends Controller
         if ($matchIndex === false) abort(404);
 
         $match = $round->matches[$matchIndex];
+
+        if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
+            abort(403, __('This match is not open for score entry.'));
+        }
 
         // Ensure boards are initialized
         if (empty($match->boards)) {

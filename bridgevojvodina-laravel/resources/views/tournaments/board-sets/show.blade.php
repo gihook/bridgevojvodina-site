@@ -318,8 +318,8 @@
                                                         <td class="py-4 border font-mono font-black text-sm {{ $res['score'] > 0 ? 'text-green-600' : ($res['score'] < 0 ? 'text-red-600' : '') }}">
                                                             {{ $res['score'] !== null ? ($res['score'] > 0 ? '+' : '') . $res['score'] : '-' }}
                                                         </td>
-                                                        <td class="py-4 border font-black text-green-700 text-sm w-12">{{ $res['home_imp'] ?: '' }}</td>
-                                                        <td class="py-4 border font-black text-red-700 text-sm w-12">{{ $res['away_imp'] ?: '' }}</td>
+                                                        <td class="py-4 border font-black text-green-700 text-sm w-12">{{ $res['match_finished'] ? ($res['home_imp'] ?: '') : __('Hidden') }}</td>
+                                                        <td class="py-4 border font-black text-red-700 text-sm w-12">{{ $res['match_finished'] ? ($res['away_imp'] ?: '') : __('Hidden') }}</td>
                                                     </tr>
                                                 @endforeach
                                             </tbody>

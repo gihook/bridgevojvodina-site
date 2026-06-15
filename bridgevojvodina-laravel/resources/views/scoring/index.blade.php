@@ -24,6 +24,36 @@
         @endif
 
         <div class="max-w-md mx-auto">
+            @if(isset($players))
+                <div class="bg-white rounded-xl shadow-sm p-5 mb-6 border border-gray-100">
+                    <h3 class="text-sm font-black text-gray-900 uppercase tracking-widest mb-3">{{ __('Connect Player Profile') }}</h3>
+                    <p class="text-xs text-gray-500 mb-4">{{ __('Choose the player name used in tournaments. This lets the site show matches where you are seated.') }}</p>
+
+                    <form method="POST" action="{{ route('scoring.player.link') }}" class="space-y-4">
+                        @csrf
+                        <div>
+                            <x-input-label for="player_id" :value="__('Tournament Player Name')" />
+                            <select id="player_id" name="player_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm" required>
+                                <option value="">{{ __('Select player') }}</option>
+                                @foreach($players as $player)
+                                    <option value="{{ $player->id }}">
+                                        {{ $player->last_name }} {{ $player->first_name }}@if($player->club) - {{ $player->club->name }}@endif
+                                    </option>
+                                @endforeach
+                            </select>
+                            <x-input-error class="mt-2" :messages="$errors->get('player_id')" />
+                        </div>
+                        <x-primary-button type="submit" class="w-full justify-center">
+                            {{ __('Connect Player') }}
+                        </x-primary-button>
+                    </form>
+                </div>
+            @elseif(isset($linkedPlayer))
+                <div class="bg-green-50 rounded-xl p-4 mb-6 border border-green-100 text-xs font-semibold text-green-800">
+                    {{ __('Connected as') }} {{ $linkedPlayer->first_name }} {{ $linkedPlayer->last_name }}.
+                </div>
+            @endif
+
             <h3 class="text-lg font-bold text-gray-900 mb-4">{{ __('My Active Matches') }}</h3>
             
             @if(empty($matches))

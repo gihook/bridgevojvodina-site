@@ -1,6 +1,7 @@
 @php
     $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
     $isOpen = $room === 'open';
+    $matchFinished = ($match->status ?? 'pending') === 'complete';
 @endphp
 
 <x-app-layout>
@@ -54,10 +55,10 @@
     </x-slot>
 
     <div class="py-12" x-data="{
-        homeImp: {{ $match->home_imp }},
-        awayImp: {{ $match->away_imp }},
-        homeVp: {{ $match->home_vp }},
-        awayVp: {{ $match->away_vp }},
+        homeImp: {{ $matchFinished ? $match->home_imp : 'null' }},
+        awayImp: {{ $matchFinished ? $match->away_imp : 'null' }},
+        homeVp: {{ $matchFinished ? $match->home_vp : 'null' }},
+        awayVp: {{ $matchFinished ? $match->away_vp : 'null' }},
         boards: {{ json_encode(array_map(function($b) use ($isOpen) {
             $contractStr = $isOpen ? ($b->home_contract ?? '') : ($b->away_contract ?? '');
             $parsed = (new \App\Services\BridgeScoringService())->parseContract($contractStr);
@@ -183,8 +184,8 @@
                     this.boards[idx].away_tricks = data.board.away_tricks;
                     this.boards[idx].home_lead = data.board.home_lead;
                     this.boards[idx].away_lead = data.board.away_lead;
-                    this.boards[idx].home_imp = data.board.home_imp;
-                    this.boards[idx].away_imp = data.board.away_imp;
+                    this.boards[idx].home_imp = data.board.home_imp ?? null;
+                    this.boards[idx].away_imp = data.board.away_imp ?? null;
 
                     // Sync current room helper fields
                     this.boards[idx].current_room_contract_level = this.editingBoard.current_room_contract_level;
@@ -194,11 +195,12 @@
                     this.boards[idx].current_room_contract_base = this.editingBoard.current_room_contract_base;
                 }
 
-                // Update match totals
-                this.homeImp = data.match_home_imp;
-                this.awayImp = data.match_away_imp;
-                this.homeVp = data.match_home_vp;
-                this.awayVp = data.match_away_vp;
+                if (Object.prototype.hasOwnProperty.call(data, 'match_home_imp')) {
+                    this.homeImp = data.match_home_imp;
+                    this.awayImp = data.match_away_imp;
+                    this.homeVp = data.match_home_vp;
+                    this.awayVp = data.match_away_vp;
+                }
 
                 this.showIndicator();
                 this.boardModalOpen = false;
@@ -307,25 +309,32 @@
                         </div>
                     </div>
                     
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center">
-                        <div class="space-y-2">
-                            <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ __('Total IMPs') }}</div>
-                            <div class="flex items-center justify-center gap-6">
-                                <div class="text-4xl font-black text-gray-900" x-text="homeImp"></div>
-                                <div class="text-2xl font-black text-gray-300">:</div>
-                                <div class="text-4xl font-black text-gray-900" x-text="awayImp"></div>
+                    @if($matchFinished)
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center">
+                            <div class="space-y-2">
+                                <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ __('Total IMPs') }}</div>
+                                <div class="flex items-center justify-center gap-6">
+                                    <div class="text-4xl font-black text-gray-900" x-text="homeImp"></div>
+                                    <div class="text-2xl font-black text-gray-300">:</div>
+                                    <div class="text-4xl font-black text-gray-900" x-text="awayImp"></div>
+                                </div>
                             </div>
-                        </div>
 
-                        <div class="space-y-2 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                            <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest">{{ __('Total VP') }}</div>
-                            <div class="flex items-center justify-center gap-6">
-                                <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(homeVp).toFixed(2)"></div>
-                                <div class="text-xl font-bold text-indigo-300">-</div>
-                                <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(awayVp).toFixed(2)"></div>
+                            <div class="space-y-2 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest">{{ __('Total VP') }}</div>
+                                <div class="flex items-center justify-center gap-6">
+                                    <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(homeVp).toFixed(2)"></div>
+                                    <div class="text-xl font-bold text-indigo-300">-</div>
+                                    <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(awayVp).toFixed(2)"></div>
+                                </div>
                             </div>
                         </div>
-                    </div>
+                    @else
+                        <div class="rounded-xl border border-blue-100 bg-blue-50 p-6 text-center">
+                            <div class="text-xs font-black uppercase tracking-widest text-blue-700">{{ __('IMPs hidden during match') }}</div>
+                            <div class="text-sm text-blue-600 mt-1">{{ __('Finish the match to reveal IMP and VP totals.') }}</div>
+                        </div>
+                    @endif
                 </div>
             </div>
 
@@ -423,11 +432,15 @@
                                     <th class="py-3 border" rowspan="2">{{ __('Lead') }}</th>
                                     <th class="py-3 border" rowspan="2">{{ __('Tricks') }}</th>
                                     <th class="py-3 border" rowspan="2">{{ __('Score') }} (NS)</th>
-                                    <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                    @if($matchFinished)
+                                        <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
+                                    @endif
                                 </tr>
                                 <tr class="text-[10px] uppercase bg-gray-100">
-                                    <th class="py-1 border">H</th>
-                                    <th class="py-1 border">A</th>
+                                    @if($matchFinished)
+                                        <th class="py-1 border">H</th>
+                                        <th class="py-1 border">A</th>
+                                    @endif
                                 </tr>
                             </thead>
                             <tbody>
@@ -441,16 +454,20 @@
                                         <td class="py-3 border font-mono font-bold" :class="(room === 'open' ? board.home_score : board.away_score) > 0 ? 'text-green-600' : ((room === 'open' ? board.home_score : board.away_score) < 0 ? 'text-red-600' : '')">
                                             <span x-text="(room === 'open' ? board.home_score : board.away_score) !== null ? ((room === 'open' ? board.home_score : board.away_score) > 0 ? '+' : '') + (room === 'open' ? board.home_score : board.away_score) : '-'"></span>
                                         </td>
-                                        <td class="py-3 border font-bold text-green-700" x-text="board.home_imp || ''"></td>
-                                        <td class="py-3 border font-bold text-red-700" x-text="board.away_imp || ''"></td>
+                                        @if($matchFinished)
+                                            <td class="py-3 border font-bold text-green-700" x-text="board.home_imp || ''"></td>
+                                            <td class="py-3 border font-bold text-red-700" x-text="board.away_imp || ''"></td>
+                                        @endif
                                     </tr>
                                 </template>
                             </tbody>
                             <tfoot class="bg-gray-50 font-black">
                                 <tr>
                                     <td colspan="6" class="py-4 border text-right px-6 uppercase tracking-widest text-gray-400 text-xs">{{ __('Total') }}</td>
-                                    <td class="py-4 border text-xl text-green-700" x-text="homeImp"></td>
-                                    <td class="py-4 border text-xl text-red-700" x-text="awayImp"></td>
+                                    @if($matchFinished)
+                                        <td class="py-4 border text-xl text-green-700" x-text="homeImp"></td>
+                                        <td class="py-4 border text-xl text-red-700" x-text="awayImp"></td>
+                                    @endif
                                 </tr>
                             </tfoot>
                         </table>
