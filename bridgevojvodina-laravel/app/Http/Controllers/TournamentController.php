@@ -993,6 +993,7 @@ class TournamentController extends Controller
 
         $request->validate([
             'status' => 'required|string|in:pending,inProgress,complete',
+            'boards_count' => 'nullable|integer|min:1|max:64',
         ]);
 
         $results = $tournament->team_results;
@@ -1012,7 +1013,15 @@ class TournamentController extends Controller
         }
 
         $status = $request->status;
-        $round->matches[$matchIndex]->status = $status;
+        $match = $round->matches[$matchIndex];
+        $match->status = $status;
+
+        if ($request->filled('boards_count')) {
+            $match->boards_count = (int) $request->boards_count;
+            $this->resizeMatchBoards($match, $match->boards_count);
+        } elseif (!$match->boards_count) {
+            $match->boards_count = $this->matchBoardsCount($match, $round, $results);
+        }
 
         if ($status === 'inProgress' && ($round->status ?? 'idle') !== 'inProgress') {
             $round->status = 'inProgress';
@@ -1452,6 +1461,23 @@ class TournamentController extends Controller
         return back()->with('success', __('Boards renumbered successfully.'));
     }
 
+    protected function matchBoardsCount(object $match, object $round, object $results): int
+    {
+        return (int) ($match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16);
+    }
+
+    protected function resizeMatchBoards(object $match, int $boardsCount): void
+    {
+        $existing = collect($match->boards ?? [])->keyBy('board_number');
+        $boards = [];
+
+        for ($i = 1; $i <= $boardsCount; $i++) {
+            $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
+        }
+
+        $match->boards = $boards;
+    }
+
     public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View
     {
         $tournament = $this->resolveTournament($id);
@@ -1483,13 +1509,15 @@ class TournamentController extends Controller
             abort(404, __('Cannot enter results for a bye match.'));
         }
 
-        $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
         if (empty($match->boards)) {
             $boards = [];
             for ($i = 1; $i <= $numBoards; $i++) {
                 $boards[] = new MatchBoardDTO(board_number: $i);
             }
             $match->boards = $boards;
+        } elseif (count($match->boards) !== $numBoards) {
+            $this->resizeMatchBoards($match, $numBoards);
         }
 
         // Determine which teams are NS and EW for this room
@@ -1570,13 +1598,19 @@ class TournamentController extends Controller
         }
 
         // Ensure boards are initialized
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
+        if ($boardNumber < 1 || $boardNumber > $numBoards) {
+            abort(404);
+        }
+
         if (empty($match->boards)) {
-            $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
             $boards = [];
             for ($i = 1; $i <= $numBoards; $i++) {
                 $boards[] = new MatchBoardDTO(board_number: $i);
             }
             $match->boards = $boards;
+        } elseif (count($match->boards) !== $numBoards) {
+            $this->resizeMatchBoards($match, $numBoards);
         }
 
         $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNumber);
@@ -1646,7 +1680,7 @@ class TournamentController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        $boardsCount = $this->matchBoardsCount($match, $round, $results);
         list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
         $match->home_vp = $hVp;
         $match->away_vp = $aVp;
@@ -1705,13 +1739,15 @@ class TournamentController extends Controller
         }
 
         // Ensure boards are initialized
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
         if (empty($match->boards)) {
-            $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
             $boards = [];
             for ($i = 1; $i <= $numBoards; $i++) {
                 $boards[] = new MatchBoardDTO(board_number: $i);
             }
             $match->boards = $boards;
+        } elseif (count($match->boards) !== $numBoards) {
+            $this->resizeMatchBoards($match, $numBoards);
         }
 
         $file = $request->file('csv_file');
@@ -1723,6 +1759,8 @@ class TournamentController extends Controller
             if (count($row) < 5) continue;
             
             $boardNum = (int) $row[0];
+            if ($boardNum < 1 || $boardNum > $numBoards) continue;
+
             $contractStr = $row[1];
             $by = strtoupper($row[2]);
             $lead = strtoupper($row[3]);
@@ -1803,7 +1841,7 @@ class TournamentController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        $boardsCount = $this->matchBoardsCount($match, $round, $results);
         list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
         $match->home_vp = $hVp;
         $match->away_vp = $aVp;

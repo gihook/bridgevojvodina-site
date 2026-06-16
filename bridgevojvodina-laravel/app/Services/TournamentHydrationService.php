@@ -249,9 +249,9 @@ class TournamentHydrationService
 
         // Process all matches in all rounds
         foreach ($results->rounds as $round) {
-            $boards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
-            
             foreach ($round->matches as $match) {
+                $boards = $match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16;
+
                 // Determine if it's a bye and award configured bye VP
                 $isHomeBye = empty($match->home_team_id) || $match->home_team_id === 'bye';
                 $isAwayBye = empty($match->away_team_id) || $match->away_team_id === 'bye';

@@ -203,6 +203,34 @@ class PlayerScoringTest extends TestCase
         $this->assertSame($player->id, $tournament->team_results->rounds[0]->matches[0]->open_ns_ids[0]);
     }
 
+    public function test_admin_can_set_match_board_count_when_starting_match(): void
+    {
+        [$tournament, $admin, $player] = $this->createScoringTournament(matchStatus: 'pending', roundStatus: 'idle');
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $this->actingAs($admin)
+            ->patch(route('tournaments.rounds.matches.status.update', [$tournament, 'r1', 'm1']), [
+                'status' => 'inProgress',
+                'boards_count' => 12,
+            ])
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+        $this->assertSame(12, $match->boards_count);
+        $this->assertCount(12, $match->boards);
+
+        $this->actingAs($user)
+            ->patchJson(route('scoring.board.update', [$tournament, 'r1', 'm1', 'open', 13]), [
+                'contract_level' => 4,
+                'contract_suit' => 'S',
+                'contract_risk' => 1,
+                'declarer' => 'N',
+                'tricks' => 10,
+            ])
+            ->assertNotFound();
+    }
+
     private function createScoringTournament(string $matchStatus = 'pending', string $roundStatus = 'inProgress', bool $seatPlayers = true): array
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

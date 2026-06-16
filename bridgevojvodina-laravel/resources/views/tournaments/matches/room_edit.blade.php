@@ -1,5 +1,5 @@
 @php
-    $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+    $boardsCount = $match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16;
     $isOpen = $room === 'open';
     $matchFinished = ($match->status ?? 'pending') === 'complete';
 @endphp

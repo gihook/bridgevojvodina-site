@@ -214,14 +214,9 @@ class PlayerScoringController extends Controller
         if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
 
         // Robust Board Initialization
-        $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
-        if (count($match->boards) < $numBoards) {
-            $existing = collect($match->boards)->keyBy('board_number');
-            $newBoards = [];
-            for ($i = 1; $i <= $numBoards; $i++) {
-                $newBoards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
-            }
-            $match->boards = $newBoards;
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
+        if (count($match->boards) !== $numBoards) {
+            $this->resizeMatchBoards($match, $numBoards);
         }
 
         // Strict Isolation: Sanitize boards to only include current room data
@@ -274,7 +269,11 @@ class PlayerScoringController extends Controller
         if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
 
         // Robust Board Resolution
-        $numBoards = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
+        if ($boardNumber < 1 || $boardNumber > $numBoards) {
+            abort(404);
+        }
+
         $boardsCollection = collect($match->boards);
         $boardIndex = $boardsCollection->search(fn($b) => (int)$b->board_number == (int)$boardNumber);
 
@@ -357,7 +356,7 @@ class PlayerScoringController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        $boardsCount = $round->boards_per_round ?? $results->boards_per_round ?? 16;
+        $boardsCount = $this->matchBoardsCount($match, $round, $results);
         list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
         $match->home_vp = $hVp;
         $match->away_vp = $aVp;
@@ -390,6 +389,23 @@ class PlayerScoringController extends Controller
             ->orderBy('last_name')
             ->orderBy('first_name')
             ->get();
+    }
+
+    protected function matchBoardsCount(object $match, object $round, object $results): int
+    {
+        return (int) ($match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16);
+    }
+
+    protected function resizeMatchBoards(object $match, int $boardsCount): void
+    {
+        $existing = collect($match->boards ?? [])->keyBy('board_number');
+        $boards = [];
+
+        for ($i = 1; $i <= $boardsCount; $i++) {
+            $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
+        }
+
+        $match->boards = $boards;
     }
 
     protected function resolveOpenMatch(string $tournamentId, string $roundId, string $matchId): array
