@@ -39,6 +39,7 @@ class TournamentShowTest extends TestCase
                                 'id' => 'm1',
                                 'home_team_id' => 't1', 'away_team_id' => 't2',
                                 'home_imp' => 10, 'away_imp' => 5, 'home_vp' => 12.0, 'away_vp' => 8.0,
+                                'status' => 'complete',
                                 'home_lineup' => [['player_id' => $player->id, 'butler_score' => 1.5]],
                                 'boards' => [
                                     [
@@ -125,6 +126,44 @@ class TournamentShowTest extends TestCase
         $response->assertSee('420');
         $response->assertSee('430');
         $response->assertSee('Slobodan Guzvica');
+    }
+
+    public function test_tournament_match_page_hides_imps_until_match_is_finished()
+    {
+        $tournament = $this->createTournamentWithResults();
+        $results = $tournament->team_results;
+        $results->rounds[0]->matches[0]->status = 'inProgress';
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/match/m1");
+
+        $response->assertStatus(200);
+        $response->assertSee('IMPs hidden');
+        $response->assertDontSee('10 : 5');
+        $response->assertDontSee('12.00 - 8.00');
+        $response->assertSee('Board results hidden during match');
+        $response->assertDontSee('3NT');
+        $response->assertDontSee('420');
+        $response->assertDontSee('430');
+    }
+
+    public function test_tournament_board_page_hides_active_match_contracts_and_scores()
+    {
+        $tournament = $this->createTournamentWithResults();
+        $results = $tournament->team_results;
+        $results->rounds[0]->matches[0]->status = 'inProgress';
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/board/1");
+
+        $response->assertStatus(200);
+        $response->assertSee('Hidden during match');
+        $response->assertDontSee('3NT');
+        $response->assertDontSee('420');
+        $response->assertDontSee('430');
+        $response->assertDontSee('HK');
     }
 
     public function test_tournament_board_page_displays_aggregated_results()

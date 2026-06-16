@@ -46,6 +46,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('tournaments/{tournament}/teams/{teamId}', [TournamentController::class, 'destroyTeam'])->name('tournaments.teams.destroy');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/butler-exclusion', [TournamentController::class, 'updateRoundButlerExclusion'])->name('tournaments.rounds.butler-exclusion.update');
+    Route::patch('tournaments/{tournament}/rounds/{roundId}/matches/{matchId}/status', [TournamentController::class, 'updateMatchStatus'])->name('tournaments.rounds.matches.status.update');
+    Route::patch('tournaments/{tournament}/rounds/{roundId}/matches/{matchId}/boards-count', [TournamentController::class, 'updateMatchBoardsCount'])->name('tournaments.rounds.matches.boards-count.update');
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');
@@ -57,6 +59,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('tournaments/{tournament}/teams/{teamId}/players/{playerId}', [TournamentController::class, 'removePlayerFromTeam'])->name('tournaments.teams.players.remove');
     Route::post('tournaments/{tournament}/teams/{teamId}/captain/{playerId}', [TournamentController::class, 'setTeamCaptain'])->name('tournaments.teams.captain.set');
     Route::get('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/edit', [TournamentController::class, 'editMatchRoom'])->name('tournaments.match.room.edit');
+    Route::get('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/state', [TournamentController::class, 'matchRoomState'])->name('tournaments.match.room.state');
     Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/lineup', [TournamentController::class, 'updateMatchLineup'])->name('tournaments.match.room.lineup.update');
     Route::patch('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/board/{boardNumber}', [TournamentController::class, 'updateMatchBoard'])->name('tournaments.match.room.board.update');
     Route::post('tournaments/{tournament}/round/{round}/match/{match}/room/{room}/boards/csv', [TournamentController::class, 'uploadMatchBoardsCsv'])->name('tournaments.match.room.boards.csv.upload');
@@ -65,6 +68,9 @@ Route::middleware('auth')->group(function () {
 
     Route::prefix('scoring')->name('scoring.')->group(function () {
         Route::get('/', [\App\Http\Controllers\PlayerScoringController::class, 'index'])->name('index');
+        Route::post('/link-player', [\App\Http\Controllers\PlayerScoringController::class, 'linkPlayer'])->name('player.link');
+        Route::post('/{tournament}/round/{roundId}/match/{matchId}/sit', [\App\Http\Controllers\PlayerScoringController::class, 'sit'])->name('match.sit');
+        Route::delete('/{tournament}/round/{roundId}/match/{matchId}/leave', [\App\Http\Controllers\PlayerScoringController::class, 'leave'])->name('match.leave');
         Route::get('/{tournament}/round/{roundId}/match/{matchId}/room/{room}', [\App\Http\Controllers\PlayerScoringController::class, 'showRoom'])->name('room.show');
         Route::patch('/{tournament}/round/{roundId}/match/{matchId}/room/{room}/board/{boardNumber}', [\App\Http\Controllers\PlayerScoringController::class, 'updateBoard'])->name('board.update');
     });

@@ -26,7 +26,11 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
-            'player_id' => ['nullable', 'exists:players,id'],
+            'player_id' => [
+                'nullable',
+                'exists:players,id',
+                Rule::unique(User::class, 'player_id')->ignore($this->user()->id),
+            ],
         ];
     }
 }

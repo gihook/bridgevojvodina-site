@@ -208,11 +208,36 @@
                                                                     $awayName = collect($tournament->team_results->teams)->firstWhere('id', $match->away_team_id)->name ?? __('BYE');
                                                                     $isBye = !$match->home_team_id || !$match->away_team_id || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
 
-                                                                    $totalBoards = $round->boards_per_round ?? $tournament->team_results->boards_per_round ?? 16;
+                                                                    $totalBoards = $match->boards_count ?? $round->boards_per_round ?? $tournament->team_results->boards_per_round ?? 16;
                                                                     $openCount = count(array_filter($match->boards, fn($b) => ($b->home_score !== null && $b->home_score !== '')));
                                                                     $closedCount = count(array_filter($match->boards, fn($b) => ($b->away_score !== null && $b->away_score !== '')));
+                                                                    $roomSummary = function (string $room) use ($match) {
+                                                                        $isOpen = $room === 'open';
+                                                                        $played = collect($match->boards ?? [])
+                                                                            ->filter(fn($b) => $isOpen ? (($b->home_score ?? null) !== null && ($b->home_score ?? '') !== '') : (($b->away_score ?? null) !== null && ($b->away_score ?? '') !== ''))
+                                                                            ->map(function ($b) use ($isOpen) {
+                                                                                $contract = $isOpen ? ($b->home_contract ?? '') : ($b->away_contract ?? '');
+                                                                                $score = $isOpen ? ($b->home_score ?? null) : ($b->away_score ?? null);
+                                                                                $scoreText = $score === null ? '' : (($score > 0 ? '+' : '') . $score);
 
-                                                                    $canEdit = $roundStatus === 'inProgress' && !$isBye;
+                                                                                return 'B' . $b->board_number . ' ' . trim($contract . ' ' . $scoreText);
+                                                                            })
+                                                                            ->values();
+
+                                                                        if ($played->isEmpty()) {
+                                                                            return '';
+                                                                        }
+
+                                                                        return $played->take(3)->implode(', ') . ($played->count() > 3 ? ' ...' : '');
+                                                                    };
+                                                                    $openSummary = $roomSummary('open');
+                                                                    $closedSummary = $roomSummary('closed');
+                                                                    $openStateUrl = route('tournaments.match.room.state', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'open']);
+                                                                    $closedStateUrl = route('tournaments.match.room.state', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']);
+                                                                    $matchStatus = $match->status ?? 'pending';
+                                                                    $matchFinished = $matchStatus === 'complete';
+
+                                                                    $canEdit = $roundStatus === 'inProgress' && $matchStatus === 'inProgress' && !$isBye;
                                                                 @endphp
 
                                                                 <div class="flex flex-col gap-1">
@@ -221,21 +246,118 @@
                                                                         <span class="text-gray-300 font-normal">vs</span>
                                                                         <span class="{{ $awayName === __('BYE') ? 'text-gray-400 italic' : '' }}">{{ $awayName }}</span>
                                                                         
+                                                                        <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border {{ $matchStatus === 'complete' ? 'bg-green-50 text-green-700 border-green-100' : ($matchStatus === 'inProgress' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100') }}">
+                                                                            {{ __($matchStatus) }}
+                                                                        </span>
+
                                                                         <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                                                            {{ number_format($match->home_vp, 1) }} - {{ number_format($match->away_vp, 1) }}
+                                                                            {{ $matchFinished ? number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1) : __('Hidden') }}
                                                                         </span>
                                                                     </div>
 
+                                                                    @if(!$isBye)
+                                                                        <div class="ml-4 flex flex-col gap-1">
+                                                                            <div class="flex flex-wrap gap-2">
+                                                                                <form method="POST" action="{{ route('tournaments.rounds.matches.boards-count.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
+                                                                                    @csrf
+                                                                                    @method('PATCH')
+                                                                                    <div class="flex items-center gap-1">
+                                                                                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ __('Boards') }}</span>
+                                                                                        <input type="number" name="boards_count" min="1" max="64" value="{{ $totalBoards }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md" title="{{ __('Boards') }}">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-900">
+                                                                                            {{ __('Save Boards') }}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </form>
+                                                                                @if($matchStatus !== 'inProgress')
+                                                                                    <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
+                                                                                        @csrf
+                                                                                        @method('PATCH')
+                                                                                        <input type="hidden" name="status" value="inProgress">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-900">
+                                                                                            {{ $matchStatus === 'complete' ? __('Reopen Match') : __('Start Match') }}
+                                                                                        </button>
+                                                                                    </form>
+                                                                                @endif
+                                                                                @if($matchStatus === 'inProgress')
+                                                                                    <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" onsubmit="return confirm('{{ __('Finish this match and reveal IMPs?') }}')">
+                                                                                        @csrf
+                                                                                        @method('PATCH')
+                                                                                        <input type="hidden" name="status" value="complete">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-green-600 hover:text-green-900">
+                                                                                            {{ __('Finish Match') }}
+                                                                                        </button>
+                                                                                    </form>
+                                                                                @endif
+                                                                            </div>
+                                                                        </div>
+                                                                    @endif
+
                                                                     @if($canEdit)
-                                                                        <div class="ml-4 flex flex-col gap-0.5">
+                                                                        <div class="ml-4 flex flex-col gap-0.5" x-data='{
+                                                                            boardsCount: {{ $totalBoards }},
+                                                                            openCount: {{ $openCount }},
+                                                                            closedCount: {{ $closedCount }},
+                                                                            openSummary: @json($openSummary),
+                                                                            closedSummary: @json($closedSummary),
+                                                                            openUrl: @json($openStateUrl),
+                                                                            closedUrl: @json($closedStateUrl),
+                                                                            init() {
+                                                                                this.refreshScores();
+                                                                                setInterval(() => this.refreshScores(), 3000);
+                                                                            },
+                                                                            async refreshScores() {
+                                                                                await Promise.all([
+                                                                                    this.refreshRoom("open", this.openUrl),
+                                                                                    this.refreshRoom("closed", this.closedUrl)
+                                                                                ]);
+                                                                            },
+                                                                            async refreshRoom(room, url) {
+                                                                                try {
+                                                                                    const response = await fetch(url, { headers: { "Accept": "application/json" } });
+                                                                                    if (!response.ok) return;
+
+                                                                                    const data = await response.json();
+                                                                                    if (!Array.isArray(data.boards)) return;
+
+                                                                                    const played = data.boards.filter((board) => board.current_room_score !== null && board.current_room_score !== "");
+                                                                                    if (room === "open") {
+                                                                                        this.openCount = played.length;
+                                                                                        this.openSummary = this.summaryText(played);
+                                                                                    } else {
+                                                                                        this.closedCount = played.length;
+                                                                                        this.closedSummary = this.summaryText(played);
+                                                                                    }
+                                                                                } catch (error) {
+                                                                                    console.error("Match score refresh failed");
+                                                                                }
+                                                                            },
+                                                                            summaryText(boards) {
+                                                                                if (!boards.length) return "";
+
+                                                                                const shortList = boards.slice(0, 3).map((board) => {
+                                                                                    const risk = board.current_room_contract_risk == 2 ? "X" : (board.current_room_contract_risk == 4 ? "XX" : "");
+                                                                                    const contract = board.current_room_contract_level === 0
+                                                                                        ? "Pass"
+                                                                                        : `${board.current_room_contract_level}${board.current_room_contract_suit || ""}${risk}`;
+                                                                                    const score = board.current_room_score > 0 ? `+${board.current_room_score}` : `${board.current_room_score}`;
+
+                                                                                    return `B${board.board_number} ${contract} ${score}`;
+                                                                                });
+
+                                                                                return shortList.join(", ") + (boards.length > 3 ? " ..." : "");
+                                                                            }
+                                                                        }'>
                                                                             <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'open']) }}" class="text-[10px] text-blue-600 hover:text-blue-900 hover:underline flex items-center gap-1">
-                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $openCount == $totalBoards ? 'bg-green-500' : 'bg-blue-400' }}"></span>
-                                                                                {{ __('Open Room') }}: {{ $openCount }}/{{ $totalBoards }}
+                                                                                <span class="w-1.5 h-1.5 rounded-full" :class="openCount == boardsCount ? 'bg-green-500' : 'bg-blue-400'"></span>
+                                                                                <span>{{ __('Open Room') }}: </span><span x-text="openCount + '/' + boardsCount"></span>
                                                                             </a>
+                                                                            <div x-show="openSummary" x-text="openSummary" class="ml-3 text-[10px] font-mono text-gray-500"></div>
                                                                             <a href="{{ route('tournaments.match.room.edit', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']) }}" class="text-[10px] text-red-600 hover:text-red-900 hover:underline flex items-center gap-1">
-                                                                                <span class="w-1.5 h-1.5 rounded-full {{ $openCount == $totalBoards ? 'bg-green-500' : 'bg-red-400' }}"></span>
-                                                                                {{ __('Closed Room') }}: {{ $closedCount }}/{{ $totalBoards }}
+                                                                                <span class="w-1.5 h-1.5 rounded-full" :class="closedCount == boardsCount ? 'bg-green-500' : 'bg-red-400'"></span>
+                                                                                <span>{{ __('Closed Room') }}: </span><span x-text="closedCount + '/' + boardsCount"></span>
                                                                             </a>
+                                                                            <div x-show="closedSummary" x-text="closedSummary" class="ml-3 text-[10px] font-mono text-gray-500"></div>
                                                                         </div>
                                                                     @endif
                                                                 </div>

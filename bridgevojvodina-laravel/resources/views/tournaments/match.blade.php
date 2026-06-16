@@ -1,3 +1,7 @@
+@php
+    $matchFinished = ($match->status ?? 'pending') === 'complete';
+@endphp
+
 <x-app-layout>
     <x-slot name="header">
         <div class="flex justify-between items-center">
@@ -27,10 +31,15 @@
                         </div>
                         <div class="flex flex-col items-center gap-4">
                             <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
-                                <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
-                                <span class="text-sm mt-1">
-                                    ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
-                                </span>
+                                @if($matchFinished)
+                                    <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                    <span class="text-sm mt-1">
+                                        ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
+                                    </span>
+                                @else
+                                    <span class="text-base uppercase tracking-widest">{{ __('IMPs hidden') }}</span>
+                                    <span class="text-xs mt-1">{{ __('Visible when match is finished') }}</span>
+                                @endif
                             </div>
                         </div>
                         <div class="flex-1 text-center font-bold text-2xl">
@@ -119,55 +128,62 @@
                             </div>
                         </div>
 
-                        <div class="overflow-x-auto">
-                            <table class="min-w-full text-sm text-center border-collapse">
-                                <thead class="bg-gray-50 font-bold">
-                                    <tr>
-                                        <th class="py-3 border" rowspan="2">{{ __('Board') }}</th>
-                                        <th class="py-3 border bg-blue-50" colspan="5">{{ __('Open Room') }}</th>
-                                        <th class="py-3 border bg-red-50" colspan="5">{{ __('Closed Room') }}</th>
-                                        <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
-                                    </tr>
-                                    <tr>
-                                        <th class="py-2 border bg-blue-50 text-xs">{{ __('Contr.') }}</th>
-                                        <th class="py-2 border bg-blue-50 text-xs">{{ __('Decl.') }}</th>
-                                        <th class="py-2 border bg-blue-50 text-xs">{{ __('Lead') }}</th>
-                                        <th class="py-2 border bg-blue-50 text-xs">{{ __('Tr.') }}</th>
-                                        <th class="py-2 border bg-blue-50 text-xs">{{ __('Score') }}</th>
-                                        <th class="py-2 border bg-red-50 text-xs">{{ __('Contr.') }}</th>
-                                        <th class="py-2 border bg-red-50 text-xs">{{ __('Decl.') }}</th>
-                                        <th class="py-2 border bg-red-50 text-xs">{{ __('Lead') }}</th>
-                                        <th class="py-2 border bg-red-50 text-xs">{{ __('Tr.') }}</th>
-                                        <th class="py-2 border bg-red-50 text-xs">{{ __('Score') }}</th>
-                                        <th class="py-2 border text-xs">{{ __('H') }}</th>
-                                        <th class="py-2 border text-xs">{{ __('A') }}</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach ($match->boards as $board)
-                                        <tr class="hover:bg-gray-50 transition-colors">
-                                            <td class="py-3 border font-bold bg-gray-50">
-                                                <a href="{{ route('tournaments.board', [$tournament, $round->id, $board->board_number]) }}" class="text-blue-600 hover:underline">
-                                                    {{ $board->board_number }}
-                                                </a>
-                                            </td>
-                                            <td class="py-3 border"><x-bridge-contract :contract="$board->home_contract" /></td>
-                                            <td class="py-3 border">{{ $board->home_declarer }}</td>
-                                            <td class="py-3 border"><x-bridge-contract :contract="$board->home_lead" /></td>
-                                            <td class="py-3 border">{{ $board->home_tricks }}</td>
-                                            <td class="py-3 border font-mono">{{ $board->home_score }}</td>
-                                            <td class="py-3 border"><x-bridge-contract :contract="$board->away_contract" /></td>
-                                            <td class="py-3 border">{{ $board->away_declarer }}</td>
-                                            <td class="py-3 border"><x-bridge-contract :contract="$board->away_lead" /></td>
-                                            <td class="py-3 border">{{ $board->away_tricks }}</td>
-                                            <td class="py-3 border font-mono">{{ $board->away_score }}</td>
-                                            <td class="py-3 border font-bold text-green-700">{{ $board->home_imp ?: '' }}</td>
-                                            <td class="py-3 border font-bold text-red-700">{{ $board->away_imp ?: '' }}</td>
+                        @if($matchFinished)
+                            <div class="overflow-x-auto">
+                                <table class="min-w-full text-sm text-center border-collapse">
+                                    <thead class="bg-gray-50 font-bold">
+                                        <tr>
+                                            <th class="py-3 border" rowspan="2">{{ __('Board') }}</th>
+                                            <th class="py-3 border bg-blue-50" colspan="5">{{ __('Open Room') }}</th>
+                                            <th class="py-3 border bg-red-50" colspan="5">{{ __('Closed Room') }}</th>
+                                            <th class="py-3 border" colspan="2">{{ __('IMPs') }}</th>
                                         </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
-                        </div>
+                                        <tr>
+                                            <th class="py-2 border bg-blue-50 text-xs">{{ __('Contr.') }}</th>
+                                            <th class="py-2 border bg-blue-50 text-xs">{{ __('Decl.') }}</th>
+                                            <th class="py-2 border bg-blue-50 text-xs">{{ __('Lead') }}</th>
+                                            <th class="py-2 border bg-blue-50 text-xs">{{ __('Tr.') }}</th>
+                                            <th class="py-2 border bg-blue-50 text-xs">{{ __('Score') }}</th>
+                                            <th class="py-2 border bg-red-50 text-xs">{{ __('Contr.') }}</th>
+                                            <th class="py-2 border bg-red-50 text-xs">{{ __('Decl.') }}</th>
+                                            <th class="py-2 border bg-red-50 text-xs">{{ __('Lead') }}</th>
+                                            <th class="py-2 border bg-red-50 text-xs">{{ __('Tr.') }}</th>
+                                            <th class="py-2 border bg-red-50 text-xs">{{ __('Score') }}</th>
+                                            <th class="py-2 border text-xs">{{ __('H') }}</th>
+                                            <th class="py-2 border text-xs">{{ __('A') }}</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        @foreach ($match->boards as $board)
+                                            <tr class="hover:bg-gray-50 transition-colors">
+                                                <td class="py-3 border font-bold bg-gray-50">
+                                                    <a href="{{ route('tournaments.board', [$tournament, $round->id, $board->board_number]) }}" class="text-blue-600 hover:underline">
+                                                        {{ $board->board_number }}
+                                                    </a>
+                                                </td>
+                                                <td class="py-3 border"><x-bridge-contract :contract="$board->home_contract" /></td>
+                                                <td class="py-3 border">{{ $board->home_declarer }}</td>
+                                                <td class="py-3 border"><x-bridge-contract :contract="$board->home_lead" /></td>
+                                                <td class="py-3 border">{{ $board->home_tricks }}</td>
+                                                <td class="py-3 border font-mono">{{ $board->home_score }}</td>
+                                                <td class="py-3 border"><x-bridge-contract :contract="$board->away_contract" /></td>
+                                                <td class="py-3 border">{{ $board->away_declarer }}</td>
+                                                <td class="py-3 border"><x-bridge-contract :contract="$board->away_lead" /></td>
+                                                <td class="py-3 border">{{ $board->away_tricks }}</td>
+                                                <td class="py-3 border font-mono">{{ $board->away_score }}</td>
+                                                <td class="py-3 border font-bold text-green-700">{{ $board->home_imp ?: '' }}</td>
+                                                <td class="py-3 border font-bold text-red-700">{{ $board->away_imp ?: '' }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        @else
+                            <div class="rounded-xl border border-blue-100 bg-blue-50 p-6 text-center">
+                                <div class="text-xs font-black uppercase tracking-widest text-blue-700">{{ __('Board results hidden during match') }}</div>
+                                <div class="text-sm text-blue-600 mt-1">{{ __('Contracts and scores will be visible when the match is finished.') }}</div>
+                            </div>
+                        @endif
                     @else
                         <div class="text-center py-12 text-gray-500 italic">
                             {{ __('No board results available for this match.') }}

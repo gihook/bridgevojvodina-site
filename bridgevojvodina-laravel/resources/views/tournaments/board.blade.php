@@ -196,6 +196,7 @@
                                         $board = $res['board'];
                                         $homeTeam = $res['home_team'];
                                         $awayTeam = $res['away_team'];
+                                        $matchFinished = ($match->status ?? 'pending') === 'complete';
                                         
                                         $hydration = app(\App\Services\TournamentHydrationService::class);
                                         
@@ -214,7 +215,8 @@
                                             'tricks' => $board->home_tricks,
                                             'score' => $board->home_score,
                                             'imp' => $board->home_imp,
-                                            'butler' => ($datum !== null && $board->home_score !== null) ? $hydration->scoreToImp($board->home_score - $datum) : null,
+                                            'match_finished' => $matchFinished,
+                                            'butler' => ($matchFinished && $datum !== null && $board->home_score !== null) ? $hydration->scoreToImp($board->home_score - $datum) : null,
                                             'bg' => 'bg-blue-50/20'
                                         ];
 
@@ -233,7 +235,8 @@
                                             'tricks' => $board->away_tricks,
                                             'score' => $board->away_score,
                                             'imp' => $board->away_imp,
-                                            'butler' => ($datum !== null && $board->away_score !== null) ? $hydration->scoreToImp($board->away_score - $datum) : null,
+                                            'match_finished' => $matchFinished,
+                                            'butler' => ($matchFinished && $datum !== null && $board->away_score !== null) ? $hydration->scoreToImp($board->away_score - $datum) : null,
                                             'bg' => 'bg-red-50/20'
                                         ];
                                     @endphp
@@ -252,16 +255,26 @@
                                                 @if($roomData['w']) <div>{{ $roomData['w']->first_name }} {{ $roomData['w']->last_name }}</div> @endif
                                             </td>
                                             
-                                            <td class="py-2 border italic text-gray-600"><x-bridge-contract :contract="$roomData['contract']" /></td>
-                                            <td class="py-2 border">{{ $roomData['declarer'] }}</td>
-                                            <td class="py-2 border"><x-bridge-contract :contract="$roomData['lead']" /></td>
-                                            <td class="py-2 border text-[10px]">{{ app(\App\Http\Controllers\TournamentController::class)->formatTricksFromLevel(substr($roomData['contract'], 0, 1), $roomData['tricks']) }}</td>
-                                            <td class="py-2 border font-mono">{{ $roomData['score'] !== null ? ($roomData['score'] > 0 ? '+' . $roomData['score'] : $roomData['score']) : '' }}</td>
+                                            @if($roomData['match_finished'])
+                                                <td class="py-2 border italic text-gray-600"><x-bridge-contract :contract="$roomData['contract']" /></td>
+                                                <td class="py-2 border">{{ $roomData['declarer'] }}</td>
+                                                <td class="py-2 border"><x-bridge-contract :contract="$roomData['lead']" /></td>
+                                                <td class="py-2 border text-[10px]">{{ app(\App\Http\Controllers\TournamentController::class)->formatTricksFromLevel(substr($roomData['contract'], 0, 1), $roomData['tricks']) }}</td>
+                                                <td class="py-2 border font-mono">{{ $roomData['score'] !== null ? ($roomData['score'] > 0 ? '+' . $roomData['score'] : $roomData['score']) : '' }}</td>
+                                            @else
+                                                <td class="py-2 border text-xs font-bold uppercase tracking-widest text-gray-400" colspan="5">{{ __('Hidden during match') }}</td>
+                                            @endif
                                             
-                                            <td class="py-2 border font-bold {{ $roomData['imp'] > 0 ? 'text-green-700' : '' }}">{{ $roomData['imp'] ?: '' }}</td>
+                                            <td class="py-2 border font-bold {{ $roomData['match_finished'] && $roomData['imp'] > 0 ? 'text-green-700' : '' }}">
+                                                {{ $roomData['match_finished'] ? ($roomData['imp'] ?: '') : __('Hidden') }}
+                                            </td>
 
                                             <td class="py-2 border bg-green-50/30 font-bold @if($roomData['butler'] > 0) text-green-600 @elseif($roomData['butler'] < 0) text-red-600 @endif">
-                                                {{ $roomData['butler'] > 0 ? '+' : '' }}{{ $roomData['butler'] }}
+                                                @if($roomData['match_finished'] && $roomData['butler'] !== null)
+                                                    {{ $roomData['butler'] > 0 ? '+' : '' }}{{ $roomData['butler'] }}
+                                                @else
+                                                    {{ $roomData['match_finished'] ? '' : __('Hidden') }}
+                                                @endif
                                             </td>
                                         </tr>
                                     @endforeach

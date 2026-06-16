@@ -26,7 +26,14 @@
                 @endif
                 <p><strong>{{ __('First Name') }}:</strong> {{ $player->first_name }}</p>
                 <p><strong>{{ __('Last Name') }}:</strong> {{ $player->last_name }}</p>
-                <p><strong>{{ __('Club') }}:</strong> <a href="{{ route('clubs.show', $player->club) }}" class="text-blue-500 underline">{{ $player->club->name }}</a></p>
+                <p>
+                    <strong>{{ __('Club') }}:</strong>
+                    @if($player->club)
+                        <a href="{{ route('clubs.show', $player->club) }}" class="text-blue-500 underline">{{ $player->club->name }}</a>
+                    @else
+                        {{ __('No club') }}
+                    @endif
+                </p>
             </div>
         </div>
     </div>
