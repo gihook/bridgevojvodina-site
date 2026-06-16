@@ -21,7 +21,7 @@
                         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
                         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
                         $matchStatus = $match->status ?? 'pending';
-                        $matchFinished = ($match->status ?? 'pending') === 'complete';
+                        $matchFinished = \App\Http\Controllers\TournamentController::matchResultsVisible($match);
                         $publicPlayerId = auth()->user()?->player_id;
                         $openAction = (!$isBye && $publicPlayerId) ? \App\Http\Controllers\PlayerScoringController::publicRoomAction((int) $publicPlayerId, $results, $round, $match, 'open') : null;
                         $closedAction = (!$isBye && $publicPlayerId) ? \App\Http\Controllers\PlayerScoringController::publicRoomAction((int) $publicPlayerId, $results, $round, $match, 'closed') : null;
