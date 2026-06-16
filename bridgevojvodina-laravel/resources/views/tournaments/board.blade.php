@@ -196,7 +196,7 @@
                                         $board = $res['board'];
                                         $homeTeam = $res['home_team'];
                                         $awayTeam = $res['away_team'];
-                                        $matchFinished = ($match->status ?? 'pending') === 'complete';
+                                        $matchFinished = \App\Http\Controllers\TournamentController::matchResultsVisible($match);
                                         
                                         $hydration = app(\App\Services\TournamentHydrationService::class);
                                         
