@@ -18,9 +18,21 @@ class ProfileController extends Controller
      */
     public function edit(Request $request): View
     {
+        $currentPlayerId = $request->user()->player_id;
+
         return view('profile.edit', [
             'user' => $request->user(),
-            'players' => Player::orderBy('last_name')->get(),
+            'players' => Player::with('club')
+                ->where(function ($query) use ($currentPlayerId) {
+                    $query->whereDoesntHave('user');
+
+                    if ($currentPlayerId) {
+                        $query->orWhere('id', $currentPlayerId);
+                    }
+                })
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get(),
         ]);
     }
 

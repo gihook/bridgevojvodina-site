@@ -34,11 +34,14 @@
                 <option value="">{{ __('None') }}</option>
                 @foreach($players as $player)
                     <option value="{{ $player->id }}" {{ old('player_id', $user->player_id ?? '') == $player->id ? 'selected' : '' }}>
-                        {{ $player->last_name }} {{ $player->first_name }}
+                        {{ $player->last_name }} {{ $player->first_name }}@if($player->club) - {{ $player->club->name }}@endif
                     </option>
                 @endforeach
             </select>
             <x-input-error class="mt-2" :messages="$errors->get('player_id')" />
+            <p class="mt-1 text-xs text-gray-500">
+                {{ __('Connect your account to your player record for tournament scoring.') }}
+            </p>
         </div>
 
         <div>

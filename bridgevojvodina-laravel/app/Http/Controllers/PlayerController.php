@@ -33,7 +33,7 @@ class PlayerController extends Controller
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'club_id' => 'required|exists:clubs,id',
+            'club_id' => 'nullable|exists:clubs,id',
         ]);
 
         Player::create($validated);
@@ -59,7 +59,7 @@ class PlayerController extends Controller
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
-            'club_id' => 'required|exists:clubs,id',
+            'club_id' => 'nullable|exists:clubs,id',
         ]);
 
         $player->update($validated);
