@@ -1,5 +1,5 @@
 @php
-    $matchFinished = ($match->status ?? 'pending') === 'complete';
+    $matchFinished = \App\Http\Controllers\TournamentController::matchResultsVisible($match);
 @endphp
 
 <x-app-layout>

@@ -148,6 +148,35 @@ class TournamentShowTest extends TestCase
         $response->assertDontSee('430');
     }
 
+    public function test_entered_results_are_visible_without_starting_and_finishing_match()
+    {
+        $tournament = $this->createTournamentWithResults();
+        $results = $tournament->team_results;
+        $results->rounds[0]->matches[0]->status = 'pending';
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $this->get("/tournaments/{$tournament->id}")
+            ->assertStatus(200)
+            ->assertSee('10 : 5')
+            ->assertSee('12.00 - 8.00');
+
+        $this->get("/tournaments/{$tournament->id}/round/r1/match/m1")
+            ->assertStatus(200)
+            ->assertSee('10 : 5')
+            ->assertSee('3NT')
+            ->assertSee('420')
+            ->assertSee('430')
+            ->assertDontSee('Board results hidden during match');
+
+        $this->get("/tournaments/{$tournament->id}/round/r1/board/1")
+            ->assertStatus(200)
+            ->assertSee('3NT')
+            ->assertSee('420')
+            ->assertSee('430')
+            ->assertDontSee('Hidden during match');
+    }
+
     public function test_tournament_board_page_hides_active_match_contracts_and_scores()
     {
         $tournament = $this->createTournamentWithResults();

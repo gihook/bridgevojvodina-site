@@ -251,7 +251,7 @@ class TournamentController extends Controller
         // Calculate Datum
         $nsScores = [];
         foreach ($boardResults as $res) {
-            if (($res['match']->status ?? 'pending') !== 'complete') {
+            if (!self::matchResultsVisible($res['match'])) {
                 continue;
             }
             if ($res['board']->home_score !== null) $nsScores[] = $res['board']->home_score;
@@ -275,6 +275,23 @@ class TournamentController extends Controller
         if (!$level || $tricks === null || !is_numeric($level)) return '';
         $diff = (int)$tricks - (6 + (int)$level);
         return $diff === 0 ? '=' : ($diff > 0 ? '+' . $diff : (string)$diff);
+    }
+
+    public static function matchResultsVisible(object $match): bool
+    {
+        $status = $match->status ?? 'pending';
+
+        if ($status === 'complete') {
+            return true;
+        }
+
+        if ($status === 'inProgress') {
+            return false;
+        }
+
+        return collect($match->boards ?? [])->contains(function ($board) {
+            return ($board->home_score ?? null) !== null || ($board->away_score ?? null) !== null;
+        });
     }
 
     public function edit(Request $request, string $id): View
@@ -363,7 +380,7 @@ class TournamentController extends Controller
                                     'home_team' => $homeTeam->name ?? 'Unknown',
                                     'away_team' => $awayTeam->name ?? 'Unknown',
                                     'room' => 'Open',
-                                    'match_finished' => ($match->status ?? 'pending') === 'complete',
+                                    'match_finished' => self::matchResultsVisible($match),
                                     'ns_names' => $openNs,
                                     'ew_names' => $openEw,
                                     'contract' => $boardData->home_contract,
@@ -380,7 +397,7 @@ class TournamentController extends Controller
                                     'home_team' => $homeTeam->name ?? 'Unknown',
                                     'away_team' => $awayTeam->name ?? 'Unknown',
                                     'room' => 'Closed',
-                                    'match_finished' => ($match->status ?? 'pending') === 'complete',
+                                    'match_finished' => self::matchResultsVisible($match),
                                     'ns_names' => $closedNs,
                                     'ew_names' => $closedEw,
                                     'contract' => $boardData->away_contract,
