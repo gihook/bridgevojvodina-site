@@ -20,7 +20,11 @@
                         $isBye = empty($match->home_team_id) || empty($match->away_team_id) || $match->home_team_id === 'bye' || $match->away_team_id === 'bye';
                         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
                         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
+                        $matchStatus = $match->status ?? 'pending';
                         $matchFinished = ($match->status ?? 'pending') === 'complete';
+                        $publicPlayerId = auth()->user()?->player_id;
+                        $openAction = (!$isBye && $publicPlayerId) ? \App\Http\Controllers\PlayerScoringController::publicRoomAction((int) $publicPlayerId, $results, $round, $match, 'open') : null;
+                        $closedAction = (!$isBye && $publicPlayerId) ? \App\Http\Controllers\PlayerScoringController::publicRoomAction((int) $publicPlayerId, $results, $round, $match, 'closed') : null;
                     @endphp
                     <div class="border rounded-lg bg-gray-50 overflow-hidden">
                         <div class="p-4">
@@ -39,14 +43,18 @@
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Bye') }}</span>
                                     @elseif($matchFinished)
                                         <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                    @elseif($matchStatus === 'inProgress')
+                                        <span>0 : 0</span>
                                     @else
-                                        <span class="text-xs uppercase font-black tracking-widest">{{ __('Hidden') }}</span>
+                                        <span class="text-xs uppercase font-black tracking-widest">{{ __('Not played yet') }}</span>
                                     @endif
                                     <span class="text-xs">
                                         @if($isBye || $matchFinished)
                                             ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }})
+                                        @elseif($matchStatus === 'inProgress')
+                                            {{ __('In progress') }}
                                         @else
-                                            {{ __('Until finished') }}
+                                            {{ __('Waiting to start') }}
                                         @endif
                                     </span>
                                 </div>
@@ -65,6 +73,28 @@
                                     <a href="{{ route('tournaments.match', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id)]) }}" class="text-sm text-blue-600 font-semibold uppercase tracking-wider hover:text-blue-800 transition-colors">
                                         {{ __('View Details') }}
                                     </a>
+                                    @if($openAction || $closedAction)
+                                        <div class="flex flex-wrap justify-center gap-2">
+                                            @foreach(['open' => $openAction, 'closed' => $closedAction] as $roomKey => $action)
+                                                @if($action)
+                                                    @if($action['is_seated'])
+                                                        <a href="{{ route('scoring.room.show', [$tournament->id, $round->id, ($match->id ?: $match->home_team_id), $roomKey]) }}" class="inline-flex items-center px-3 py-1 rounded-md bg-gray-800 text-white text-[10px] font-black uppercase tracking-widest hover:bg-gray-700">
+                                                            {{ __($roomKey === 'open' ? 'Open Room' : 'Closed Room') }}
+                                                        </a>
+                                                    @else
+                                                        <form method="POST" action="{{ route('scoring.match.sit', [$tournament->id, $round->id, ($match->id ?: $match->home_team_id)]) }}">
+                                                            @csrf
+                                                            <input type="hidden" name="room" value="{{ $roomKey }}">
+                                                            <input type="hidden" name="enter_after_sit" value="1">
+                                                            <button type="submit" class="inline-flex items-center px-3 py-1 rounded-md bg-white border border-gray-300 text-gray-700 text-[10px] font-black uppercase tracking-widest hover:bg-gray-100">
+                                                                {{ __($roomKey === 'open' ? 'Open Room' : 'Closed Room') }}
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @endif
                                 </div>
                             @endif
                         </div>

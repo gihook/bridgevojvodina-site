@@ -178,6 +178,31 @@ class PlayerScoringTest extends TestCase
             ->assertSessionHasErrors('seat');
     }
 
+    public function test_player_can_sit_from_public_tournament_match_list(): void
+    {
+        [$tournament, , $player] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $this->actingAs($user)
+            ->get(route('tournaments.show', $tournament))
+            ->assertStatus(200)
+            ->assertSee('0 : 0')
+            ->assertSee('In progress')
+            ->assertSee('Open Room')
+            ->assertSee('Closed Room')
+            ->assertDontSee('Hidden');
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'enter_after_sit' => 1,
+            ])
+            ->assertRedirect(route('scoring.room.show', [$tournament, 'r1', 'm1', 'open']));
+
+        $tournament->refresh();
+        $this->assertSame($player->id, $tournament->team_results->rounds[0]->matches[0]->open_ns_ids[0]);
+    }
+
     private function createScoringTournament(string $matchStatus = 'pending', string $roundStatus = 'inProgress', bool $seatPlayers = true): array
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

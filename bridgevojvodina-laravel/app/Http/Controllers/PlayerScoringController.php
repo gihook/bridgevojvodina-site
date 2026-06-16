@@ -131,7 +131,8 @@ class PlayerScoringController extends Controller
     {
         $data = $request->validate([
             'room' => 'required|string|in:open,closed',
-            'position' => 'required|string|in:N,S,E,W',
+            'position' => 'nullable|string|in:N,S,E,W',
+            'enter_after_sit' => 'nullable|boolean',
         ]);
 
         [$tournament, $results, $round, $match] = $this->resolveOpenMatch($tournamentId, $roundId, $matchId);
@@ -141,11 +142,16 @@ class PlayerScoringController extends Controller
         }
 
         $teamSide = self::playerTeamSide($playerId, $results, $match);
-        if (!$teamSide || self::seatTeamSide($data['room'], $data['position']) !== $teamSide) {
+        $position = $data['position'] ?? $this->firstAvailablePosition($match, $playerId, $data['room'], $teamSide);
+        if (!$position) {
+            return back()->withErrors(['seat' => __('No seats are available for your team in that room.')]);
+        }
+
+        if (!$teamSide || self::seatTeamSide($data['room'], $position) !== $teamSide) {
             return back()->withErrors(['seat' => __('You can only sit in seats assigned to your team.')]);
         }
 
-        $seat = self::seatReference($data['room'], $data['position']);
+        $seat = self::seatReference($data['room'], $position);
         $match->{$seat['property']} = self::normalizeSeatPair($match->{$seat['property']} ?? []);
 
         $occupiedBy = $match->{$seat['property']}[$seat['index']] ?? null;
@@ -159,6 +165,11 @@ class PlayerScoringController extends Controller
 
         $tournament->team_results = $results;
         $tournament->save();
+
+        if ($request->boolean('enter_after_sit')) {
+            return redirect()->route('scoring.room.show', [$tournament, $round->id, ($match->id ?: $match->home_team_id), $data['room']])
+                ->with('success', __('You are seated.'));
+        }
 
         return back()->with('success', __('You are seated.'));
     }
@@ -449,12 +460,88 @@ class PlayerScoringController extends Controller
         }
     }
 
-    protected static function playerCanUseMatch(int $playerId, object $results, object $match): bool
+    protected function firstAvailablePosition(object $match, int $playerId, string $room, ?string $teamSide): ?string
+    {
+        if (!$teamSide) {
+            return null;
+        }
+
+        foreach (['N', 'S', 'E', 'W'] as $position) {
+            if (self::seatTeamSide($room, $position) !== $teamSide) {
+                continue;
+            }
+
+            $seat = self::seatReference($room, $position);
+            $pair = self::normalizeSeatPair($match->{$seat['property']} ?? []);
+            $occupantId = $pair[$seat['index']] ?? null;
+
+            if ($occupantId && (int) $occupantId === $playerId) {
+                return $position;
+            }
+        }
+
+        foreach (['N', 'S', 'E', 'W'] as $position) {
+            if (self::seatTeamSide($room, $position) !== $teamSide) {
+                continue;
+            }
+
+            $seat = self::seatReference($room, $position);
+            $pair = self::normalizeSeatPair($match->{$seat['property']} ?? []);
+            $occupantId = $pair[$seat['index']] ?? null;
+
+            if (!$occupantId) {
+                return $position;
+            }
+        }
+
+        return null;
+    }
+
+    public static function publicRoomAction(int $playerId, object $results, object $round, object $match, string $room): ?array
+    {
+        if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
+            return null;
+        }
+
+        $teamSide = self::playerTeamSide($playerId, $results, $match);
+        if (!$teamSide) {
+            return null;
+        }
+
+        $isSeated = self::playerIsInMatch($playerId, $match, $room);
+        $hasAvailableSeat = false;
+
+        foreach (['N', 'S', 'E', 'W'] as $position) {
+            if (self::seatTeamSide($room, $position) !== $teamSide) {
+                continue;
+            }
+
+            $seat = self::seatReference($room, $position);
+            $pair = self::normalizeSeatPair($match->{$seat['property']} ?? []);
+            $occupantId = $pair[$seat['index']] ?? null;
+
+            if (!$occupantId || (int) $occupantId === $playerId) {
+                $hasAvailableSeat = true;
+                break;
+            }
+        }
+
+        if (!$hasAvailableSeat) {
+            return null;
+        }
+
+        return [
+            'is_seated' => $isSeated,
+            'label' => $isSeated ? __('Enter') : __('Sit'),
+        ];
+    }
+
+    public static function playerCanUseMatch(int $playerId, object $results, object $match): bool
     {
         return self::playerIsInMatch($playerId, $match) || self::playerTeamSide($playerId, $results, $match) !== null;
     }
 
-    protected static function playerTeamSide(int $playerId, object $results, object $match): ?string
+    public static function playerTeamSide(int $playerId, object $results, object $match): ?string
     {
         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
@@ -470,7 +557,7 @@ class PlayerScoringController extends Controller
         return null;
     }
 
-    protected static function seatTeamSide(string $room, string $position): string
+    public static function seatTeamSide(string $room, string $position): string
     {
         $isNs = in_array($position, ['N', 'S'], true);
 
@@ -481,7 +568,7 @@ class PlayerScoringController extends Controller
         return $isNs ? 'away' : 'home';
     }
 
-    protected static function seatReference(string $room, string $position): array
+    public static function seatReference(string $room, string $position): array
     {
         return match ($room . ':' . $position) {
             'open:N' => ['property' => 'open_ns_ids', 'index' => 0],
@@ -495,7 +582,7 @@ class PlayerScoringController extends Controller
         };
     }
 
-    protected static function normalizeSeatPair(array $ids): array
+    public static function normalizeSeatPair(array $ids): array
     {
         return [
             isset($ids[0]) && $ids[0] !== '' ? (int) $ids[0] : null,
@@ -503,7 +590,7 @@ class PlayerScoringController extends Controller
         ];
     }
 
-    protected static function playerIsInMatch(int $playerId, object $match, ?string $room = null): bool
+    public static function playerIsInMatch(int $playerId, object $match, ?string $room = null): bool
     {
         $openIds = array_merge($match->open_ns_ids ?? [], $match->open_ew_ids ?? []);
         $closedIds = array_merge($match->closed_ns_ids ?? [], $match->closed_ew_ids ?? []);
