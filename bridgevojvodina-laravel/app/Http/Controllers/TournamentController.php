@@ -1042,6 +1042,45 @@ class TournamentController extends Controller
         return back()->with('success', $messages[$status]);
     }
 
+    public function updateMatchBoardsCount(Request $request, string $tournamentId, string $roundId, string $matchId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $validated = $request->validate([
+            'boards_count' => 'required|integer|min:1|max:64',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        $round = $results->rounds[$roundIndex];
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) {
+            abort(404);
+        }
+
+        $match = $round->matches[$matchIndex];
+        $match->boards_count = (int) $validated['boards_count'];
+        $this->resizeMatchBoards($match, $match->boards_count);
+
+        $this->recalculateMatchTotals($match, $round, $results);
+        $this->hydrationService->recalculateStandings($results);
+        $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Match board count saved.'));
+    }
+
     public function updateRoundButlerExclusion(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
@@ -1476,6 +1515,29 @@ class TournamentController extends Controller
         }
 
         $match->boards = $boards;
+    }
+
+    protected function recalculateMatchTotals(object $match, object $round, object $results): void
+    {
+        $totalHomeImp = 0;
+        $totalAwayImp = 0;
+
+        foreach ($match->boards as $board) {
+            $totalHomeImp += $board->home_imp ?? 0;
+            $totalAwayImp += $board->away_imp ?? 0;
+        }
+
+        $match->home_imp = $totalHomeImp;
+        $match->away_imp = $totalAwayImp;
+
+        [$homeVp, $awayVp] = $this->vpService->calculateVp(
+            $totalHomeImp,
+            $totalAwayImp,
+            $this->matchBoardsCount($match, $round, $results)
+        );
+
+        $match->home_vp = $homeVp;
+        $match->away_vp = $awayVp;
     }
 
     public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View

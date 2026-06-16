@@ -47,6 +47,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('tournaments/{tournament}/rounds/{roundId}/status', [TournamentController::class, 'updateRoundStatus'])->name('tournaments.rounds.status.update');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/butler-exclusion', [TournamentController::class, 'updateRoundButlerExclusion'])->name('tournaments.rounds.butler-exclusion.update');
     Route::patch('tournaments/{tournament}/rounds/{roundId}/matches/{matchId}/status', [TournamentController::class, 'updateMatchStatus'])->name('tournaments.rounds.matches.status.update');
+    Route::patch('tournaments/{tournament}/rounds/{roundId}/matches/{matchId}/boards-count', [TournamentController::class, 'updateMatchBoardsCount'])->name('tournaments.rounds.matches.boards-count.update');
     Route::patch('tournaments/{tournament}/settings', [TournamentController::class, 'updateSettings'])->name('tournaments.settings.update');
     Route::post('tournaments/{tournament}/rounds/generate', [TournamentController::class, 'generateRounds'])->name('tournaments.rounds.generate');
     Route::post('tournaments/{tournament}/rounds/upload-csv', [TournamentController::class, 'uploadRoundsCsv'])->name('tournaments.rounds.upload-csv');

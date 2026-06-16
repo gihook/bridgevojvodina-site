@@ -231,6 +231,25 @@ class PlayerScoringTest extends TestCase
             ->assertNotFound();
     }
 
+    public function test_admin_can_save_match_board_count_without_changing_match_status(): void
+    {
+        [$tournament, $admin] = $this->createScoringTournament(matchStatus: 'inProgress');
+
+        $this->actingAs($admin)
+            ->patch(route('tournaments.rounds.matches.boards-count.update', [$tournament, 'r1', 'm1']), [
+                'boards_count' => 12,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+
+        $this->assertSame('inProgress', $match->status);
+        $this->assertSame(12, $match->boards_count);
+        $this->assertCount(12, $match->boards);
+    }
+
     private function createScoringTournament(string $matchStatus = 'pending', string $roundStatus = 'inProgress', bool $seatPlayers = true): array
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);

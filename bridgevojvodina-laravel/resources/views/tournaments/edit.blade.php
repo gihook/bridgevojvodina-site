@@ -235,31 +235,28 @@
                                                                     @if(!$isBye)
                                                                         <div class="ml-4 flex flex-col gap-1">
                                                                             <div class="flex flex-wrap gap-2">
+                                                                                <form method="POST" action="{{ route('tournaments.rounds.matches.boards-count.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
+                                                                                    @csrf
+                                                                                    @method('PATCH')
+                                                                                    <div class="flex items-center gap-1">
+                                                                                        <span class="text-[10px] font-bold uppercase tracking-wider text-gray-400">{{ __('Boards') }}</span>
+                                                                                        <input type="number" name="boards_count" min="1" max="64" value="{{ $totalBoards }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md" title="{{ __('Boards') }}">
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-900">
+                                                                                            {{ __('Save Boards') }}
+                                                                                        </button>
+                                                                                    </div>
+                                                                                </form>
                                                                                 @if($matchStatus !== 'inProgress')
                                                                                     <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
                                                                                         @csrf
                                                                                         @method('PATCH')
                                                                                         <input type="hidden" name="status" value="inProgress">
-                                                                                        <div class="flex items-center gap-1">
-                                                                                            <input type="number" name="boards_count" min="1" max="64" value="{{ $totalBoards }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md" title="{{ __('Boards') }}">
-                                                                                            <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-900">
-                                                                                                {{ $matchStatus === 'complete' ? __('Reopen Match') : __('Start Match') }}
-                                                                                            </button>
-                                                                                        </div>
+                                                                                        <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-blue-600 hover:text-blue-900">
+                                                                                            {{ $matchStatus === 'complete' ? __('Reopen Match') : __('Start Match') }}
+                                                                                        </button>
                                                                                     </form>
                                                                                 @endif
                                                                                 @if($matchStatus === 'inProgress')
-                                                                                    <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}">
-                                                                                        @csrf
-                                                                                        @method('PATCH')
-                                                                                        <input type="hidden" name="status" value="inProgress">
-                                                                                        <div class="flex items-center gap-1">
-                                                                                            <input type="number" name="boards_count" min="1" max="64" value="{{ $totalBoards }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md" title="{{ __('Boards') }}">
-                                                                                            <button type="submit" class="text-[10px] font-bold uppercase tracking-wider text-indigo-600 hover:text-indigo-900">
-                                                                                                {{ __('Update Boards') }}
-                                                                                            </button>
-                                                                                        </div>
-                                                                                    </form>
                                                                                     <form method="POST" action="{{ route('tournaments.rounds.matches.status.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" onsubmit="return confirm('{{ __('Finish this match and reveal IMPs?') }}')">
                                                                                         @csrf
                                                                                         @method('PATCH')
