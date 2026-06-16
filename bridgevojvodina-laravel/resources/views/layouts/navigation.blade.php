@@ -31,11 +31,6 @@
                         {{ __('Contact') }}
                     </x-nav-link>
                     @auth
-                        @if(\App\Http\Controllers\PlayerScoringController::hasActiveMatches())
-                            <x-nav-link :href="route('scoring.index')" :active="request()->routeIs('scoring.*')" class="!text-red-600 font-black animate-pulse">
-                                {{ __('Enter Scores') }}
-                            </x-nav-link>
-                        @endif
                         @if(Auth::user()->isAdmin())
                             <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                                 {{ __('Dashboard') }}
@@ -134,11 +129,6 @@
                 {{ __('Contact') }}
             </x-responsive-nav-link>
             @auth
-                @if(\App\Http\Controllers\PlayerScoringController::hasActiveMatches())
-                    <x-responsive-nav-link :href="route('scoring.index')" :active="request()->routeIs('scoring.*')" class="!text-red-600 font-black animate-pulse">
-                        {{ __('Enter Scores') }}
-                    </x-responsive-nav-link>
-                @endif
                 @if(Auth::user()->isAdmin())
                     <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
