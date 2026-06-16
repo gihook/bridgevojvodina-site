@@ -67,6 +67,8 @@ Route::middleware('auth')->group(function () {
     Route::prefix('scoring')->name('scoring.')->group(function () {
         Route::get('/', [\App\Http\Controllers\PlayerScoringController::class, 'index'])->name('index');
         Route::post('/link-player', [\App\Http\Controllers\PlayerScoringController::class, 'linkPlayer'])->name('player.link');
+        Route::post('/{tournament}/round/{roundId}/match/{matchId}/sit', [\App\Http\Controllers\PlayerScoringController::class, 'sit'])->name('match.sit');
+        Route::delete('/{tournament}/round/{roundId}/match/{matchId}/leave', [\App\Http\Controllers\PlayerScoringController::class, 'leave'])->name('match.leave');
         Route::get('/{tournament}/round/{roundId}/match/{matchId}/room/{room}', [\App\Http\Controllers\PlayerScoringController::class, 'showRoom'])->name('room.show');
         Route::patch('/{tournament}/round/{roundId}/match/{matchId}/room/{room}/board/{boardNumber}', [\App\Http\Controllers\PlayerScoringController::class, 'updateBoard'])->name('board.update');
     });

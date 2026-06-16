@@ -104,7 +104,81 @@ class PlayerScoringTest extends TestCase
         $this->assertArrayNotHasKey('away_imp', $payload['board']);
     }
 
-    private function createScoringTournament(string $matchStatus = 'pending', string $roundStatus = 'inProgress'): array
+    public function test_player_can_sit_leave_and_resit_when_match_is_started(): void
+    {
+        [$tournament, , $player] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $this->actingAs($user)
+            ->get(route('scoring.index'))
+            ->assertStatus(200)
+            ->assertSee('Sit')
+            ->assertSee('Empty');
+
+        $this->actingAs($user)
+            ->get(route('scoring.room.show', [$tournament, 'r1', 'm1', 'open']))
+            ->assertForbidden();
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'position' => 'N',
+            ])
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $this->assertSame($player->id, $tournament->team_results->rounds[0]->matches[0]->open_ns_ids[0]);
+
+        $this->actingAs($user)
+            ->get(route('scoring.room.show', [$tournament, 'r1', 'm1', 'open']))
+            ->assertStatus(200);
+
+        $this->actingAs($user)
+            ->delete(route('scoring.match.leave', [$tournament, 'r1', 'm1']))
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $this->assertNull($tournament->team_results->rounds[0]->matches[0]->open_ns_ids[0]);
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'closed',
+                'position' => 'E',
+            ])
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+        $this->assertNull($match->open_ns_ids[0]);
+        $this->assertSame($player->id, $match->closed_ew_ids[0]);
+    }
+
+    public function test_player_cannot_sit_in_opponents_seat_or_taken_seat(): void
+    {
+        [$tournament, , $player, $players] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'position' => 'E',
+            ])
+            ->assertSessionHasErrors('seat');
+
+        $results = $tournament->fresh()->team_results;
+        $results->rounds[0]->matches[0]->open_ns_ids = [$players[1]->id, null];
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'position' => 'N',
+            ])
+            ->assertSessionHasErrors('seat');
+    }
+
+    private function createScoringTournament(string $matchStatus = 'pending', string $roundStatus = 'inProgress', bool $seatPlayers = true): array
     {
         $admin = User::factory()->create(['role' => User::ROLE_ADMIN]);
         $players = [
@@ -142,10 +216,10 @@ class PlayerScoringTest extends TestCase
                         'home_vp' => 0,
                         'away_vp' => 0,
                         'status' => $matchStatus,
-                        'open_ns_ids' => [$players[0]->id, $players[1]->id],
-                        'open_ew_ids' => [$players[2]->id, $players[3]->id],
-                        'closed_ns_ids' => [$players[4]->id, $players[5]->id],
-                        'closed_ew_ids' => [$players[6]->id, $players[7]->id],
+                        'open_ns_ids' => $seatPlayers ? [$players[0]->id, $players[1]->id] : [],
+                        'open_ew_ids' => $seatPlayers ? [$players[2]->id, $players[3]->id] : [],
+                        'closed_ns_ids' => $seatPlayers ? [$players[4]->id, $players[5]->id] : [],
+                        'closed_ew_ids' => $seatPlayers ? [$players[6]->id, $players[7]->id] : [],
                         'boards' => [['board_number' => 1]],
                     ]],
                 ]],
@@ -153,7 +227,7 @@ class PlayerScoringTest extends TestCase
             ],
         ]);
 
-        return [$tournament, $admin, $players[0]];
+        return [$tournament, $admin, $players[0], $players];
     }
 
     private function createPlayer(string $firstName, string $lastName): Player
