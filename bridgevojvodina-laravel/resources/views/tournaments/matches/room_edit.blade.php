@@ -81,6 +81,40 @@
         editingBoard: null,
         boardModalOpen: false,
         isSaving: false,
+        pollTimer: null,
+
+        init() {
+            this.refreshRoomState();
+            this.pollTimer = setInterval(() => this.refreshRoomState(), 3000);
+        },
+
+        async refreshRoomState() {
+            if (this.isSaving || this.boardModalOpen) return;
+
+            try {
+                const response = await fetch('{{ route('tournaments.match.room.state', [$tournament, $round->id, ($match->id ?: $match->home_team_id), $room]) }}', {
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) return;
+
+                const data = await response.json();
+                if (Array.isArray(data.boards)) {
+                    this.boards = data.boards;
+                }
+
+                if (Object.prototype.hasOwnProperty.call(data, 'match_home_imp')) {
+                    this.homeImp = data.match_home_imp;
+                    this.awayImp = data.match_away_imp;
+                    this.homeVp = data.match_home_vp;
+                    this.awayVp = data.match_away_vp;
+                }
+            } catch (error) {
+                console.error('Room state refresh failed');
+            }
+        },
 
         showIndicator() {
             const el = document.getElementById('save-indicator');

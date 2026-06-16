@@ -19,6 +19,7 @@ use Illuminate\View\View;
 
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
 
@@ -1596,6 +1597,79 @@ class TournamentController extends Controller
             'homeTeam', 'awayTeam', 'nsTeam', 'ewTeam',
             'nsPlayers', 'ewPlayers', 'results'
         ));
+    }
+
+    public function matchRoomState(string $id, string $roundId, string $matchId, string $room): JsonResponse
+    {
+        $tournament = $this->resolveTournament($id);
+        $this->authorizeTournament($tournament);
+
+        $results = $tournament->team_results;
+        if (!$results) abort(404);
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) abort(404);
+        $round = $results->rounds[$roundIndex];
+
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) abort(404);
+        $match = $round->matches[$matchIndex];
+
+        $numBoards = $this->matchBoardsCount($match, $round, $results);
+        $boardsChanged = false;
+        if (empty($match->boards)) {
+            $match->boards = array_map(fn($i) => new MatchBoardDTO(board_number: $i), range(1, $numBoards));
+            $boardsChanged = true;
+        } elseif (count($match->boards) !== $numBoards) {
+            $this->resizeMatchBoards($match, $numBoards);
+            $boardsChanged = true;
+        }
+
+        if ($boardsChanged) {
+            $tournament->team_results = $results;
+            $tournament->save();
+        }
+
+        $matchFinished = ($match->status ?? 'pending') === 'complete';
+        $payload = [
+            'success' => true,
+            'boards' => array_map(
+                fn($board) => $this->formatAdminRoomBoard($board, $room, $matchFinished),
+                $match->boards
+            ),
+        ];
+
+        if ($matchFinished) {
+            $payload['match_home_imp'] = $match->home_imp;
+            $payload['match_away_imp'] = $match->away_imp;
+            $payload['match_home_vp'] = $match->home_vp;
+            $payload['match_away_vp'] = $match->away_vp;
+        }
+
+        return response()->json($payload);
+    }
+
+    protected function formatAdminRoomBoard(object $board, string $room, bool $matchFinished): array
+    {
+        $isOpen = $room === 'open';
+        $contractStr = $isOpen ? ($board->home_contract ?? '') : ($board->away_contract ?? '');
+        $parsed = $this->scoringService->parseContract($contractStr);
+        $data = method_exists($board, 'toArray') ? $board->toArray() : (array) $board;
+
+        if (!$matchFinished) {
+            unset($data['home_imp'], $data['away_imp']);
+        }
+
+        $data['current_room_contract_level'] = $parsed[0];
+        $data['current_room_contract_suit'] = $parsed[1];
+        $data['current_room_contract_risk'] = $parsed[2] ?: 1;
+        $data['current_room_contract_base'] = $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1];
+        $data['current_room_declarer'] = $isOpen ? ($board->home_declarer ?? null) : ($board->away_declarer ?? null);
+        $data['current_room_tricks'] = $isOpen ? ($board->home_tricks ?? null) : ($board->away_tricks ?? null);
+        $data['current_room_score'] = $isOpen ? ($board->home_score ?? null) : ($board->away_score ?? null);
+        $data['current_room_lead'] = $isOpen ? ($board->home_lead ?? null) : ($board->away_lead ?? null);
+
+        return $data;
     }
 
     public function updateMatchLineup(Request $request, string $id, string $roundId, string $matchId, string $room): RedirectResponse|array

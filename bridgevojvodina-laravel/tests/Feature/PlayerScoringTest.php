@@ -83,7 +83,7 @@ class PlayerScoringTest extends TestCase
 
     public function test_player_score_update_does_not_return_match_imps_during_active_match(): void
     {
-        [$tournament, , $player] = $this->createScoringTournament(matchStatus: 'inProgress');
+        [$tournament, $admin, $player] = $this->createScoringTournament(matchStatus: 'inProgress');
         $user = User::factory()->create(['player_id' => $player->id]);
 
         $response = $this->actingAs($user)->patchJson(route('scoring.board.update', [$tournament, 'r1', 'm1', 'open', 1]), [
@@ -102,6 +102,24 @@ class PlayerScoringTest extends TestCase
         $this->assertArrayNotHasKey('match_away_imp', $payload);
         $this->assertArrayNotHasKey('home_imp', $payload['board']);
         $this->assertArrayNotHasKey('away_imp', $payload['board']);
+
+        $tournament->refresh();
+        $savedBoard = $tournament->team_results->rounds[0]->matches[0]->boards[0];
+        $this->assertSame(420, $savedBoard->home_score);
+        $this->assertSame('4S', $savedBoard->home_contract);
+        $this->assertSame('N', $savedBoard->home_declarer);
+        $this->assertSame(10, $savedBoard->home_tricks);
+        $this->assertSame('HK', $savedBoard->home_lead);
+        $this->assertSame($user->id, $savedBoard->home_updated_by);
+
+        $this->actingAs($admin)
+            ->getJson(route('tournaments.match.room.state', [$tournament, 'r1', 'm1', 'open']))
+            ->assertOk()
+            ->assertJsonPath('boards.0.home_score', 420)
+            ->assertJsonPath('boards.0.current_room_score', 420)
+            ->assertJsonPath('boards.0.current_room_contract_base', '4S')
+            ->assertJsonMissingPath('boards.0.home_imp')
+            ->assertJsonMissingPath('match_home_imp');
     }
 
     public function test_player_can_sit_leave_and_resit_when_match_is_started(): void
