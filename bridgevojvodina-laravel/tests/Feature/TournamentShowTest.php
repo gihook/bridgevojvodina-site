@@ -142,6 +142,28 @@ class TournamentShowTest extends TestCase
         $response->assertSee('IMPs hidden');
         $response->assertDontSee('10 : 5');
         $response->assertDontSee('12.00 - 8.00');
+        $response->assertSee('Board results hidden during match');
+        $response->assertDontSee('3NT');
+        $response->assertDontSee('420');
+        $response->assertDontSee('430');
+    }
+
+    public function test_tournament_board_page_hides_active_match_contracts_and_scores()
+    {
+        $tournament = $this->createTournamentWithResults();
+        $results = $tournament->team_results;
+        $results->rounds[0]->matches[0]->status = 'inProgress';
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $response = $this->get("/tournaments/{$tournament->id}/round/r1/board/1");
+
+        $response->assertStatus(200);
+        $response->assertSee('Hidden during match');
+        $response->assertDontSee('3NT');
+        $response->assertDontSee('420');
+        $response->assertDontSee('430');
+        $response->assertDontSee('HK');
     }
 
     public function test_tournament_board_page_displays_aggregated_results()

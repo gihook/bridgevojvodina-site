@@ -122,6 +122,53 @@ class PlayerScoringTest extends TestCase
             ->assertJsonMissingPath('match_home_imp');
     }
 
+    public function test_player_scoring_room_only_receives_current_room_board_data(): void
+    {
+        [$tournament, , $player] = $this->createScoringTournament(matchStatus: 'inProgress');
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $results = $tournament->team_results;
+        $board = $results->rounds[0]->matches[0]->boards[0];
+        $board->home_contract = '4S';
+        $board->home_declarer = 'N';
+        $board->home_tricks = 10;
+        $board->home_score = 420;
+        $board->away_contract = '3NT';
+        $board->away_declarer = 'E';
+        $board->away_tricks = 9;
+        $board->away_score = -400;
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $this->actingAs($user)
+            ->get(route('scoring.room.show', [$tournament, 'r1', 'm1', 'open']))
+            ->assertOk()
+            ->assertSee('current_room_contract_base')
+            ->assertSee('4S')
+            ->assertDontSee('3NT')
+            ->assertDontSee('away_contract')
+            ->assertDontSee('away_score')
+            ->assertDontSee('home_contract')
+            ->assertDontSee('home_score');
+
+        $response = $this->actingAs($user)->patchJson(route('scoring.board.update', [$tournament, 'r1', 'm1', 'open', 1]), [
+            'contract_level' => 4,
+            'contract_suit' => 'S',
+            'contract_risk' => 1,
+            'declarer' => 'N',
+            'tricks' => 10,
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonMissingPath('board.away_contract')
+            ->assertJsonMissingPath('board.away_score')
+            ->assertJsonMissingPath('board.home_contract')
+            ->assertJsonMissingPath('board.home_score')
+            ->assertJsonPath('board.current_room_contract_base', '4S')
+            ->assertJsonPath('board.current_room_score', 420);
+    }
+
     public function test_player_can_sit_leave_and_resit_when_match_is_started(): void
     {
         [$tournament, , $player] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);

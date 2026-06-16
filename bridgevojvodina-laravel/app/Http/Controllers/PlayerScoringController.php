@@ -219,18 +219,10 @@ class PlayerScoringController extends Controller
             $this->resizeMatchBoards($match, $numBoards);
         }
 
-        // Strict Isolation: Sanitize boards to only include current room data
-        $sanitizedBoards = array_map(function($b) use ($room) {
-            $data = $b->toArray();
-            if ($room === 'open') {
-                unset($data['away_contract'], $data['away_declarer'], $data['away_tricks'], $data['away_score'], $data['away_lead'], $data['away_updated_by']);
-            } else {
-                unset($data['home_contract'], $data['home_declarer'], $data['home_tricks'], $data['home_score'], $data['home_lead'], $data['home_updated_by']);
-            }
-            // Also hide IMPs
-            unset($data['home_imp'], $data['away_imp']);
-            return $data;
-        }, $match->boards);
+        $sanitizedBoards = array_map(
+            fn($board) => $this->formatPlayerRoomBoard($board, $room),
+            $match->boards
+        );
 
         $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
         $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
@@ -367,18 +359,28 @@ class PlayerScoringController extends Controller
         $tournament->team_results = $results;
         $tournament->save();
 
-        // Strict Isolation: Return only the room's updated data
-        $sanitizedBoard = $board->toArray();
-        if ($room === 'open') {
-            unset($sanitizedBoard['away_contract'], $sanitizedBoard['away_declarer'], $sanitizedBoard['away_tricks'], $sanitizedBoard['away_score'], $sanitizedBoard['away_lead'], $sanitizedBoard['away_updated_by']);
-        } else {
-            unset($sanitizedBoard['home_contract'], $sanitizedBoard['home_declarer'], $sanitizedBoard['home_tricks'], $sanitizedBoard['home_score'], $sanitizedBoard['home_lead'], $sanitizedBoard['home_updated_by']);
-        }
-        unset($sanitizedBoard['home_imp'], $sanitizedBoard['away_imp']);
-
         return [
             'success' => true,
-            'board' => $sanitizedBoard,
+            'board' => $this->formatPlayerRoomBoard($board, $room),
+        ];
+    }
+
+    protected function formatPlayerRoomBoard(object $board, string $room): array
+    {
+        $isOpen = $room === 'open';
+        $contract = $isOpen ? ($board->home_contract ?? '') : ($board->away_contract ?? '');
+        $parsed = $this->scoringService->parseContract($contract);
+
+        return [
+            'board_number' => $board->board_number,
+            'current_room_contract_level' => $parsed[0],
+            'current_room_contract_suit' => $parsed[1],
+            'current_room_contract_risk' => $parsed[2] ?: 1,
+            'current_room_contract_base' => $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1],
+            'current_room_declarer' => $isOpen ? ($board->home_declarer ?? null) : ($board->away_declarer ?? null),
+            'current_room_tricks' => $isOpen ? ($board->home_tricks ?? null) : ($board->away_tricks ?? null),
+            'current_room_score' => $isOpen ? ($board->home_score ?? null) : ($board->away_score ?? null),
+            'current_room_lead' => $isOpen ? ($board->home_lead ?? null) : ($board->away_lead ?? null),
         ];
     }
 

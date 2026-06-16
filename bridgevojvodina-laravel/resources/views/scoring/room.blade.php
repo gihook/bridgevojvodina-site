@@ -16,21 +16,7 @@
     </x-slot>
 
     <div class="py-6 px-2 sm:px-4 lg:px-8" x-data="{
-        boards: {{ json_encode(array_map(function($b) use ($room) {
-            $contractStr = ($room === 'open') ? ($b['home_contract'] ?? '') : ($b['away_contract'] ?? '');
-            $parsed = (new \App\Services\BridgeScoringService())->parseContract($contractStr);
-            
-            $b['current_room_contract_level'] = $parsed[0];
-            $b['current_room_contract_suit'] = $parsed[1];
-            $b['current_room_contract_risk'] = $parsed[2] ?: 1;
-            $b['current_room_contract_base'] = $parsed[0] === 0 ? '0' : $parsed[0] . $parsed[1];
-            $b['current_room_declarer'] = ($room === 'open') ? ($b['home_declarer'] ?? null) : ($b['away_declarer'] ?? null);
-            $b['current_room_tricks'] = ($room === 'open') ? ($b['home_tricks'] ?? null) : ($b['away_tricks'] ?? null);
-            $b['current_room_score'] = ($room === 'open') ? ($b['home_score'] ?? null) : ($b['away_score'] ?? null);
-            $b['current_room_lead'] = ($room === 'open') ? ($b['home_lead'] ?? null) : ($b['away_lead'] ?? null);
-            
-            return $b;
-        }, $boards)) }},
+        boards: {{ json_encode($boards) }},
         
         room: '{{ $room }}',
         editingBoard: null,
@@ -131,7 +117,7 @@
                     this.boards[idx].current_room_declarer = this.editingBoard.current_room_declarer;
                     this.boards[idx].current_room_tricks = this.editingBoard.current_room_tricks;
                     this.boards[idx].current_room_lead = this.editingBoard.current_room_lead;
-                    this.boards[idx].current_room_score = (this.room === 'open') ? updated.home_score : updated.away_score;
+                    this.boards[idx].current_room_score = updated.current_room_score;
                 }
 
                 this.boardModalOpen = false;
