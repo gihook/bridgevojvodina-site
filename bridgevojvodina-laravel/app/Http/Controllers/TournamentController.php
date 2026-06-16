@@ -37,13 +37,17 @@ class TournamentController extends Controller
         $draft = TournamentConfiguration::find($id);
         $published = Tournament::find($id);
 
+        if ($published) {
+            return $published;
+        }
+
         if ($draft && auth()->check()) {
             if (auth()->user()->isAdmin() || auth()->user()->isDirector() || auth()->id() === $draft->user_id) {
                 return $draft;
             }
         }
 
-        return $published ?? Tournament::findOrFail($id);
+        return Tournament::findOrFail($id);
     }
 
     protected function authorizeTournament(\Illuminate\Database\Eloquent\Model $tournament)

@@ -5,6 +5,7 @@ namespace Tests\Feature;
 use App\Models\Club;
 use App\Models\Player;
 use App\Models\Tournament;
+use App\Models\TournamentConfiguration;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -120,6 +121,34 @@ class PlayerScoringTest extends TestCase
             ->assertJsonPath('boards.0.current_room_contract_base', '4S')
             ->assertJsonMissingPath('boards.0.home_imp')
             ->assertJsonMissingPath('match_home_imp');
+    }
+
+    public function test_admin_edit_uses_live_published_scores_when_stale_draft_has_same_id(): void
+    {
+        [$tournament, $admin, $player] = $this->createScoringTournament(matchStatus: 'inProgress');
+        $draft = new TournamentConfiguration();
+        $draft->id = $tournament->id;
+        $draft->title = $tournament->title;
+        $draft->description = $tournament->description;
+        $draft->details = $tournament->details;
+        $draft->user_id = $admin->id;
+        $draft->team_results = $tournament->team_results;
+        $draft->save();
+
+        $user = User::factory()->create(['player_id' => $player->id]);
+
+        $this->actingAs($user)->patchJson(route('scoring.board.update', [$tournament, 'r1', 'm1', 'open', 1]), [
+            'contract_level' => 4,
+            'contract_suit' => 'S',
+            'contract_risk' => 1,
+            'declarer' => 'N',
+            'tricks' => 10,
+        ])->assertOk();
+
+        $this->actingAs($admin)
+            ->get(route('tournaments.edit', $tournament))
+            ->assertOk()
+            ->assertSee('B1 4S +420');
     }
 
     public function test_player_scoring_room_only_receives_current_room_board_data(): void
