@@ -239,12 +239,71 @@ class PlayerScoringTest extends TestCase
                 'room' => 'closed',
                 'position' => 'E',
             ])
-            ->assertRedirect();
+            ->assertSessionHasErrors('seat');
 
         $tournament->refresh();
         $match = $tournament->team_results->rounds[0]->matches[0];
         $this->assertNull($match->open_ns_ids[0]);
-        $this->assertSame($player->id, $match->closed_ew_ids[0]);
+        $this->assertNull($match->closed_ew_ids[0]);
+    }
+
+    public function test_home_team_can_only_score_open_room_and_away_team_can_only_score_closed_room(): void
+    {
+        [$tournament, , $homePlayer, $players] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);
+        $awayPlayer = $players[2];
+        $homeUser = User::factory()->create(['player_id' => $homePlayer->id]);
+        $awayUser = User::factory()->create(['player_id' => $awayPlayer->id]);
+
+        $this->actingAs($homeUser)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'closed',
+                'position' => 'E',
+            ])
+            ->assertSessionHasErrors('seat');
+
+        $this->actingAs($homeUser)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'position' => 'N',
+            ])
+            ->assertRedirect();
+
+        $this->actingAs($awayUser)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'open',
+                'position' => 'E',
+            ])
+            ->assertSessionHasErrors('seat');
+
+        $this->actingAs($awayUser)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'closed',
+                'position' => 'N',
+            ])
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+        $this->assertSame($homePlayer->id, $match->open_ns_ids[0]);
+        $this->assertSame($awayPlayer->id, $match->closed_ns_ids[0]);
+
+        $this->actingAs($homeUser)
+            ->get(route('scoring.room.show', [$tournament, 'r1', 'm1', 'closed']))
+            ->assertForbidden();
+
+        $this->actingAs($awayUser)
+            ->get(route('scoring.room.show', [$tournament, 'r1', 'm1', 'open']))
+            ->assertForbidden();
+
+        $this->actingAs($awayUser)
+            ->patchJson(route('scoring.board.update', [$tournament, 'r1', 'm1', 'open', 1]), [
+                'contract_level' => 4,
+                'contract_suit' => 'S',
+                'contract_risk' => 1,
+                'declarer' => 'N',
+                'tricks' => 10,
+            ])
+            ->assertForbidden();
     }
 
     public function test_player_cannot_sit_in_opponents_seat_or_taken_seat(): void
@@ -283,7 +342,7 @@ class PlayerScoringTest extends TestCase
             ->assertSee('0 : 0')
             ->assertSee('In progress')
             ->assertSee('Open Room')
-            ->assertSee('Closed Room')
+            ->assertDontSee('Closed Room')
             ->assertDontSee('Hidden');
 
         $this->actingAs($user)
@@ -295,6 +354,29 @@ class PlayerScoringTest extends TestCase
 
         $tournament->refresh();
         $this->assertSame($player->id, $tournament->team_results->rounds[0]->matches[0]->open_ns_ids[0]);
+    }
+
+    public function test_away_player_can_sit_from_public_tournament_match_list_only_in_closed_room(): void
+    {
+        [$tournament, , , $players] = $this->createScoringTournament(matchStatus: 'inProgress', seatPlayers: false);
+        $awayPlayer = $players[2];
+        $user = User::factory()->create(['player_id' => $awayPlayer->id]);
+
+        $this->actingAs($user)
+            ->get(route('tournaments.show', $tournament))
+            ->assertStatus(200)
+            ->assertSee('Closed Room')
+            ->assertDontSee('Open Room');
+
+        $this->actingAs($user)
+            ->post(route('scoring.match.sit', [$tournament, 'r1', 'm1']), [
+                'room' => 'closed',
+                'enter_after_sit' => 1,
+            ])
+            ->assertRedirect(route('scoring.room.show', [$tournament, 'r1', 'm1', 'closed']));
+
+        $tournament->refresh();
+        $this->assertSame($awayPlayer->id, $tournament->team_results->rounds[0]->matches[0]->closed_ns_ids[0]);
     }
 
     public function test_admin_can_set_match_board_count_when_starting_match(): void

@@ -142,12 +142,16 @@ class PlayerScoringController extends Controller
         }
 
         $teamSide = self::playerTeamSide($playerId, $results, $match);
+        if (!$teamSide || !self::playerCanUseRoom($teamSide, $data['room'])) {
+            return back()->withErrors(['seat' => __('Your team can only score in its assigned room.')]);
+        }
+
         $position = $data['position'] ?? $this->firstAvailablePosition($match, $playerId, $data['room'], $teamSide);
         if (!$position) {
             return back()->withErrors(['seat' => __('No seats are available for your team in that room.')]);
         }
 
-        if (!$teamSide || self::seatTeamSide($data['room'], $position) !== $teamSide) {
+        if (self::seatTeamSide($data['room'], $position) !== $teamSide) {
             return back()->withErrors(['seat' => __('You can only sit in seats assigned to your team.')]);
         }
 
@@ -211,7 +215,11 @@ class PlayerScoringController extends Controller
             abort(403, __('This match is not open for scoring.'));
         }
 
-        if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
+        if (
+            !$user->player_id
+            || !self::playerCanUseRoom(self::playerTeamSide((int) $user->player_id, $results, $match), $room)
+            || !self::playerIsInMatch((int) $user->player_id, $match, $room)
+        ) abort(403);
 
         // Robust Board Initialization
         $numBoards = $this->matchBoardsCount($match, $round, $results);
@@ -258,7 +266,11 @@ class PlayerScoringController extends Controller
         if (($round->status ?? 'idle') !== 'inProgress' || ($match->status ?? 'pending') !== 'inProgress') {
             abort(403, __('This match is not open for scoring.'));
         }
-        if (!$user->player_id || !self::playerIsInMatch((int) $user->player_id, $match, $room)) abort(403);
+        if (
+            !$user->player_id
+            || !self::playerCanUseRoom(self::playerTeamSide((int) $user->player_id, $results, $match), $room)
+            || !self::playerIsInMatch((int) $user->player_id, $match, $room)
+        ) abort(403);
 
         // Robust Board Resolution
         $numBoards = $this->matchBoardsCount($match, $round, $results);
@@ -437,6 +449,7 @@ class PlayerScoringController extends Controller
 
         foreach (['open' => __('Open Room'), 'closed' => __('Closed Room')] as $room => $label) {
             $seats = [];
+            $canUseRoom = self::playerCanUseRoom($teamSide, $room);
             foreach (['N', 'S', 'E', 'W'] as $position) {
                 $seat = self::seatReference($room, $position);
                 $pair = self::normalizeSeatPair($match->{$seat['property']} ?? []);
@@ -449,7 +462,7 @@ class PlayerScoringController extends Controller
                     'occupant_id' => $occupantId ? (int) $occupantId : null,
                     'occupant_name' => $occupant ? trim($occupant->first_name . ' ' . $occupant->last_name) : null,
                     'is_mine' => $occupantId && (int) $occupantId === $playerId,
-                    'can_sit' => $seatTeamSide === $teamSide && (!$occupantId || (int) $occupantId === $playerId),
+                    'can_sit' => $canUseRoom && $seatTeamSide === $teamSide && (!$occupantId || (int) $occupantId === $playerId),
                     'team_side' => $seatTeamSide,
                 ];
             }
@@ -481,6 +494,10 @@ class PlayerScoringController extends Controller
     protected function firstAvailablePosition(object $match, int $playerId, string $room, ?string $teamSide): ?string
     {
         if (!$teamSide) {
+            return null;
+        }
+
+        if (!self::playerCanUseRoom($teamSide, $room)) {
             return null;
         }
 
@@ -526,6 +543,10 @@ class PlayerScoringController extends Controller
             return null;
         }
 
+        if (!self::playerCanUseRoom($teamSide, $room)) {
+            return null;
+        }
+
         $isSeated = self::playerIsInMatch($playerId, $match, $room);
         $hasAvailableSeat = false;
 
@@ -557,6 +578,12 @@ class PlayerScoringController extends Controller
     public static function playerCanUseMatch(int $playerId, object $results, object $match): bool
     {
         return self::playerIsInMatch($playerId, $match) || self::playerTeamSide($playerId, $results, $match) !== null;
+    }
+
+    public static function playerCanUseRoom(?string $teamSide, string $room): bool
+    {
+        return ($teamSide === 'home' && $room === 'open')
+            || ($teamSide === 'away' && $room === 'closed');
     }
 
     public static function playerTeamSide(int $playerId, object $results, object $match): ?string
