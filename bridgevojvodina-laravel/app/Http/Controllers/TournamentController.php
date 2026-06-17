@@ -896,7 +896,11 @@ class TournamentController extends Controller
         $currentPlayers = Player::whereIn('id', $teamPlayerIds)->orderBy('last_name')->get();
         
         // Players not in any team of this tournament
-        $availablePlayers = Player::whereNotIn('id', $allTournamentPlayerIds)->orderBy('last_name')->get();
+        $availablePlayers = Player::with('club')
+            ->whereNotIn('id', $allTournamentPlayerIds)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
         return view('tournaments.teams.edit', compact('tournament', 'team', 'currentPlayers', 'availablePlayers'));
     }
