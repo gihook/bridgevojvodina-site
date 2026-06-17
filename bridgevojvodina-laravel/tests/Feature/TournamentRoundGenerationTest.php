@@ -394,4 +394,66 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertEquals(7, $match->boards[0]->home_imp);
         $this->assertEquals(7, $match->home_imp);
     }
+
+    public function test_director_can_resit_any_match_team_player_in_any_admin_room_seat()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $club = \App\Models\Club::create(['name' => 'C1', 'city' => 'C', 'address' => 'A', 'representative' => 'R', 'email' => 'e@e.com', 'phone' => '1', 'status' => 'Active']);
+        $homeOne = \App\Models\Player::create(['first_name' => 'Home', 'last_name' => 'One', 'club_id' => $club->id]);
+        $homeTwo = \App\Models\Player::create(['first_name' => 'Home', 'last_name' => 'Two', 'club_id' => $club->id]);
+        $awayOne = \App\Models\Player::create(['first_name' => 'Away', 'last_name' => 'One', 'club_id' => $club->id]);
+        $awayTwo = \App\Models\Player::create(['first_name' => 'Away', 'last_name' => 'Two', 'club_id' => $club->id]);
+        $outsidePlayer = \App\Models\Player::create(['first_name' => 'Outside', 'last_name' => 'Player', 'club_id' => $club->id]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'T1', 'number' => 1, 'player_ids' => [$homeOne->id, $homeTwo->id], 'captain_id' => $homeOne->id, 'total_vp' => 0],
+                    ['id' => 't2', 'name' => 'T2', 'number' => 2, 'player_ids' => [$awayOne->id, $awayTwo->id], 'captain_id' => $awayOne->id, 'total_vp' => 0],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1', 'name' => 'R1', 'status' => 'inProgress', 'boards_per_round' => 16,
+                        'matches' => [
+                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_vp' => 0, 'away_vp' => 0, 'home_imp' => 0, 'away_imp' => 0, 'status' => 'inProgress', 'boards' => [], 'open_ns_ids' => [], 'open_ew_ids' => [], 'closed_ns_ids' => [], 'closed_ew_ids' => []]
+                        ]
+                    ]
+                ]
+            ]
+        ]);
+
+        $this->actingAs($director)
+            ->get(route('tournaments.match.room.edit', [$tournament, 'r1', 'm1', 'open']))
+            ->assertOk()
+            ->assertSee('T1')
+            ->assertSee('T2')
+            ->assertSee('One Home')
+            ->assertSee('One Away');
+
+        $this->actingAs($director)
+            ->patch(route('tournaments.match.room.lineup.update', [$tournament, 'r1', 'm1', 'open']), [
+                'n_id' => $awayOne->id,
+                's_id' => null,
+                'e_id' => $homeOne->id,
+                'w_id' => $awayTwo->id,
+            ])
+            ->assertRedirect();
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+
+        $this->assertSame([$awayOne->id, null], $match->open_ns_ids);
+        $this->assertSame([$homeOne->id, $awayTwo->id], $match->open_ew_ids);
+
+        $this->actingAs($director)
+            ->from(route('tournaments.match.room.edit', [$tournament, 'r1', 'm1', 'open']))
+            ->patch(route('tournaments.match.room.lineup.update', [$tournament, 'r1', 'm1', 'open']), [
+                'n_id' => $outsidePlayer->id,
+                's_id' => null,
+                'e_id' => null,
+                'w_id' => null,
+            ])
+            ->assertSessionHasErrors('n_id');
+    }
 }

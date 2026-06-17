@@ -21,6 +21,7 @@ use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Validation\Rule;
 use Illuminate\Support\Str;
 
 class TournamentController extends Controller
@@ -895,7 +896,11 @@ class TournamentController extends Controller
         $currentPlayers = Player::whereIn('id', $teamPlayerIds)->orderBy('last_name')->get();
         
         // Players not in any team of this tournament
-        $availablePlayers = Player::whereNotIn('id', $allTournamentPlayerIds)->orderBy('last_name')->get();
+        $availablePlayers = Player::with('club')
+            ->whereNotIn('id', $allTournamentPlayerIds)
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
 
         return view('tournaments.teams.edit', compact('tournament', 'team', 'currentPlayers', 'availablePlayers'));
     }
@@ -1610,13 +1615,15 @@ class TournamentController extends Controller
         $nsTeam = $room === 'open' ? $homeTeam : $awayTeam;
         $ewTeam = $room === 'open' ? $awayTeam : $homeTeam;
 
-        $nsPlayers = Player::whereIn('id', $nsTeam->player_ids)->get();
-        $ewPlayers = Player::whereIn('id', $ewTeam->player_ids)->get();
+        $homePlayers = Player::whereIn('id', $homeTeam->player_ids)->orderBy('last_name')->orderBy('first_name')->get();
+        $awayPlayers = Player::whereIn('id', $awayTeam->player_ids)->orderBy('last_name')->orderBy('first_name')->get();
+        $nsPlayers = $room === 'open' ? $homePlayers : $awayPlayers;
+        $ewPlayers = $room === 'open' ? $awayPlayers : $homePlayers;
 
         return view('tournaments.matches.room_edit', compact(
             'tournament', 'round', 'match', 'room',
             'homeTeam', 'awayTeam', 'nsTeam', 'ewTeam',
-            'nsPlayers', 'ewPlayers', 'results'
+            'nsPlayers', 'ewPlayers', 'homePlayers', 'awayPlayers', 'results'
         ));
     }
 
@@ -1707,21 +1714,28 @@ class TournamentController extends Controller
         $matchIndex = collect($results->rounds[$roundIndex]->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
         if ($matchIndex === false) abort(404);
 
-        $request->validate([
-            'n_id' => 'nullable|integer|exists:players,id',
-            's_id' => 'nullable|integer|exists:players,id',
-            'e_id' => 'nullable|integer|exists:players,id',
-            'w_id' => 'nullable|integer|exists:players,id',
-        ]);
-
         $match = $results->rounds[$roundIndex]->matches[$matchIndex];
+        $homeTeam = collect($results->teams)->firstWhere('id', $match->home_team_id);
+        $awayTeam = collect($results->teams)->firstWhere('id', $match->away_team_id);
+        $allowedPlayerIds = collect(array_merge($homeTeam->player_ids ?? [], $awayTeam->player_ids ?? []))
+            ->map(fn($id) => (int) $id)
+            ->unique()
+            ->values()
+            ->all();
+
+        $request->validate([
+            'n_id' => ['nullable', 'integer', Rule::in($allowedPlayerIds)],
+            's_id' => ['nullable', 'integer', Rule::in($allowedPlayerIds)],
+            'e_id' => ['nullable', 'integer', Rule::in($allowedPlayerIds)],
+            'w_id' => ['nullable', 'integer', Rule::in($allowedPlayerIds)],
+        ]);
         
         if ($room === 'open') {
-            $match->open_ns_ids = array_map('intval', array_values(array_filter([$request->n_id, $request->s_id])));
-            $match->open_ew_ids = array_map('intval', array_values(array_filter([$request->e_id, $request->w_id])));
+            $match->open_ns_ids = $this->normalizeLineupPair($request->input('n_id'), $request->input('s_id'));
+            $match->open_ew_ids = $this->normalizeLineupPair($request->input('e_id'), $request->input('w_id'));
         } else {
-            $match->closed_ns_ids = array_map('intval', array_values(array_filter([$request->n_id, $request->s_id])));
-            $match->closed_ew_ids = array_map('intval', array_values(array_filter([$request->e_id, $request->w_id])));
+            $match->closed_ns_ids = $this->normalizeLineupPair($request->input('n_id'), $request->input('s_id'));
+            $match->closed_ew_ids = $this->normalizeLineupPair($request->input('e_id'), $request->input('w_id'));
         }
 
         $tournament->team_results = $results;
@@ -1731,6 +1745,14 @@ class TournamentController extends Controller
             return ['success' => true];
         }
         return back()->with('success', __('Lineup updated.'));
+    }
+
+    protected function normalizeLineupPair($firstId, $secondId): array
+    {
+        return [
+            $firstId ? (int) $firstId : null,
+            $secondId ? (int) $secondId : null,
+        ];
     }
 
     public function updateMatchBoard(Request $request, string $id, string $roundId, string $matchId, string $room, int $boardNumber): RedirectResponse|array

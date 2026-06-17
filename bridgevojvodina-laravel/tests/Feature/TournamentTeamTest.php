@@ -42,6 +42,8 @@ class TournamentTeamTest extends TestCase
     public function test_director_can_view_team_edit_page()
     {
         $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+        $club = $this->createClub();
+        Player::create(['first_name' => 'Ana', 'last_name' => 'Anic', 'club_id' => $club->id]);
         $tournament = $this->createTournamentWithTeams($director);
 
         $response = $this->actingAs($director)->get(route('tournaments.teams.edit', [$tournament, 't1']));
@@ -49,6 +51,10 @@ class TournamentTeamTest extends TestCase
         $response->assertStatus(200);
         $response->assertSee('Edit Team');
         $response->assertSee('Team A');
+        $response->assertSee('player_search');
+        $response->assertSee('available_players');
+        $response->assertSee('Anic Ana');
+        $response->assertDontSee('<select id="player_id"', false);
     }
 
     public function test_director_can_update_team_name()
