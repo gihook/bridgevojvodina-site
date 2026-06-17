@@ -95,19 +95,62 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <h3 class="text-lg font-bold mb-4">{{ __('Add Player to Team') }}</h3>
-                    <form method="POST" action="{{ route('tournaments.teams.players.add', [$tournament, $team->id]) }}">
+                    @php
+                        $playerOptions = $availablePlayers->map(function ($player) {
+                            $club = $player->club ? ' - ' . $player->club->name : '';
+
+                            return [
+                                'id' => $player->id,
+                                'label' => trim($player->last_name . ' ' . $player->first_name . $club . ' #' . $player->id),
+                            ];
+                        })->values();
+                    @endphp
+                    <form
+                        method="POST"
+                        action="{{ route('tournaments.teams.players.add', [$tournament, $team->id]) }}"
+                        x-data="{
+                            query: '',
+                            playerId: '',
+                            players: @js($playerOptions),
+                            syncPlayer() {
+                                const selected = this.players.find((player) => player.label === this.query);
+                                this.playerId = selected ? selected.id : '';
+                                this.$refs.playerSearch.setCustomValidity('');
+                            },
+                            submitForm(event) {
+                                this.syncPlayer();
+                                if (!this.playerId) {
+                                    event.preventDefault();
+                                    this.$refs.playerSearch.setCustomValidity(@js(__('Choose a player from the list.')));
+                                    this.$refs.playerSearch.reportValidity();
+                                }
+                            }
+                        }"
+                        @submit="submitForm"
+                    >
                         @csrf
                         <div class="flex gap-4 items-end">
                             <div class="flex-1">
-                                <x-input-label for="player_id" :value="__('Select Player')" />
-                                <select id="player_id" name="player_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                    <option value="">{{ __('Select a player...') }}</option>
+                                <x-input-label for="player_search" :value="__('Type Player Name')" />
+                                <input type="hidden" name="player_id" :value="playerId">
+                                <input
+                                    id="player_search"
+                                    x-ref="playerSearch"
+                                    x-model="query"
+                                    @input="syncPlayer"
+                                    @change="syncPlayer"
+                                    list="available_players"
+                                    type="text"
+                                    class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
+                                    placeholder="{{ __('Start typing a player name...') }}"
+                                    autocomplete="off"
+                                    required
+                                >
+                                <datalist id="available_players">
                                     @foreach($availablePlayers as $player)
-                                        <option value="{{ $player->id }}">
-                                            {{ $player->last_name }} {{ $player->first_name }}
-                                        </option>
+                                        <option value="{{ trim($player->last_name . ' ' . $player->first_name . ($player->club ? ' - ' . $player->club->name : '') . ' #' . $player->id) }}"></option>
                                     @endforeach
-                                </select>
+                                </datalist>
                                 <x-input-error class="mt-2" :messages="$errors->get('player_id')" />
                             </div>
                             <x-secondary-button type="submit">
