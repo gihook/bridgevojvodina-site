@@ -2,6 +2,10 @@
     $boardsCount = $match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16;
     $isOpen = $room === 'open';
     $matchFinished = ($match->status ?? 'pending') === 'complete';
+    $lineupPlayerGroups = [
+        $homeTeam->name => $homePlayers,
+        $awayTeam->name => $awayPlayers,
+    ];
 @endphp
 
 <x-app-layout>
@@ -383,13 +387,17 @@
                             <x-input-label class="text-center text-xs font-black mb-1 {{ $isOpen ? 'text-blue-600' : 'text-red-600' }}" value="N ({{ $nsTeam->name }})" />
                             <select name="n_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                                 <option value="">-</option>
-                                @foreach($nsPlayers as $player)
-                                    @php
-                                        $currentId = $isOpen ? ($match->open_ns_ids[0] ?? null) : ($match->closed_ns_ids[0] ?? null);
-                                    @endphp
-                                    <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
-                                        {{ $player->last_name }} {{ $player->first_name }}
-                                    </option>
+                                @php
+                                    $currentId = $isOpen ? ($match->open_ns_ids[0] ?? null) : ($match->closed_ns_ids[0] ?? null);
+                                @endphp
+                                @foreach($lineupPlayerGroups as $teamName => $players)
+                                    <optgroup label="{{ $teamName }}">
+                                        @foreach($players as $player)
+                                            <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>
@@ -400,13 +408,17 @@
                                 <x-input-label class="text-center text-xs font-black mb-1 {{ $isOpen ? 'text-red-600' : 'text-blue-600' }}" value="W ({{ $ewTeam->name }})" />
                                 <select name="w_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                                     <option value="">-</option>
-                                    @foreach($ewPlayers as $player)
-                                        @php
-                                            $currentId = $isOpen ? ($match->open_ew_ids[1] ?? null) : ($match->closed_ew_ids[1] ?? null);
-                                        @endphp
-                                        <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
-                                            {{ $player->last_name }} {{ $player->first_name }}
-                                        </option>
+                                    @php
+                                        $currentId = $isOpen ? ($match->open_ew_ids[1] ?? null) : ($match->closed_ew_ids[1] ?? null);
+                                    @endphp
+                                    @foreach($lineupPlayerGroups as $teamName => $players)
+                                        <optgroup label="{{ $teamName }}">
+                                            @foreach($players as $player)
+                                                <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
+                                                    {{ $player->last_name }} {{ $player->first_name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
                                     @endforeach
                                 </select>
                             </div>
@@ -420,13 +432,17 @@
                                 <x-input-label class="text-center text-xs font-black mb-1 {{ $isOpen ? 'text-red-600' : 'text-blue-600' }}" value="E ({{ $ewTeam->name }})" />
                                 <select name="e_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                                     <option value="">-</option>
-                                    @foreach($ewPlayers as $player)
-                                        @php
-                                            $currentId = $isOpen ? ($match->open_ew_ids[0] ?? null) : ($match->closed_ew_ids[0] ?? null);
-                                        @endphp
-                                        <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
-                                            {{ $player->last_name }} {{ $player->first_name }}
-                                        </option>
+                                    @php
+                                        $currentId = $isOpen ? ($match->open_ew_ids[0] ?? null) : ($match->closed_ew_ids[0] ?? null);
+                                    @endphp
+                                    @foreach($lineupPlayerGroups as $teamName => $players)
+                                        <optgroup label="{{ $teamName }}">
+                                            @foreach($players as $player)
+                                                <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
+                                                    {{ $player->last_name }} {{ $player->first_name }}
+                                                </option>
+                                            @endforeach
+                                        </optgroup>
                                     @endforeach
                                 </select>
                             </div>
@@ -437,13 +453,17 @@
                             <x-input-label class="text-center text-xs font-black mb-1 {{ $isOpen ? 'text-blue-600' : 'text-red-600' }}" value="S ({{ $nsTeam->name }})" />
                             <select name="s_id" class="block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm text-sm">
                                 <option value="">-</option>
-                                @foreach($nsPlayers as $player)
-                                    @php
-                                        $currentId = $isOpen ? ($match->open_ns_ids[1] ?? null) : ($match->closed_ns_ids[1] ?? null);
-                                    @endphp
-                                    <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
-                                        {{ $player->last_name }} {{ $player->first_name }}
-                                    </option>
+                                @php
+                                    $currentId = $isOpen ? ($match->open_ns_ids[1] ?? null) : ($match->closed_ns_ids[1] ?? null);
+                                @endphp
+                                @foreach($lineupPlayerGroups as $teamName => $players)
+                                    <optgroup label="{{ $teamName }}">
+                                        @foreach($players as $player)
+                                            <option value="{{ $player->id }}" {{ $currentId == $player->id ? 'selected' : '' }}>
+                                                {{ $player->last_name }} {{ $player->first_name }}
+                                            </option>
+                                        @endforeach
+                                    </optgroup>
                                 @endforeach
                             </select>
                         </div>
