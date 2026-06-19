@@ -1782,18 +1782,18 @@ class TournamentController extends Controller
             abort(404);
         }
 
-        if (empty($match->boards)) {
+        $boardsCollection = collect($match->boards ?? []);
+        $boardIndex = $boardsCollection->search(fn($b) => (int) $b->board_number === (int) $boardNumber);
+
+        if ($boardIndex === false || $boardsCollection->count() !== $numBoards) {
+            $existing = $boardsCollection->keyBy(fn($b) => (int) $b->board_number);
             $boards = [];
             for ($i = 1; $i <= $numBoards; $i++) {
-                $boards[] = new MatchBoardDTO(board_number: $i);
+                $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
             }
             $match->boards = $boards;
-        } elseif (count($match->boards) !== $numBoards) {
-            $this->resizeMatchBoards($match, $numBoards);
+            $boardIndex = $boardNumber - 1;
         }
-
-        $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNumber);
-        if ($boardIndex === false) abort(404);
 
         $data = $request->all();
         $isVul = $this->hydrationService->calculateVulnerability($boardNumber);
