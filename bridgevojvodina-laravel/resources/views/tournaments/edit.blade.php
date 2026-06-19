@@ -249,6 +249,11 @@
                                                                         <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border {{ $matchStatus === 'complete' ? 'bg-green-50 text-green-700 border-green-100' : ($matchStatus === 'inProgress' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100') }}">
                                                                             {{ __($matchStatus) }}
                                                                         </span>
+                                                                        @if($match->vp_override ?? false)
+                                                                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-100">
+                                                                                {{ __('Manual VP') }}
+                                                                            </span>
+                                                                        @endif
 
                                                                         <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                                                             {{ $matchFinished ? number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1) : __('Hidden') }}
@@ -290,9 +295,12 @@
                                                                                     </form>
                                                                                 @endif
                                                                             </div>
-                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ customVp: {{ ($match->vp_override ?? false) ? 'true' : 'false' }} }" class="flex flex-wrap items-end gap-2 pt-1">
+                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ customVp: {{ ($match->vp_override ?? false) ? 'true' : 'false' }} }" class="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
                                                                                 @csrf
                                                                                 @method('PATCH')
+                                                                                <div class="w-full text-[10px] font-black uppercase tracking-widest text-gray-500">
+                                                                                    {{ __('Manual Result') }}
+                                                                                </div>
                                                                                 <div>
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Home IMP') }}</label>
                                                                                     <input type="number" name="home_imp" min="0" max="999" value="{{ $match->home_imp }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md">
@@ -314,7 +322,7 @@
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Away VP') }}</label>
                                                                                     <input type="number" name="away_vp" min="0" max="20" step="0.01" value="{{ number_format((float) $match->away_vp, 2, '.', '') }}" :disabled="!customVp" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
                                                                                 </div>
-                                                                                <button type="submit" class="pb-1 text-[10px] font-bold uppercase tracking-wider text-emerald-600 hover:text-emerald-900">
+                                                                                <button type="submit" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm hover:bg-emerald-700">
                                                                                     {{ __('Save Manual Result') }}
                                                                                 </button>
                                                                             </form>

@@ -571,6 +571,11 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertEquals(13.25, $match->home_vp);
         $this->assertEquals(6.75, $match->away_vp);
 
+        $this->get(route('tournaments.show', $tournament))
+            ->assertOk()
+            ->assertSee('24 : 12')
+            ->assertSee('13.25 - 6.75');
+
         $this->actingAs($director)
             ->patch(route('tournaments.rounds.status.update', [$tournament, 'r1']), [
                 'status' => 'complete',
