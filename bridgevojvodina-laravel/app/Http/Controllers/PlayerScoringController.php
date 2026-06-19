@@ -274,22 +274,8 @@ class PlayerScoringController extends Controller
 
         // Robust Board Resolution
         $numBoards = $this->matchBoardsCount($match, $round, $results);
-        if ($boardNumber < 1 || $boardNumber > $numBoards) {
-            abort(404);
-        }
-
-        $boardsCollection = collect($match->boards);
-        $boardIndex = $boardsCollection->search(fn($b) => (int)$b->board_number == (int)$boardNumber);
-
-        if ($boardIndex === false) {
-            $existing = $boardsCollection->keyBy('board_number');
-            $newBoards = [];
-            for ($i = 1; $i <= $numBoards; $i++) {
-                $newBoards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
-            }
-            $match->boards = $newBoards;
-            $boardIndex = $boardNumber - 1; // Direct lookup for efficiency after fill
-        }
+        $boardIndex = $this->resolveMatchBoardIndex($match, $numBoards, $boardNumber);
+        if ($boardIndex === null) abort(404);
         $board = $match->boards[$boardIndex];
 
         $data = $request->validate([
@@ -412,14 +398,55 @@ class PlayerScoringController extends Controller
 
     protected function resizeMatchBoards(object $match, int $boardsCount): void
     {
-        $existing = collect($match->boards ?? [])->keyBy('board_number');
+        $existingBoards = collect($match->boards ?? []);
+        $existing = $existingBoards->keyBy(fn($board) => (int) $board->board_number);
+        $start = (int) ($existingBoards->pluck('board_number')->map(fn($number) => (int) $number)->min() ?? 1);
         $boards = [];
 
-        for ($i = 1; $i <= $boardsCount; $i++) {
-            $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
+        for ($number = $start; $number < $start + $boardsCount; $number++) {
+            $boards[] = $existing->get($number) ?? new MatchBoardDTO(board_number: $number);
         }
 
         $match->boards = $boards;
+    }
+
+    protected function resolveMatchBoardIndex(object $match, int $boardsCount, int $boardNumber): ?int
+    {
+        $boardsCollection = collect($match->boards ?? []);
+
+        if ($boardsCollection->isEmpty()) {
+            if ($boardNumber < 1 || $boardNumber > $boardsCount) {
+                return null;
+            }
+
+            $match->boards = array_map(fn($number) => new MatchBoardDTO(board_number: $number), range(1, $boardsCount));
+
+            return $boardNumber - 1;
+        }
+
+        $boardIndex = $boardsCollection->search(fn($board) => (int) $board->board_number === $boardNumber);
+        if ($boardIndex !== false) {
+            return $boardIndex;
+        }
+
+        $start = ($boardNumber >= 1 && $boardNumber <= $boardsCount)
+            ? 1
+            : (int) $boardsCollection->pluck('board_number')->map(fn($number) => (int) $number)->min();
+
+        if ($boardNumber < $start || $boardNumber >= $start + $boardsCount) {
+            return null;
+        }
+
+        $existing = $boardsCollection->keyBy(fn($board) => (int) $board->board_number);
+        $boards = [];
+
+        for ($number = $start; $number < $start + $boardsCount; $number++) {
+            $boards[] = $existing->get($number) ?? new MatchBoardDTO(board_number: $number);
+        }
+
+        $match->boards = $boards;
+
+        return $boardNumber - $start;
     }
 
     protected function resolveOpenMatch(string $tournamentId, string $roundId, string $matchId): array
