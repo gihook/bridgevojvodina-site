@@ -1108,6 +1108,63 @@ class TournamentController extends Controller
         return back()->with('success', __('Match board count saved.'));
     }
 
+    public function updateMatchManualResult(Request $request, string $tournamentId, string $roundId, string $matchId): RedirectResponse
+    {
+        $tournament = $this->resolveTournament($tournamentId);
+        $this->authorizeTournament($tournament);
+
+        $validated = $request->validate([
+            'home_imp' => 'required|integer|min:0|max:999',
+            'away_imp' => 'required|integer|min:0|max:999',
+            'vp_override' => 'nullable|boolean',
+            'home_vp' => 'required_if:vp_override,1|nullable|numeric|min:0|max:20',
+            'away_vp' => 'required_if:vp_override,1|nullable|numeric|min:0|max:20',
+        ]);
+
+        $results = $tournament->team_results;
+        if (!$results) {
+            abort(404);
+        }
+
+        $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
+        if ($roundIndex === false) {
+            abort(404);
+        }
+
+        $round = $results->rounds[$roundIndex];
+        $matchIndex = collect($round->matches)->search(fn($m) => ($m->id === $matchId || $m->home_team_id === $matchId));
+        if ($matchIndex === false) {
+            abort(404);
+        }
+
+        $match = $round->matches[$matchIndex];
+        $match->home_imp = (int) $validated['home_imp'];
+        $match->away_imp = (int) $validated['away_imp'];
+        $match->vp_override = (bool) ($validated['vp_override'] ?? false);
+        $match->status = 'complete';
+
+        if ($match->vp_override) {
+            $match->home_vp = round((float) $validated['home_vp'], 2);
+            $match->away_vp = round((float) $validated['away_vp'], 2);
+        } else {
+            [$homeVp, $awayVp] = $this->vpService->calculateVp(
+                $match->home_imp,
+                $match->away_imp,
+                $this->matchBoardsCount($match, $round, $results)
+            );
+            $match->home_vp = $homeVp;
+            $match->away_vp = $awayVp;
+        }
+
+        $this->hydrationService->recalculateStandings($results);
+        $results->player_butlers = $this->hydrationService->calculatePlayerButlers($results);
+
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        return back()->with('success', __('Manual match result saved.'));
+    }
+
     public function updateRoundButlerExclusion(Request $request, string $tournamentId, string $roundId): RedirectResponse
     {
         $tournament = $this->resolveTournament($tournamentId);
@@ -1557,14 +1614,16 @@ class TournamentController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        [$homeVp, $awayVp] = $this->vpService->calculateVp(
-            $totalHomeImp,
-            $totalAwayImp,
-            $this->matchBoardsCount($match, $round, $results)
-        );
+        if (!($match->vp_override ?? false)) {
+            [$homeVp, $awayVp] = $this->vpService->calculateVp(
+                $totalHomeImp,
+                $totalAwayImp,
+                $this->matchBoardsCount($match, $round, $results)
+            );
 
-        $match->home_vp = $homeVp;
-        $match->away_vp = $awayVp;
+            $match->home_vp = $homeVp;
+            $match->away_vp = $awayVp;
+        }
     }
 
     public function editMatchRoom(string $id, string $roundId, string $matchId, string $room): View
@@ -1782,18 +1841,18 @@ class TournamentController extends Controller
             abort(404);
         }
 
-        if (empty($match->boards)) {
+        $boardsCollection = collect($match->boards ?? []);
+        $boardIndex = $boardsCollection->search(fn($b) => (int) $b->board_number === (int) $boardNumber);
+
+        if ($boardIndex === false || $boardsCollection->count() !== $numBoards) {
+            $existing = $boardsCollection->keyBy(fn($b) => (int) $b->board_number);
             $boards = [];
             for ($i = 1; $i <= $numBoards; $i++) {
-                $boards[] = new MatchBoardDTO(board_number: $i);
+                $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
             }
             $match->boards = $boards;
-        } elseif (count($match->boards) !== $numBoards) {
-            $this->resizeMatchBoards($match, $numBoards);
+            $boardIndex = $boardNumber - 1;
         }
-
-        $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNumber);
-        if ($boardIndex === false) abort(404);
 
         $data = $request->all();
         $isVul = $this->hydrationService->calculateVulnerability($boardNumber);
@@ -1859,10 +1918,12 @@ class TournamentController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        $boardsCount = $this->matchBoardsCount($match, $round, $results);
-        list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
-        $match->home_vp = $hVp;
-        $match->away_vp = $aVp;
+        if (!($match->vp_override ?? false)) {
+            $boardsCount = $this->matchBoardsCount($match, $round, $results);
+            list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
+            $match->home_vp = $hVp;
+            $match->away_vp = $aVp;
+        }
 
         $this->hydrationService->recalculateStandings($results);
         $tournament->team_results = $results;
@@ -2020,10 +2081,12 @@ class TournamentController extends Controller
         $match->home_imp = $totalHomeImp;
         $match->away_imp = $totalAwayImp;
 
-        $boardsCount = $this->matchBoardsCount($match, $round, $results);
-        list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
-        $match->home_vp = $hVp;
-        $match->away_vp = $aVp;
+        if (!($match->vp_override ?? false)) {
+            $boardsCount = $this->matchBoardsCount($match, $round, $results);
+            list($hVp, $aVp) = $this->vpService->calculateVp($totalHomeImp, $totalAwayImp, $boardsCount);
+            $match->home_vp = $hVp;
+            $match->away_vp = $aVp;
+        }
 
         $this->hydrationService->recalculateStandings($results);
         $tournament->team_results = $results;

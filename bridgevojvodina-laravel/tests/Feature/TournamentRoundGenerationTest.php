@@ -456,4 +456,132 @@ class TournamentRoundGenerationTest extends TestCase
             ])
             ->assertSessionHasErrors('n_id');
     }
+
+    public function test_director_can_save_admin_board_when_stored_boards_are_stale()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'T1', 'number' => 1, 'captain_id' => 0, 'player_ids' => []],
+                    ['id' => 't2', 'name' => 'T2', 'number' => 2, 'captain_id' => 0, 'player_ids' => []],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'R1',
+                        'status' => 'inProgress',
+                        'boards_per_round' => 3,
+                        'matches' => [
+                            [
+                                'id' => 'm1',
+                                'home_team_id' => 't1',
+                                'away_team_id' => 't2',
+                                'home_vp' => 0,
+                                'away_vp' => 0,
+                                'home_imp' => 0,
+                                'away_imp' => 0,
+                                'status' => 'inProgress',
+                                'boards_count' => 3,
+                                'boards' => [
+                                    ['board_number' => 1],
+                                    ['board_number' => 3],
+                                    ['board_number' => 99],
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($director)
+            ->patchJson(route('tournaments.match.room.board.update', [$tournament, 'r1', 'm1', 'open', 2]), [
+                'contract_level' => 3,
+                'contract_suit' => 'NT',
+                'contract_risk' => 1,
+                'declarer' => 'S',
+                'tricks' => 9,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+
+        $this->assertSame([1, 2, 3], collect($match->boards)->pluck('board_number')->all());
+        $this->assertSame(600, $match->boards[1]->home_score);
+    }
+
+    public function test_director_can_save_manual_match_imp_and_custom_vp_without_boards()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'T1', 'number' => 1, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 0],
+                    ['id' => 't2', 'name' => 'T2', 'number' => 2, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 0],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1',
+                        'name' => 'R1',
+                        'status' => 'inProgress',
+                        'boards_per_round' => 16,
+                        'matches' => [
+                            [
+                                'id' => 'm1',
+                                'home_team_id' => 't1',
+                                'away_team_id' => 't2',
+                                'home_vp' => 0,
+                                'away_vp' => 0,
+                                'home_imp' => 0,
+                                'away_imp' => 0,
+                                'status' => 'pending',
+                                'boards' => [],
+                            ],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($director)
+            ->patch(route('tournaments.rounds.matches.manual-result.update', [$tournament, 'r1', 'm1']), [
+                'home_imp' => 24,
+                'away_imp' => 12,
+                'vp_override' => 1,
+                'home_vp' => 13.25,
+                'away_vp' => 6.75,
+            ])
+            ->assertRedirect()
+            ->assertSessionHas('success');
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+
+        $this->assertSame('complete', $match->status);
+        $this->assertSame(24, $match->home_imp);
+        $this->assertSame(12, $match->away_imp);
+        $this->assertTrue($match->vp_override);
+        $this->assertEquals(13.25, $match->home_vp);
+        $this->assertEquals(6.75, $match->away_vp);
+
+        $this->actingAs($director)
+            ->patch(route('tournaments.rounds.status.update', [$tournament, 'r1']), [
+                'status' => 'complete',
+            ]);
+
+        $tournament->refresh();
+        $results = $tournament->team_results;
+
+        $this->assertEquals(13.25, $results->rounds[0]->matches[0]->home_vp);
+        $this->assertEquals(6.75, $results->rounds[0]->matches[0]->away_vp);
+        $this->assertEquals(13.25, $results->teams[0]->total_vp);
+        $this->assertEquals(6.75, $results->teams[1]->total_vp);
+    }
 }

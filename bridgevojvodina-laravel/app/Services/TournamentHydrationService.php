@@ -270,7 +270,7 @@ class TournamentHydrationService
                     }
                 } else {
                     // Automatically calculate VP based on IMPs for normal matches
-                    if ($match->home_imp !== 0 || $match->away_imp !== 0) {
+                    if (!($match->vp_override ?? false) && ($match->home_imp !== 0 || $match->away_imp !== 0)) {
                         list($hVp, $aVp) = $this->vpService->calculateVp($match->home_imp, $match->away_imp, $boards);
                         $match->home_vp = $hVp;
                         $match->away_vp = $aVp;
