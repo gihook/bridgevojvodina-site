@@ -41,6 +41,8 @@
                                 <div class="px-4 py-2 {{ $isBye ? 'bg-gray-400' : 'bg-blue-600' }} text-white rounded font-mono text-xl flex flex-col items-center">
                                     @if($isBye)
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Bye') }}</span>
+                                    @elseif($matchFinished && ($match->vp_override ?? false))
+                                        <span>{{ number_format($match->home_vp, 2) }} : {{ number_format($match->away_vp, 2) }}</span>
                                     @elseif($matchFinished)
                                         <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
                                     @elseif($matchStatus === 'inProgress')
@@ -49,7 +51,9 @@
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Not played yet') }}</span>
                                     @endif
                                     <span class="text-xs">
-                                        @if($isBye || $matchFinished)
+                                        @if($matchFinished && ($match->vp_override ?? false))
+                                            {{ __('VP') }}
+                                        @elseif($isBye || $matchFinished)
                                             ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }})
                                         @elseif($matchStatus === 'inProgress')
                                             {{ __('In progress') }}
