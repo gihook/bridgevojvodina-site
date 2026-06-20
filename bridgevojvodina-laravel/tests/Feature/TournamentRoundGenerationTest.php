@@ -552,9 +552,7 @@ class TournamentRoundGenerationTest extends TestCase
 
         $this->actingAs($director)
             ->patch(route('tournaments.rounds.matches.manual-result.update', [$tournament, 'r1', 'm1']), [
-                'home_imp' => 24,
-                'away_imp' => 12,
-                'vp_override' => 1,
+                'result_type' => 'vp',
                 'home_vp' => 13.25,
                 'away_vp' => 6.75,
             ])
@@ -565,16 +563,16 @@ class TournamentRoundGenerationTest extends TestCase
         $match = $tournament->team_results->rounds[0]->matches[0];
 
         $this->assertSame('complete', $match->status);
-        $this->assertSame(24, $match->home_imp);
-        $this->assertSame(12, $match->away_imp);
+        $this->assertSame(0, $match->home_imp);
+        $this->assertSame(0, $match->away_imp);
         $this->assertTrue($match->vp_override);
         $this->assertEquals(13.25, $match->home_vp);
         $this->assertEquals(6.75, $match->away_vp);
 
         $this->get(route('tournaments.show', $tournament))
             ->assertOk()
-            ->assertSee('24 : 12')
-            ->assertSee('13.25 - 6.75');
+            ->assertSee('13.25 : 6.75')
+            ->assertSee('VP');
 
         $this->actingAs($director)
             ->patch(route('tournaments.rounds.status.update', [$tournament, 'r1']), [

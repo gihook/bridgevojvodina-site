@@ -295,32 +295,37 @@
                                                                                     </form>
                                                                                 @endif
                                                                             </div>
-                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ customVp: {{ ($match->vp_override ?? false) ? 'true' : 'false' }} }" class="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ resultType: '{{ ($match->vp_override ?? false) ? 'vp' : 'imp' }}' }" class="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
                                                                                 @csrf
                                                                                 @method('PATCH')
                                                                                 <div class="w-full text-[10px] font-black uppercase tracking-widest text-gray-500">
                                                                                     {{ __('Manual Result') }}
                                                                                 </div>
-                                                                                <div>
+                                                                                <div class="flex rounded-md border border-gray-300 bg-white p-0.5">
+                                                                                    <label class="cursor-pointer">
+                                                                                        <input type="radio" name="result_type" value="imp" x-model="resultType" class="sr-only">
+                                                                                        <span class="block rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest" :class="resultType === 'imp' ? 'bg-gray-800 text-white' : 'text-gray-500'">{{ __('IMP') }}</span>
+                                                                                    </label>
+                                                                                    <label class="cursor-pointer">
+                                                                                        <input type="radio" name="result_type" value="vp" x-model="resultType" class="sr-only">
+                                                                                        <span class="block rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest" :class="resultType === 'vp' ? 'bg-indigo-600 text-white' : 'text-gray-500'">{{ __('VP') }}</span>
+                                                                                    </label>
+                                                                                </div>
+                                                                                <div x-show="resultType === 'imp'">
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Home IMP') }}</label>
-                                                                                    <input type="number" name="home_imp" min="0" max="999" value="{{ $match->home_imp }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md">
+                                                                                    <input type="number" name="home_imp" min="0" max="999" value="{{ $match->home_imp }}" :disabled="resultType !== 'imp'" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
                                                                                 </div>
-                                                                                <div>
+                                                                                <div x-show="resultType === 'imp'">
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Away IMP') }}</label>
-                                                                                    <input type="number" name="away_imp" min="0" max="999" value="{{ $match->away_imp }}" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md">
+                                                                                    <input type="number" name="away_imp" min="0" max="999" value="{{ $match->away_imp }}" :disabled="resultType !== 'imp'" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
                                                                                 </div>
-                                                                                <label class="inline-flex items-center gap-1 pb-1 text-[10px] font-bold uppercase tracking-wider text-gray-500">
-                                                                                    <input type="hidden" name="vp_override" value="0">
-                                                                                    <input type="checkbox" name="vp_override" value="1" x-model="customVp" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
-                                                                                    <span>{{ __('Custom VP') }}</span>
-                                                                                </label>
-                                                                                <div>
+                                                                                <div x-show="resultType === 'vp'">
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Home VP') }}</label>
-                                                                                    <input type="number" name="home_vp" min="0" max="20" step="0.01" value="{{ number_format((float) $match->home_vp, 2, '.', '') }}" :disabled="!customVp" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
+                                                                                    <input type="number" name="home_vp" min="0" max="20" step="0.01" value="{{ number_format((float) $match->home_vp, 2, '.', '') }}" :disabled="resultType !== 'vp'" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
                                                                                 </div>
-                                                                                <div>
+                                                                                <div x-show="resultType === 'vp'">
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Away VP') }}</label>
-                                                                                    <input type="number" name="away_vp" min="0" max="20" step="0.01" value="{{ number_format((float) $match->away_vp, 2, '.', '') }}" :disabled="!customVp" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
+                                                                                    <input type="number" name="away_vp" min="0" max="20" step="0.01" value="{{ number_format((float) $match->away_vp, 2, '.', '') }}" :disabled="resultType !== 'vp'" class="w-16 text-[10px] py-0.5 px-1 border-gray-300 rounded-md disabled:bg-gray-100 disabled:text-gray-400">
                                                                                 </div>
                                                                                 <button type="submit" class="inline-flex items-center rounded-md bg-emerald-600 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white shadow-sm hover:bg-emerald-700">
                                                                                     {{ __('Save Manual Result') }}

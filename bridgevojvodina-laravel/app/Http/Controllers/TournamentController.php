@@ -1114,11 +1114,11 @@ class TournamentController extends Controller
         $this->authorizeTournament($tournament);
 
         $validated = $request->validate([
-            'home_imp' => 'required|integer|min:0|max:999',
-            'away_imp' => 'required|integer|min:0|max:999',
-            'vp_override' => 'nullable|boolean',
-            'home_vp' => 'required_if:vp_override,1|nullable|numeric|min:0|max:20',
-            'away_vp' => 'required_if:vp_override,1|nullable|numeric|min:0|max:20',
+            'result_type' => 'required|string|in:imp,vp',
+            'home_imp' => 'required_if:result_type,imp|nullable|integer|min:0|max:999',
+            'away_imp' => 'required_if:result_type,imp|nullable|integer|min:0|max:999',
+            'home_vp' => 'required_if:result_type,vp|nullable|numeric|min:0|max:20',
+            'away_vp' => 'required_if:result_type,vp|nullable|numeric|min:0|max:20',
         ]);
 
         $results = $tournament->team_results;
@@ -1138,15 +1138,18 @@ class TournamentController extends Controller
         }
 
         $match = $round->matches[$matchIndex];
-        $match->home_imp = (int) $validated['home_imp'];
-        $match->away_imp = (int) $validated['away_imp'];
-        $match->vp_override = (bool) ($validated['vp_override'] ?? false);
+        $isVpResult = $validated['result_type'] === 'vp';
+        $match->vp_override = $isVpResult;
         $match->status = 'complete';
 
-        if ($match->vp_override) {
+        if ($isVpResult) {
+            $match->home_imp = (int) ($validated['home_imp'] ?? 0);
+            $match->away_imp = (int) ($validated['away_imp'] ?? 0);
             $match->home_vp = round((float) $validated['home_vp'], 2);
             $match->away_vp = round((float) $validated['away_vp'], 2);
         } else {
+            $match->home_imp = (int) $validated['home_imp'];
+            $match->away_imp = (int) $validated['away_imp'];
             [$homeVp, $awayVp] = $this->vpService->calculateVp(
                 $match->home_imp,
                 $match->away_imp,

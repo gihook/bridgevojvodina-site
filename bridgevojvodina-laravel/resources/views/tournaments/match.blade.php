@@ -32,10 +32,15 @@
                         <div class="flex flex-col items-center gap-4">
                             <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
                                 @if($matchFinished)
-                                    <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
-                                    <span class="text-sm mt-1">
-                                        ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
-                                    </span>
+                                    @if($match->vp_override ?? false)
+                                        <span>{{ number_format($match->home_vp, 2) }} : {{ number_format($match->away_vp, 2) }}</span>
+                                        <span class="text-sm mt-1">{{ __('VP') }}</span>
+                                    @else
+                                        <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
+                                        <span class="text-sm mt-1">
+                                            ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
+                                        </span>
+                                    @endif
                                 @else
                                     <span class="text-base uppercase tracking-widest">{{ __('IMPs hidden') }}</span>
                                     <span class="text-xs mt-1">{{ __('Visible when match is finished') }}</span>
