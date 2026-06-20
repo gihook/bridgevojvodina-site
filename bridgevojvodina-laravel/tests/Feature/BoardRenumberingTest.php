@@ -28,12 +28,14 @@ class BoardRenumberingTest extends TestCase
                     'id' => 'round1', 
                     'name' => 'Round 1', 
                     'status' => 'inProgress',
+                    'boards_per_round' => 2,
                     'matches' => [
                         [
                             'id' => 'match1',
                             'home_team_id' => 'team1',
                             'away_team_id' => 'team2',
                             'home_imp' => 0, 'away_imp' => 0, 'home_vp' => 0, 'away_vp' => 0,
+                            'status' => 'inProgress',
                             'boards' => [
                                 ['board_number' => 1, 'home_score' => 420],
                                 ['board_number' => 2, 'home_score' => -50]
@@ -86,5 +88,23 @@ class BoardRenumberingTest extends TestCase
             'board_set_id' => $boardSet->id,
             'board_number' => 17,
         ]);
+
+        $this->actingAs($director)
+            ->patchJson(route('tournaments.match.room.board.update', [$tournament, 'round1', 'match1', 'open', 17]), [
+                'contract_level' => 4,
+                'contract_suit' => 'S',
+                'contract_risk' => 1,
+                'declarer' => 'N',
+                'tricks' => 10,
+            ])
+            ->assertOk()
+            ->assertJson(['success' => true]);
+
+        $tournament->refresh();
+        $match = $tournament->team_results->rounds[0]->matches[0];
+
+        $this->assertEquals(17, $match->boards[0]->board_number);
+        $this->assertEquals(18, $match->boards[1]->board_number);
+        $this->assertEquals(420, $match->boards[0]->home_score);
     }
 }

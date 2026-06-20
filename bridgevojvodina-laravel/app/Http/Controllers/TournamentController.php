@@ -1591,14 +1591,55 @@ class TournamentController extends Controller
 
     protected function resizeMatchBoards(object $match, int $boardsCount): void
     {
-        $existing = collect($match->boards ?? [])->keyBy('board_number');
+        $existingBoards = collect($match->boards ?? []);
+        $existing = $existingBoards->keyBy(fn($board) => (int) $board->board_number);
+        $start = (int) ($existingBoards->pluck('board_number')->map(fn($number) => (int) $number)->min() ?? 1);
         $boards = [];
 
-        for ($i = 1; $i <= $boardsCount; $i++) {
-            $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
+        for ($number = $start; $number < $start + $boardsCount; $number++) {
+            $boards[] = $existing->get($number) ?? new MatchBoardDTO(board_number: $number);
         }
 
         $match->boards = $boards;
+    }
+
+    protected function resolveMatchBoardIndex(object $match, int $boardsCount, int $boardNumber): ?int
+    {
+        $boardsCollection = collect($match->boards ?? []);
+
+        if ($boardsCollection->isEmpty()) {
+            if ($boardNumber < 1 || $boardNumber > $boardsCount) {
+                return null;
+            }
+
+            $match->boards = array_map(fn($number) => new MatchBoardDTO(board_number: $number), range(1, $boardsCount));
+
+            return $boardNumber - 1;
+        }
+
+        $boardIndex = $boardsCollection->search(fn($board) => (int) $board->board_number === $boardNumber);
+        if ($boardIndex !== false) {
+            return $boardIndex;
+        }
+
+        $start = ($boardNumber >= 1 && $boardNumber <= $boardsCount)
+            ? 1
+            : (int) $boardsCollection->pluck('board_number')->map(fn($number) => (int) $number)->min();
+
+        if ($boardNumber < $start || $boardNumber >= $start + $boardsCount) {
+            return null;
+        }
+
+        $existing = $boardsCollection->keyBy(fn($board) => (int) $board->board_number);
+        $boards = [];
+
+        for ($number = $start; $number < $start + $boardsCount; $number++) {
+            $boards[] = $existing->get($number) ?? new MatchBoardDTO(board_number: $number);
+        }
+
+        $match->boards = $boards;
+
+        return $boardNumber - $start;
     }
 
     protected function recalculateMatchTotals(object $match, object $round, object $results): void
@@ -1837,22 +1878,8 @@ class TournamentController extends Controller
 
         // Ensure boards are initialized
         $numBoards = $this->matchBoardsCount($match, $round, $results);
-        if ($boardNumber < 1 || $boardNumber > $numBoards) {
-            abort(404);
-        }
-
-        $boardsCollection = collect($match->boards ?? []);
-        $boardIndex = $boardsCollection->search(fn($b) => (int) $b->board_number === (int) $boardNumber);
-
-        if ($boardIndex === false || $boardsCollection->count() !== $numBoards) {
-            $existing = $boardsCollection->keyBy(fn($b) => (int) $b->board_number);
-            $boards = [];
-            for ($i = 1; $i <= $numBoards; $i++) {
-                $boards[] = $existing->get($i) ?? new MatchBoardDTO(board_number: $i);
-            }
-            $match->boards = $boards;
-            $boardIndex = $boardNumber - 1;
-        }
+        $boardIndex = $this->resolveMatchBoardIndex($match, $numBoards, $boardNumber);
+        if ($boardIndex === null) abort(404);
 
         $data = $request->all();
         $isVul = $this->hydrationService->calculateVulnerability($boardNumber);
@@ -1999,15 +2026,13 @@ class TournamentController extends Controller
             if (count($row) < 5) continue;
             
             $boardNum = (int) $row[0];
-            if ($boardNum < 1 || $boardNum > $numBoards) continue;
+            $boardIndex = $this->resolveMatchBoardIndex($match, $numBoards, $boardNum);
+            if ($boardIndex === null) continue;
 
             $contractStr = $row[1];
             $by = strtoupper($row[2]);
             $lead = strtoupper($row[3]);
             $result = $row[4];
-
-            $boardIndex = collect($match->boards)->search(fn($b) => $b->board_number === $boardNum);
-            if ($boardIndex === false) continue;
 
             $board = $match->boards[$boardIndex];
             $parsed = $this->scoringService->parseContract($contractStr);
