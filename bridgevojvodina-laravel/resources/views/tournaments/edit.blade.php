@@ -68,7 +68,7 @@
                                 @csrf
                                 @method('PATCH')
                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
-                                    <div class="flex gap-4">
+                                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div class="flex-1">
                                             <x-input-label for="bye_vp" :value="__('Bye VP')" />
                                             <x-text-input id="bye_vp" name="bye_vp" type="number" step="0.5" class="mt-1 block w-full" :value="old('bye_vp', $tournament->team_results->bye_vp ?? 12.0)" required />
@@ -79,6 +79,14 @@
                                             <x-text-input id="boards_per_round" name="boards_per_round" type="number" class="mt-1 block w-full" :value="old('boards_per_round', $tournament->team_results->boards_per_round ?? 16)" required />
                                             <x-input-error class="mt-2" :messages="$errors->get('boards_per_round')" />
                                         </div>
+                                        <div class="flex-1">
+                                            <x-input-label for="scoring_type" :value="__('Scoring')" />
+                                            <select id="scoring_type" name="scoring_type" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                                                <option value="vp" {{ old('scoring_type', $tournament->team_results->scoring_type ?? 'vp') === 'vp' ? 'selected' : '' }}>{{ __('VP') }}</option>
+                                                <option value="imp" {{ old('scoring_type', $tournament->team_results->scoring_type ?? 'vp') === 'imp' ? 'selected' : '' }}>{{ __('IMP only') }}</option>
+                                            </select>
+                                            <x-input-error class="mt-2" :messages="$errors->get('scoring_type')" />
+                                        </div>
                                     </div>
                                     <div class="flex justify-end">
                                         <x-secondary-button type="submit">
@@ -87,7 +95,7 @@
                                     </div>
                                 </div>
                                 <p class="mt-2 text-xs text-gray-500">
-                                    {{ __('Victory Points awarded for a "bye" round, and default number of boards per round.') }}
+                                    {{ __('Choose tournament scoring, bye VP for VP tournaments, and default number of boards per round.') }}
                                 </p>
                             </form>
                         </div>
@@ -236,6 +244,7 @@
                                                                     $closedStateUrl = route('tournaments.match.room.state', ['tournament' => $tournament, 'round' => $round->id, 'match' => ($match->id ?: $match->home_team_id), 'room' => 'closed']);
                                                                     $matchStatus = $match->status ?? 'pending';
                                                                     $matchFinished = $matchStatus === 'complete';
+                                                                    $isImpScoring = ($tournament->team_results->scoring_type ?? 'vp') === 'imp';
 
                                                                     $canEdit = $roundStatus === 'inProgress' && $matchStatus === 'inProgress' && !$isBye;
                                                                 @endphp
@@ -249,14 +258,14 @@
                                                                         <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border {{ $matchStatus === 'complete' ? 'bg-green-50 text-green-700 border-green-100' : ($matchStatus === 'inProgress' ? 'bg-blue-50 text-blue-700 border-blue-100' : 'bg-gray-50 text-gray-500 border-gray-100') }}">
                                                                             {{ __($matchStatus) }}
                                                                         </span>
-                                                                        @if($match->vp_override ?? false)
+                                                                        @if(!$isImpScoring && ($match->vp_override ?? false))
                                                                             <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-amber-50 text-amber-700 border-amber-100">
                                                                                 {{ __('Manual VP') }}
                                                                             </span>
                                                                         @endif
 
                                                                         <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
-                                                                            {{ $matchFinished ? number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1) : __('Hidden') }}
+                                                                            {{ $matchFinished ? ($isImpScoring ? ($match->home_imp . ' - ' . $match->away_imp . ' IMP') : number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1)) : __('Hidden') }}
                                                                         </span>
                                                                     </div>
 
@@ -295,7 +304,7 @@
                                                                                     </form>
                                                                                 @endif
                                                                             </div>
-                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ resultType: '{{ ($match->vp_override ?? false) ? 'vp' : 'imp' }}' }" class="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
+                                                                            <form method="POST" action="{{ route('tournaments.rounds.matches.manual-result.update', [$tournament, $round->id, ($match->id ?: $match->home_team_id)]) }}" x-data="{ resultType: '{{ (!$isImpScoring && ($match->vp_override ?? false)) ? 'vp' : 'imp' }}' }" class="flex flex-wrap items-end gap-2 rounded-md border border-gray-200 bg-gray-50 p-2">
                                                                                 @csrf
                                                                                 @method('PATCH')
                                                                                 <div class="w-full text-[10px] font-black uppercase tracking-widest text-gray-500">
@@ -306,10 +315,12 @@
                                                                                         <input type="radio" name="result_type" value="imp" x-model="resultType" class="sr-only">
                                                                                         <span class="block rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest" :class="resultType === 'imp' ? 'bg-gray-800 text-white' : 'text-gray-500'">{{ __('IMP') }}</span>
                                                                                     </label>
-                                                                                    <label class="cursor-pointer">
-                                                                                        <input type="radio" name="result_type" value="vp" x-model="resultType" class="sr-only">
-                                                                                        <span class="block rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest" :class="resultType === 'vp' ? 'bg-indigo-600 text-white' : 'text-gray-500'">{{ __('VP') }}</span>
-                                                                                    </label>
+                                                                                    @if(!$isImpScoring)
+                                                                                        <label class="cursor-pointer">
+                                                                                            <input type="radio" name="result_type" value="vp" x-model="resultType" class="sr-only">
+                                                                                            <span class="block rounded px-2 py-1 text-[10px] font-black uppercase tracking-widest" :class="resultType === 'vp' ? 'bg-indigo-600 text-white' : 'text-gray-500'">{{ __('VP') }}</span>
+                                                                                        </label>
+                                                                                    @endif
                                                                                 </div>
                                                                                 <div x-show="resultType === 'imp'">
                                                                                     <label class="block text-[9px] font-bold uppercase tracking-wider text-gray-400">{{ __('Home IMP') }}</label>
@@ -596,12 +607,17 @@
                                         <option value="">{{ __('Select Format') }}</option>
                                         <option value="single_round_robin">{{ __('Single Round Robin') }}</option>
                                         <option value="double_round_robin">{{ __('Double Round Robin') }}</option>
+                                        <option value="final_top_two">{{ __('Final between top two') }}</option>
                                     </select>
                                 </div>
                                 <div>
                                     <x-input-label for="boards_per_round_modal" :value="__('Boards per Round')" />
                                     <x-text-input id="boards_per_round_modal" name="boards_per_round" type="number" class="mt-1 block w-full" :value="old('boards_per_round', $tournament->team_results->boards_per_round ?? 16)" required />
                                 </div>
+                                <label class="inline-flex items-center gap-2 text-sm font-semibold text-gray-600">
+                                    <input type="checkbox" name="include_final" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
+                                    <span>{{ __('Append final between current top two teams') }}</span>
+                                </label>
                             </div>
                             <div class="mt-6 flex justify-end gap-3">
                                 <x-secondary-button type="button" @click="generateRoundsModalOpen = false">{{ __('Cancel') }}</x-secondary-button>

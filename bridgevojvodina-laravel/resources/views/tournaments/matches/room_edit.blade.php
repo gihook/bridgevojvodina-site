@@ -2,6 +2,7 @@
     $boardsCount = $match->boards_count ?? $round->boards_per_round ?? $results->boards_per_round ?? 16;
     $isOpen = $room === 'open';
     $matchFinished = ($match->status ?? 'pending') === 'complete';
+    $isImpScoring = ($results->scoring_type ?? 'vp') === 'imp';
     $lineupPlayerGroups = [
         $homeTeam->name => $homePlayers,
         $awayTeam->name => $awayPlayers,
@@ -348,7 +349,7 @@
                     </div>
                     
                     @if($matchFinished)
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-12 text-center">
+                        <div class="grid grid-cols-1 {{ $isImpScoring ? '' : 'md:grid-cols-2' }} gap-12 text-center">
                             <div class="space-y-2">
                                 <div class="text-xs font-bold text-gray-400 uppercase tracking-widest">{{ __('Total IMPs') }}</div>
                                 <div class="flex items-center justify-center gap-6">
@@ -358,19 +359,21 @@
                                 </div>
                             </div>
 
-                            <div class="space-y-2 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
-                                <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest">{{ __('Total VP') }}</div>
-                                <div class="flex items-center justify-center gap-6">
-                                    <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(homeVp).toFixed(2)"></div>
-                                    <div class="text-xl font-bold text-indigo-300">-</div>
-                                    <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(awayVp).toFixed(2)"></div>
+                            @if(!$isImpScoring)
+                                <div class="space-y-2 bg-indigo-50 p-4 rounded-xl border border-indigo-100">
+                                    <div class="text-xs font-bold text-indigo-400 uppercase tracking-widest">{{ __('Total VP') }}</div>
+                                    <div class="flex items-center justify-center gap-6">
+                                        <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(homeVp).toFixed(2)"></div>
+                                        <div class="text-xl font-bold text-indigo-300">-</div>
+                                        <div class="text-3xl font-black text-indigo-700" x-text="parseFloat(awayVp).toFixed(2)"></div>
+                                    </div>
                                 </div>
-                            </div>
+                            @endif
                         </div>
                     @else
                         <div class="rounded-xl border border-blue-100 bg-blue-50 p-6 text-center">
                             <div class="text-xs font-black uppercase tracking-widest text-blue-700">{{ __('IMPs hidden during match') }}</div>
-                            <div class="text-sm text-blue-600 mt-1">{{ __('Finish the match to reveal IMP and VP totals.') }}</div>
+                            <div class="text-sm text-blue-600 mt-1">{{ $isImpScoring ? __('Finish the match to reveal IMP totals.') : __('Finish the match to reveal IMP and VP totals.') }}</div>
                         </div>
                     @endif
                 </div>
