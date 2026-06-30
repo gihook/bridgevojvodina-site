@@ -357,6 +357,11 @@
                                     <div class="text-2xl font-black text-gray-300">:</div>
                                     <div class="text-4xl font-black text-gray-900" x-text="awayImp"></div>
                                 </div>
+                                @if(($match->home_carryover_imp ?? 0) || ($match->away_carryover_imp ?? 0))
+                                    <div class="text-xs font-bold text-purple-500 uppercase tracking-widest">
+                                        {{ __('Carryover') }} {{ (int) ($match->home_carryover_imp ?? 0) }}-{{ (int) ($match->away_carryover_imp ?? 0) }}
+                                    </div>
+                                @endif
                             </div>
 
                             @if(!$isImpScoring)

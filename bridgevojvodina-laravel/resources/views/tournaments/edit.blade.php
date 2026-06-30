@@ -263,6 +263,11 @@
                                                                                 {{ __('Manual VP') }}
                                                                             </span>
                                                                         @endif
+                                                                        @if(($match->home_carryover_imp ?? 0) || ($match->away_carryover_imp ?? 0))
+                                                                            <span class="text-[9px] font-bold uppercase px-1.5 py-0.5 rounded border bg-purple-50 text-purple-700 border-purple-100">
+                                                                                {{ __('Carryover') }} {{ (int) ($match->home_carryover_imp ?? 0) }}-{{ (int) ($match->away_carryover_imp ?? 0) }}
+                                                                            </span>
+                                                                        @endif
 
                                                                         <span class="ms-auto text-[9px] font-mono text-gray-400 bg-gray-50 px-1.5 py-0.5 rounded border border-gray-100">
                                                                             {{ $matchFinished ? ($isImpScoring ? ($match->home_imp . ' - ' . $match->away_imp . ' IMP') : number_format($match->home_vp, 1) . ' - ' . number_format($match->away_vp, 1)) : __('Hidden') }}
@@ -618,6 +623,11 @@
                                     <input type="checkbox" name="include_final" value="1" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500">
                                     <span>{{ __('Append final between current top two teams') }}</span>
                                 </label>
+                                <div>
+                                    <x-input-label for="final_carryover_imps" :value="__('Final carryover IMPs')" />
+                                    <x-text-input id="final_carryover_imps" name="final_carryover_imps" type="number" min="0" max="999" class="mt-1 block w-full" value="0" />
+                                    <p class="mt-1 text-xs text-gray-500">{{ __('Applied to the higher ranked team when a final is generated.') }}</p>
+                                </div>
                             </div>
                             <div class="mt-6 flex justify-end gap-3">
                                 <x-secondary-button type="button" @click="generateRoundsModalOpen = false">{{ __('Cancel') }}</x-secondary-button>

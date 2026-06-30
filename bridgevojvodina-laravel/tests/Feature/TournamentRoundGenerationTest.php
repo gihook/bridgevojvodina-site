@@ -118,6 +118,7 @@ class TournamentRoundGenerationTest extends TestCase
             'format' => 'single_round_robin',
             'boards_per_round' => 16,
             'include_final' => 1,
+            'final_carryover_imps' => 5,
         ])->assertRedirect();
 
         $tournament->refresh();
@@ -127,6 +128,8 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertStringContainsString('Final', $results->rounds[3]->name);
         $this->assertEquals('t1', $results->rounds[3]->matches[0]->home_team_id);
         $this->assertEquals('t2', $results->rounds[3]->matches[0]->away_team_id);
+        $this->assertSame(5, $results->rounds[3]->matches[0]->home_carryover_imp);
+        $this->assertSame(5, $results->rounds[3]->matches[0]->home_imp);
     }
 
     public function test_director_can_generate_standalone_final_from_imp_top_two()
@@ -163,6 +166,7 @@ class TournamentRoundGenerationTest extends TestCase
         $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
             'format' => 'final_top_two',
             'boards_per_round' => 20,
+            'final_carryover_imps' => 6,
         ])->assertRedirect();
 
         $tournament->refresh();
@@ -172,6 +176,28 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertEquals(20, $final->boards_per_round);
         $this->assertEquals('t3', $final->matches[0]->home_team_id);
         $this->assertEquals('t1', $final->matches[0]->away_team_id);
+        $this->assertSame(6, $final->matches[0]->home_carryover_imp);
+        $this->assertSame(6, $final->matches[0]->home_imp);
+
+        $results = $tournament->team_results;
+        $results->rounds[2]->status = 'inProgress';
+        $results->rounds[2]->matches[0]->status = 'inProgress';
+        $tournament->team_results = $results;
+        $tournament->save();
+
+        $this->actingAs($director)
+            ->patchJson(route('tournaments.match.room.board.update', [$tournament, $results->rounds[2]->id, $results->rounds[2]->matches[0]->id, 'open', 1]), [
+                'contract_level' => 4,
+                'contract_suit' => 'S',
+                'contract_risk' => 1,
+                'declarer' => 'N',
+                'tricks' => 10,
+            ])
+            ->assertOk();
+
+        $tournament->refresh();
+        $this->assertSame(6, $tournament->team_results->rounds[2]->matches[0]->home_imp);
+        $this->assertSame(0, $tournament->team_results->rounds[2]->matches[0]->away_imp);
     }
 
     public function test_director_can_append_rounds()
