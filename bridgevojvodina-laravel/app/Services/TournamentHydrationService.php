@@ -242,9 +242,12 @@ class TournamentHydrationService
 
     public function recalculateStandings(TournamentResultsDTO $results): void
     {
-        // Reset all team VPs
+        $isImpScoring = ($results->scoring_type ?? 'vp') === 'imp';
+
+        // Reset all team totals
         foreach ($results->teams as $team) {
             $team->total_vp = 0;
+            $team->total_imp = 0;
         }
 
         // Process all matches in all rounds
@@ -277,15 +280,27 @@ class TournamentHydrationService
                     }
                 }
 
-                // Add VPs to teams ONLY if the round is complete
+                // Add tournament totals ONLY if the round is complete
                 if ($round->status === 'complete') {
                     if (!$isHomeBye) {
                         $team = collect($results->teams)->firstWhere('id', $match->home_team_id);
-                        if ($team) $team->total_vp += (float)$match->home_vp;
+                        if ($team) {
+                            if ($isImpScoring) {
+                                $team->total_imp += (int) $match->home_imp;
+                            } else {
+                                $team->total_vp += (float) $match->home_vp;
+                            }
+                        }
                     }
                     if (!$isAwayBye) {
                         $team = collect($results->teams)->firstWhere('id', $match->away_team_id);
-                        if ($team) $team->total_vp += (float)$match->away_vp;
+                        if ($team) {
+                            if ($isImpScoring) {
+                                $team->total_imp += (int) $match->away_imp;
+                            } else {
+                                $team->total_vp += (float) $match->away_vp;
+                            }
+                        }
                     }
                 }
             }

@@ -10,6 +10,7 @@ class TeamDTO
         public int $captain_id,
         public array $player_ids,
         public float $total_vp = 0,
+        public int $total_imp = 0,
         public ?int $number = null
     ) {}
 
@@ -21,6 +22,7 @@ class TeamDTO
             captain_id: $data['captain_id'],
             player_ids: $data['player_ids'] ?? [],
             total_vp: (float) ($data['total_vp'] ?? 0),
+            total_imp: (int) ($data['total_imp'] ?? 0),
             number: isset($data['number']) ? (int) $data['number'] : null,
         );
     }
@@ -33,6 +35,7 @@ class TeamDTO
             'captain_id' => $this->captain_id,
             'player_ids' => $this->player_ids,
             'total_vp' => $this->total_vp,
+            'total_imp' => $this->total_imp,
             'number' => $this->number,
         ];
     }

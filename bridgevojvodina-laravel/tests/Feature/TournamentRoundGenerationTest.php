@@ -97,6 +97,83 @@ class TournamentRoundGenerationTest extends TestCase
         $this->assertEquals('t2', $results->rounds[1]->matches[0]->away_team_id);
     }
 
+    public function test_director_can_append_final_when_generating_round_robin()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'teams' => [
+                    ['id' => 't1', 'name' => 'Team 1', 'number' => 1, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 4],
+                    ['id' => 't2', 'name' => 'Team 2', 'number' => 2, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 9],
+                    ['id' => 't3', 'name' => 'Team 3', 'number' => 3, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 7],
+                    ['id' => 't4', 'name' => 'Team 4', 'number' => 4, 'captain_id' => 0, 'player_ids' => [], 'total_vp' => 1],
+                ],
+                'rounds' => [],
+            ],
+        ]);
+
+        $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
+            'format' => 'single_round_robin',
+            'boards_per_round' => 16,
+            'include_final' => 1,
+        ])->assertRedirect();
+
+        $tournament->refresh();
+        $results = $tournament->team_results;
+
+        $this->assertCount(4, $results->rounds);
+        $this->assertStringContainsString('Final', $results->rounds[3]->name);
+        $this->assertEquals('t1', $results->rounds[3]->matches[0]->home_team_id);
+        $this->assertEquals('t2', $results->rounds[3]->matches[0]->away_team_id);
+    }
+
+    public function test_director_can_generate_standalone_final_from_imp_top_two()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'scoring_type' => 'imp',
+                'teams' => [
+                    ['id' => 't1', 'name' => 'Team 1', 'number' => 1, 'captain_id' => 0, 'player_ids' => [], 'total_imp' => 0],
+                    ['id' => 't2', 'name' => 'Team 2', 'number' => 2, 'captain_id' => 0, 'player_ids' => [], 'total_imp' => 0],
+                    ['id' => 't3', 'name' => 'Team 3', 'number' => 3, 'captain_id' => 0, 'player_ids' => [], 'total_imp' => 0],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1', 'name' => 'Round 1', 'status' => 'complete', 'boards_per_round' => 16,
+                        'matches' => [
+                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_imp' => 12, 'away_imp' => 8, 'home_vp' => 0, 'away_vp' => 0, 'boards' => []],
+                            ['id' => 'm2', 'home_team_id' => 't3', 'away_team_id' => null, 'home_imp' => 0, 'away_imp' => 0, 'home_vp' => 0, 'away_vp' => 0, 'boards' => []],
+                        ],
+                    ],
+                    [
+                        'id' => 'r2', 'name' => 'Round 2', 'status' => 'complete', 'boards_per_round' => 16,
+                        'matches' => [
+                            ['id' => 'm3', 'home_team_id' => 't3', 'away_team_id' => 't1', 'home_imp' => 25, 'away_imp' => 9, 'home_vp' => 0, 'away_vp' => 0, 'boards' => []],
+                        ],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->actingAs($director)->post(route('tournaments.rounds.generate', $tournament), [
+            'format' => 'final_top_two',
+            'boards_per_round' => 20,
+        ])->assertRedirect();
+
+        $tournament->refresh();
+        $final = $tournament->team_results->rounds[2];
+
+        $this->assertStringContainsString('Final', $final->name);
+        $this->assertEquals(20, $final->boards_per_round);
+        $this->assertEquals('t3', $final->matches[0]->home_team_id);
+        $this->assertEquals('t1', $final->matches[0]->away_team_id);
+    }
+
     public function test_director_can_append_rounds()
     {
         $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
@@ -279,6 +356,7 @@ class TournamentRoundGenerationTest extends TestCase
         $response = $this->actingAs($director)->patch(route('tournaments.settings.update', $tournament), [
             'bye_vp' => 15.5,
             'boards_per_round' => 12,
+            'scoring_type' => 'vp',
         ]);
 
         $response->assertRedirect();

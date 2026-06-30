@@ -51,12 +51,14 @@ class TournamentTest extends TestCase
             'title' => 'New Tournament',
             'description' => 'Some description',
             'details' => 'Some details',
+            'scoring_type' => 'imp',
         ]);
 
         $config = \App\Models\TournamentConfiguration::where('title', 'New Tournament')->first();
         $this->assertNotNull($config);
         $response->assertRedirect(route('tournaments.edit', $config->id));
         $this->assertEquals($director->id, $config->user_id);
+        $this->assertEquals('imp', $config->team_results->scoring_type);
     }
 
     public function test_directors_can_edit_their_own_tournaments()
@@ -398,6 +400,7 @@ class TournamentTest extends TestCase
         $this->actingAs($director)->patch(route('tournaments.settings.update', $tournament), [
             'bye_vp' => 12.0,
             'boards_per_round' => 16,
+            'scoring_type' => 'vp',
         ]);
 
         $tournament->refresh();
@@ -417,5 +420,55 @@ class TournamentTest extends TestCase
         // Now both rounds should be summed
         $this->assertEquals(37.25, $teams['t1']->total_vp, 'Team 1 VP should include both rounds after R2 is complete');
         $this->assertEquals(2.75, $teams['t2']->total_vp, 'Team 2 VP should include both rounds after R2 is complete');
+    }
+
+    public function test_imp_only_standings_sum_completed_match_imps()
+    {
+        $director = User::factory()->create(['role' => User::ROLE_DIRECTOR]);
+
+        $tournament = Tournament::factory()->create([
+            'user_id' => $director->id,
+            'team_results' => [
+                'scoring_type' => 'imp',
+                'teams' => [
+                    ['id' => 't1', 'name' => 'Team 1', 'number' => 1, 'total_vp' => 0, 'captain_id' => 0, 'player_ids' => []],
+                    ['id' => 't2', 'name' => 'Team 2', 'number' => 2, 'total_vp' => 0, 'captain_id' => 0, 'player_ids' => []],
+                ],
+                'rounds' => [
+                    [
+                        'id' => 'r1', 'name' => 'Round 1', 'status' => 'complete', 'boards_per_round' => 16,
+                        'matches' => [
+                            ['id' => 'm1', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_imp' => 30, 'away_imp' => 12, 'home_vp' => 0, 'away_vp' => 0, 'boards' => []],
+                        ],
+                    ],
+                    [
+                        'id' => 'r2', 'name' => 'Round 2', 'status' => 'inProgress', 'boards_per_round' => 16,
+                        'matches' => [
+                            ['id' => 'm2', 'home_team_id' => 't1', 'away_team_id' => 't2', 'home_imp' => 40, 'away_imp' => 5, 'home_vp' => 0, 'away_vp' => 0, 'boards' => []],
+                        ],
+                    ],
+                ],
+                'bye_vp' => 12.0,
+                'boards_per_round' => 16,
+            ],
+        ]);
+
+        $this->actingAs($director)->patch(route('tournaments.settings.update', $tournament), [
+            'bye_vp' => 12.0,
+            'boards_per_round' => 16,
+            'scoring_type' => 'imp',
+        ]);
+
+        $tournament->refresh();
+        $teams = collect($tournament->team_results->teams)->keyBy('id');
+
+        $this->assertSame(30, $teams['t1']->total_imp);
+        $this->assertSame(12, $teams['t2']->total_imp);
+        $this->assertEquals(0, $teams['t1']->total_vp);
+
+        $this->get(route('tournaments.show', $tournament))
+            ->assertOk()
+            ->assertSee('IMP')
+            ->assertSee('30');
     }
 }

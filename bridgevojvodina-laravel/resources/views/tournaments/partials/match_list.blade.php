@@ -1,4 +1,7 @@
 @foreach ($results->rounds as $round)
+    @php
+        $isImpScoring = ($results->scoring_type ?? 'vp') === 'imp';
+    @endphp
     <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-6">
         <div class="p-6 text-gray-900">
             <div class="flex justify-between items-center mb-4">
@@ -41,7 +44,7 @@
                                 <div class="px-4 py-2 {{ $isBye ? 'bg-gray-400' : 'bg-blue-600' }} text-white rounded font-mono text-xl flex flex-col items-center">
                                     @if($isBye)
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Bye') }}</span>
-                                    @elseif($matchFinished && ($match->vp_override ?? false))
+                                    @elseif(!$isImpScoring && $matchFinished && ($match->vp_override ?? false))
                                         <span>{{ number_format($match->home_vp, 2) }} : {{ number_format($match->away_vp, 2) }}</span>
                                     @elseif($matchFinished)
                                         <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
@@ -51,8 +54,12 @@
                                         <span class="text-xs uppercase font-black tracking-widest">{{ __('Not played yet') }}</span>
                                     @endif
                                     <span class="text-xs">
-                                        @if($matchFinished && ($match->vp_override ?? false))
+                                        @if($isBye && $isImpScoring)
+                                            {{ __('IMP') }}
+                                        @elseif(!$isImpScoring && $matchFinished && ($match->vp_override ?? false))
                                             {{ __('VP') }}
+                                        @elseif($isImpScoring && $matchFinished)
+                                            {{ __('IMP') }}
                                         @elseif($isBye || $matchFinished)
                                             ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }})
                                         @elseif($matchStatus === 'inProgress')

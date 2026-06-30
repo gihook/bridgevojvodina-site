@@ -11,6 +11,15 @@
         <x-input-error class="mt-2" :messages="$errors->get('description')" />
     </div>
 
+    <div>
+        <x-input-label for="form_scoring_type" :value="__('Scoring')" />
+        <select id="form_scoring_type" name="scoring_type" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+            <option value="vp" {{ old('scoring_type', $tournament->team_results->scoring_type ?? 'vp') === 'vp' ? 'selected' : '' }}>{{ __('VP') }}</option>
+            <option value="imp" {{ old('scoring_type', $tournament->team_results->scoring_type ?? 'vp') === 'imp' ? 'selected' : '' }}>{{ __('IMP only') }}</option>
+        </select>
+        <x-input-error class="mt-2" :messages="$errors->get('scoring_type')" />
+    </div>
+
     <div class="block">
         <label for="is_completed" class="inline-flex items-center">
             <input id="is_completed" type="checkbox" class="rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-500" name="is_completed" value="1" {{ old('is_completed', $tournament->is_completed ?? false) ? 'checked' : '' }}>

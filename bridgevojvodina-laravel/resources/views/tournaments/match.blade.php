@@ -1,5 +1,6 @@
 @php
     $matchFinished = \App\Http\Controllers\TournamentController::matchResultsVisible($match);
+    $isImpScoring = ($results->scoring_type ?? 'vp') === 'imp';
 @endphp
 
 <x-app-layout>
@@ -32,14 +33,18 @@
                         <div class="flex flex-col items-center gap-4">
                             <div class="px-8 py-4 bg-blue-600 text-white rounded-lg font-mono text-4xl flex flex-col items-center shadow-lg">
                                 @if($matchFinished)
-                                    @if($match->vp_override ?? false)
+                                    @if(!$isImpScoring && ($match->vp_override ?? false))
                                         <span>{{ number_format($match->home_vp, 2) }} : {{ number_format($match->away_vp, 2) }}</span>
                                         <span class="text-sm mt-1">{{ __('VP') }}</span>
                                     @else
                                         <span>{{ $match->home_imp }} : {{ $match->away_imp }}</span>
-                                        <span class="text-sm mt-1">
-                                            ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
-                                        </span>
+                                        @if($isImpScoring)
+                                            <span class="text-sm mt-1">{{ __('IMP') }}</span>
+                                        @else
+                                            <span class="text-sm mt-1">
+                                                ({{ number_format($match->home_vp, 2) }} - {{ number_format($match->away_vp, 2) }} VP)
+                                            </span>
+                                        @endif
                                     @endif
                                 @else
                                     <span class="text-base uppercase tracking-widest">{{ __('IMPs hidden') }}</span>

@@ -100,6 +100,7 @@ class TournamentController extends Controller
             'title' => 'required|string|max:255',
             'description' => 'nullable|string|max:255',
             'details' => 'nullable|string',
+            'scoring_type' => 'required|string|in:vp,imp',
         ]);
 
         $tournamentConfiguration = TournamentConfiguration::create([
@@ -112,7 +113,8 @@ class TournamentController extends Controller
                 'teams' => [],
                 'rounds' => [],
                 'bye_vp' => 12.0,
-                'boards_per_round' => 16
+                'boards_per_round' => 16,
+                'scoring_type' => $validated['scoring_type']
             ],
         ]);
 
@@ -689,6 +691,7 @@ class TournamentController extends Controller
             'details' => 'nullable|string',
             'bye_vp' => 'nullable|numeric|min:0|max:20',
             'boards_per_round' => 'nullable|integer|min:1|max:128',
+            'scoring_type' => 'nullable|string|in:vp,imp',
         ];
         
         if ($tournament instanceof Tournament) {
@@ -704,6 +707,9 @@ class TournamentController extends Controller
             }
             if (isset($validated['boards_per_round'])) {
                 $results->boards_per_round = (int)$validated['boards_per_round'];
+            }
+            if (isset($validated['scoring_type'])) {
+                $results->scoring_type = $validated['scoring_type'];
             }
             $tournament->team_results = $results;
             $this->hydrationService->recalculateStandings($results);
@@ -1126,6 +1132,10 @@ class TournamentController extends Controller
             abort(404);
         }
 
+        if (($results->scoring_type ?? 'vp') === 'imp' && $validated['result_type'] === 'vp') {
+            return back()->withErrors(['result_type' => __('This tournament uses IMP-only scoring.')]);
+        }
+
         $roundIndex = collect($results->rounds)->search(fn($r) => $r->id === $roundId);
         if ($roundIndex === false) {
             abort(404);
@@ -1329,6 +1339,7 @@ class TournamentController extends Controller
         $request->validate([
             'bye_vp' => 'required|numeric|min:0|max:20',
             'boards_per_round' => 'required|integer|min:1|max:64',
+            'scoring_type' => 'required|string|in:vp,imp',
         ]);
 
         $results = $tournament->team_results;
@@ -1336,6 +1347,7 @@ class TournamentController extends Controller
 
         $results->bye_vp = (float) $request->bye_vp;
         $results->boards_per_round = (int) $request->boards_per_round;
+        $results->scoring_type = $request->scoring_type;
         
         $this->hydrationService->recalculateStandings($results);
         
@@ -1351,13 +1363,30 @@ class TournamentController extends Controller
         $this->authorizeTournament($tournament);
 
         $request->validate([
-            'format' => 'required|string|in:single_round_robin,double_round_robin',
+            'format' => 'required|string|in:single_round_robin,double_round_robin,final_top_two',
             'boards_per_round' => 'required|integer|min:1|max:64',
+            'include_final' => 'nullable|boolean',
         ]);
 
         $results = $tournament->team_results;
         if (!$results || count($results->teams) < 2) {
             return back()->withErrors(['format' => __('At least 2 teams are required to generate rounds.')]);
+        }
+
+        $this->hydrationService->recalculateStandings($results);
+        $existingRoundCount = count($results->rounds);
+
+        if ($request->format === 'final_top_two') {
+            $finalRound = $this->makeFinalRound($results, $existingRoundCount + 1, (int) $request->boards_per_round);
+            if (!$finalRound) {
+                return back()->withErrors(['format' => __('At least 2 ranked teams are required to generate a final.')]);
+            }
+
+            $results->rounds[] = $finalRound;
+            $tournament->team_results = $results;
+            $tournament->save();
+
+            return back()->with('success', __('Final round generated successfully.'));
         }
 
         // Sort teams by number, fallback to index
@@ -1373,7 +1402,6 @@ class TournamentController extends Controller
 
         $rounds = [];
         $numRounds = $n - 1;
-        $existingRoundCount = count($results->rounds);
 
         for ($r = 1; $r <= $numRounds; $r++) {
             $matches = [];
@@ -1452,12 +1480,75 @@ class TournamentController extends Controller
             $rounds = array_merge($rounds, $secondHalf);
         }
 
+        if ($request->boolean('include_final')) {
+            $finalRound = $this->makeFinalRound($results, $existingRoundCount + count($rounds) + 1, (int) $request->boards_per_round);
+            if ($finalRound) {
+                $rounds[] = $finalRound;
+            }
+        }
+
         $results->rounds = array_merge($results->rounds, $rounds);
         $this->hydrationService->recalculateStandings($results);
         $tournament->team_results = $results;
         $tournament->save();
 
         return back()->with('success', __('Rounds generated successfully.'));
+    }
+
+    protected function makeFinalRound(object $results, int $roundNumber, int $boardsPerRound): ?RoundDTO
+    {
+        $topTeams = $this->topTeamsForFinal($results);
+        if ($topTeams->count() < 2) {
+            return null;
+        }
+
+        $homeTeam = $topTeams->values()[0];
+        $awayTeam = $topTeams->values()[1];
+
+        return new RoundDTO(
+            id: Str::uuid()->toString(),
+            name: __('Final') . ' ' . $roundNumber,
+            status: 'idle',
+            matches: [
+                new MatchDTO(
+                    id: Str::uuid()->toString(),
+                    home_team_id: $homeTeam->id,
+                    away_team_id: $awayTeam->id,
+                    home_imp: 0,
+                    away_imp: 0,
+                    home_vp: 0,
+                    away_vp: 0,
+                    boards_count: $boardsPerRound
+                ),
+            ],
+            boards_per_round: $boardsPerRound
+        );
+    }
+
+    protected function topTeamsForFinal(object $results)
+    {
+        $isImpScoring = ($results->scoring_type ?? 'vp') === 'imp';
+
+        return collect($results->teams)
+            ->filter(fn($team) => !empty($team->id))
+            ->sort(function ($a, $b) use ($isImpScoring) {
+                $scoreComparison = $isImpScoring
+                    ? (($b->total_imp ?? 0) <=> ($a->total_imp ?? 0))
+                    : ($b->total_vp <=> $a->total_vp);
+
+                if ($scoreComparison !== 0) {
+                    return $scoreComparison;
+                }
+
+                $numberComparison = ($a->number ?? 999999) <=> ($b->number ?? 999999);
+                if ($numberComparison !== 0) {
+                    return $numberComparison;
+                }
+
+                return strcmp($a->name, $b->name);
+            })
+            ->take(2)
+            ->values();
     }
 
     public function uploadRoundsCsv(Request $request, string $tournamentId): RedirectResponse
