@@ -46,6 +46,9 @@
                                             </span>
                                         @endif
                                     @endif
+                                    @if(($match->home_carryover_imp ?? 0) || ($match->away_carryover_imp ?? 0))
+                                        <span class="text-xs mt-1">{{ __('Carryover') }} {{ (int) ($match->home_carryover_imp ?? 0) }}-{{ (int) ($match->away_carryover_imp ?? 0) }}</span>
+                                    @endif
                                 @else
                                     <span class="text-base uppercase tracking-widest">{{ __('IMPs hidden') }}</span>
                                     <span class="text-xs mt-1">{{ __('Visible when match is finished') }}</span>

@@ -337,8 +337,8 @@ class PlayerScoringController extends Controller
         }
 
         // Recalculate match totals
-        $totalHomeImp = 0;
-        $totalAwayImp = 0;
+        $totalHomeImp = (int) ($match->home_carryover_imp ?? 0);
+        $totalAwayImp = (int) ($match->away_carryover_imp ?? 0);
         foreach ($match->boards as $b) {
             $totalHomeImp += $b->home_imp;
             $totalAwayImp += $b->away_imp;

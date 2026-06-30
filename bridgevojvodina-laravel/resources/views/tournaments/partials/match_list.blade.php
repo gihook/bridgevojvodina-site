@@ -67,6 +67,9 @@
                                         @else
                                             {{ __('Waiting to start') }}
                                         @endif
+                                        @if(($match->home_carryover_imp ?? 0) || ($match->away_carryover_imp ?? 0))
+                                            <span class="block">{{ __('Carryover') }} {{ (int) ($match->home_carryover_imp ?? 0) }}-{{ (int) ($match->away_carryover_imp ?? 0) }}</span>
+                                        @endif
                                     </span>
                                 </div>
                                 <div class="flex-1 text-center font-bold text-lg">

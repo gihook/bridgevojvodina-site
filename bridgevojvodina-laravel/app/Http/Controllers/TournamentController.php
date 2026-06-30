@@ -1366,6 +1366,7 @@ class TournamentController extends Controller
             'format' => 'required|string|in:single_round_robin,double_round_robin,final_top_two',
             'boards_per_round' => 'required|integer|min:1|max:64',
             'include_final' => 'nullable|boolean',
+            'final_carryover_imps' => 'nullable|integer|min:0|max:999',
         ]);
 
         $results = $tournament->team_results;
@@ -1375,9 +1376,10 @@ class TournamentController extends Controller
 
         $this->hydrationService->recalculateStandings($results);
         $existingRoundCount = count($results->rounds);
+        $finalCarryoverImps = (int) ($request->input('final_carryover_imps', 0) ?: 0);
 
         if ($request->format === 'final_top_two') {
-            $finalRound = $this->makeFinalRound($results, $existingRoundCount + 1, (int) $request->boards_per_round);
+            $finalRound = $this->makeFinalRound($results, $existingRoundCount + 1, (int) $request->boards_per_round, $finalCarryoverImps);
             if (!$finalRound) {
                 return back()->withErrors(['format' => __('At least 2 ranked teams are required to generate a final.')]);
             }
@@ -1481,7 +1483,7 @@ class TournamentController extends Controller
         }
 
         if ($request->boolean('include_final')) {
-            $finalRound = $this->makeFinalRound($results, $existingRoundCount + count($rounds) + 1, (int) $request->boards_per_round);
+            $finalRound = $this->makeFinalRound($results, $existingRoundCount + count($rounds) + 1, (int) $request->boards_per_round, $finalCarryoverImps);
             if ($finalRound) {
                 $rounds[] = $finalRound;
             }
@@ -1495,7 +1497,7 @@ class TournamentController extends Controller
         return back()->with('success', __('Rounds generated successfully.'));
     }
 
-    protected function makeFinalRound(object $results, int $roundNumber, int $boardsPerRound): ?RoundDTO
+    protected function makeFinalRound(object $results, int $roundNumber, int $boardsPerRound, int $carryoverImps = 0): ?RoundDTO
     {
         $topTeams = $this->topTeamsForFinal($results);
         if ($topTeams->count() < 2) {
@@ -1514,11 +1516,12 @@ class TournamentController extends Controller
                     id: Str::uuid()->toString(),
                     home_team_id: $homeTeam->id,
                     away_team_id: $awayTeam->id,
-                    home_imp: 0,
+                    home_imp: $carryoverImps,
                     away_imp: 0,
                     home_vp: 0,
                     away_vp: 0,
-                    boards_count: $boardsPerRound
+                    boards_count: $boardsPerRound,
+                    home_carryover_imp: $carryoverImps
                 ),
             ],
             boards_per_round: $boardsPerRound
@@ -1738,8 +1741,8 @@ class TournamentController extends Controller
 
     protected function recalculateMatchTotals(object $match, object $round, object $results): void
     {
-        $totalHomeImp = 0;
-        $totalAwayImp = 0;
+        $totalHomeImp = (int) ($match->home_carryover_imp ?? 0);
+        $totalAwayImp = (int) ($match->away_carryover_imp ?? 0);
 
         foreach ($match->boards as $board) {
             $totalHomeImp += $board->home_imp ?? 0;
@@ -2030,8 +2033,8 @@ class TournamentController extends Controller
         }
 
         // Recalculate match totals
-        $totalHomeImp = 0;
-        $totalAwayImp = 0;
+        $totalHomeImp = (int) ($match->home_carryover_imp ?? 0);
+        $totalAwayImp = (int) ($match->away_carryover_imp ?? 0);
         foreach ($match->boards as $b) {
             $totalHomeImp += $b->home_imp;
             $totalAwayImp += $b->away_imp;
@@ -2191,8 +2194,8 @@ class TournamentController extends Controller
         fclose($handle);
 
         // Recalculate match totals
-        $totalHomeImp = 0;
-        $totalAwayImp = 0;
+        $totalHomeImp = (int) ($match->home_carryover_imp ?? 0);
+        $totalAwayImp = (int) ($match->away_carryover_imp ?? 0);
         foreach ($match->boards as $b) {
             $totalHomeImp += $b->home_imp;
             $totalAwayImp += $b->away_imp;
